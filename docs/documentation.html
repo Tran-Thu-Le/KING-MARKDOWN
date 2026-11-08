@@ -1,0 +1,2099 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KING Markdown</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+/* KING Markdown editor: giao diện tối kiểu VS Code */
+:root{
+  --bg:#1e1e1e; --side:#252526; --bar:#3c3c3c; --tab:#2d2d2d; --line:#3c3c3c; --hover:#2a2d2e; --sel:#264f78;
+  --ink:#d4d4d4; --mute:#8b8b8b; --bright:#ffffff; --acc:#0e639c; --acc2:#007acc; --focus:#007fd4;
+  --err:#f48771; --warn:#cca700; --mono:"Cascadia Code",Consolas,"Courier New",monospace;
+  /* bộ 4 màu của KING Markdown (khung văn bản + style hệ thống):
+     section xanh dương · node / module import vàng nhạt · loại link cam · meta hồng */
+  --k-sec:#4fa3ff; --k-node:#f5e3a1; --k-link:#f0a04b; --k-meta:#f48fb8;
+  --k-val:#c9915e; --k-text:#ffffff;        /* giá trị sau '=': nâu · nội dung thường: trắng */
+  --c-head:var(--k-sec); --c-id:var(--k-node); --c-ref:var(--k-node);
+  --c-field:var(--ink); --c-com:#7f848e; --c-code:var(--ink); --c-ask:var(--ink);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;font:13px "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+button,select,input{font:inherit;color:inherit}
+::-webkit-scrollbar{width:12px;height:12px}::-webkit-scrollbar-thumb{background:#79797966}::-webkit-scrollbar-thumb:hover{background:#646464b3}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* ---------- thanh menu ---------- */
+#menubar{display:flex;align-items:center;height:32px;background:var(--bar);padding:0 6px;gap:2px;user-select:none;flex:none}
+.logo{font:700 13px var(--mono);color:#1e1e1e;background:#e2c08d;border-radius:3px;padding:0 5px;margin-right:6px}
+.menu{position:relative}
+.mbtn{background:none;border:0;padding:4px 9px;border-radius:4px;cursor:pointer;color:#cccccc}
+.mbtn:hover,.menu.open .mbtn{background:#505050}
+.drop{display:none;position:absolute;top:30px;left:0;z-index:20;min-width:240px;background:var(--side);border:1px solid #454545;
+  border-radius:6px;padding:4px;box-shadow:0 6px 18px #0009}
+.drop.wide{min-width:min(560px,92vw)}
+.menu.open .drop{display:block}
+.drop .item{display:flex;justify-content:space-between;gap:24px;width:100%;text-align:left;background:none;border:0;border-radius:4px;padding:4px 10px;cursor:pointer}
+.drop .item:hover,.drop .item.on{background:var(--acc);color:var(--bright)}
+.drop kbd{font:11px inherit;color:var(--mute)}
+.drop .item:hover kbd{color:#ddd}
+.drop .sep{height:1px;background:#454545;margin:4px 6px}
+.drop .label{font-size:11px;color:var(--mute);padding:4px 10px 2px;text-transform:uppercase;letter-spacing:.04em}
+.drop .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px 10px 6px}
+.drop .row label{display:flex;align-items:center;gap:4px;color:var(--mute)}
+.drop .row button{background:#3a3d41;border:1px solid transparent;border-radius:3px;padding:3px 9px;cursor:pointer}
+.drop .row button:hover{background:#45494e}
+.drop .row button.on{background:var(--acc);color:var(--bright)}
+select,input[type=number],input[type=text]{background:#3c3c3c;border:1px solid #3c3c3c;border-radius:2px;padding:2px 5px;outline:0}
+select:focus,input:focus{border-color:var(--focus)}
+input[type=number]{width:56px}
+input[type=color]{width:26px;height:22px;padding:0 2px;border:1px solid #555;border-radius:3px;background:#3c3c3c;cursor:pointer}
+#fileList .item::before{content:"📄";margin-right:6px}
+#title{margin:0 auto;color:#cccccc;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 12px}
+
+/* ---------- vùng chính ---------- */
+main{flex:1;display:flex;min-height:0}
+#left{width:32%;min-width:200px;display:flex;flex-direction:column;background:var(--bg)}
+.split{width:4px;cursor:col-resize;background:var(--side);flex:none}.split:hover,.split.drag{background:var(--focus)}
+.hidden-panel{display:none!important}
+
+/* ---------- thanh bên: Explorer (trái), Inspector (phải) ---------- */
+.side{background:var(--side);display:flex;flex-direction:column;min-width:0;overflow:hidden;flex:none}
+#explorer{width:220px}
+#inspector{width:320px}
+.side-head{display:flex;align-items:center;justify-content:space-between;height:35px;padding:0 10px 0 16px;font-size:11px;letter-spacing:.06em;color:#bbbbbb;flex:none}
+.side-acts button{background:none;border:0;color:#c5c5c5;cursor:pointer;border-radius:4px;padding:2px 5px}
+.side-acts button:hover{background:#ffffff1a}
+.side-sec{font-size:11px;font-weight:700;color:#cccccc;padding:4px 10px;border-top:1px solid #ffffff10;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+#exFiles{overflow:auto;max-height:45%;flex:none;padding-bottom:4px}
+#exOutline{overflow:auto;flex:1}
+.fi{display:flex;align-items:center;gap:6px;height:22px;padding:0 10px 0 18px;cursor:pointer;white-space:nowrap}
+.fi:hover{background:var(--hover)}
+.fi.on{background:#37373d;color:var(--bright)}
+.fi .nm{overflow:hidden;text-overflow:ellipsis}
+.fi .ic{width:14px;text-align:center;font:700 10px var(--mono);color:#e2c08d}
+.fi .role{margin-left:auto;font-size:10px;border-radius:8px;padding:0 6px;background:#ffffff14;color:var(--mute)}
+.fi .role.schema{color:#c586c0}.fi .role.style{color:#4ec9b0}
+#exOutline .tr{height:20px;font-size:12px}
+
+/* ---------- inspector ---------- */
+#insBody{overflow:auto;flex:1;padding:0 0 30px}
+.ins-empty{color:var(--mute);padding:14px 16px;line-height:1.6}
+.ins-sec{border-top:1px solid #ffffff10}
+.ins-sec>h5{margin:0;padding:6px 12px;font-size:11px;letter-spacing:.05em;color:#cccccc;cursor:pointer;user-select:none}
+.ins-sec>h5::before{content:"▾ ";color:var(--mute)}
+.ins-sec.closed>h5::before{content:"▸ "}
+.ins-sec.closed>.ins-in{display:none}
+.ins-in{padding:2px 12px 10px}
+.ins-row{display:grid;grid-template-columns:78px 1fr;gap:6px;align-items:center;margin:4px 0}
+.ins-row>span{color:var(--mute);font-size:12px}
+.ins-row input[type=text],.ins-row select,.ins-row input[type=number],.ins-in textarea{width:100%;min-width:0}
+.ins-in textarea{background:#3c3c3c;border:1px solid #3c3c3c;border-radius:2px;color:var(--ink);font:12px/1.5 var(--mono);padding:4px 6px;resize:vertical;outline:0}
+.ins-in textarea:focus{border-color:var(--focus)}
+.ins-kind{display:inline-block;font-size:10px;border-radius:8px;padding:0 7px;margin-right:6px;background:#ffffff14;color:var(--mute);text-transform:uppercase}
+.ins-id{font:12px var(--mono);color:var(--c-id)}
+.ins-meta{display:grid;grid-template-columns:minmax(60px,38%) 1fr 22px;gap:4px;align-items:center}
+.ins-meta .k{font:12px var(--mono);overflow:hidden;text-overflow:ellipsis}
+.ins-meta input{width:100%;min-width:0;font:12px var(--mono)}
+.x{background:none;border:0;color:var(--mute);cursor:pointer;border-radius:3px;padding:0 4px;font-size:14px;line-height:1}
+.x:hover{color:var(--err);background:#ffffff10}
+.ins-links{display:flex;flex-direction:column;gap:2px;margin:2px 0 6px}
+.lk{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 4px;border-radius:3px}
+.lk:hover{background:var(--hover)}
+.lk .t{font:12px var(--mono)}
+.lk a{color:#3794ff;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lk .auto{color:var(--mute);font-size:10px;margin-left:auto}
+.lk .x{margin-left:auto}
+.ins-add{display:grid;grid-template-columns:1fr 1fr auto;gap:4px;margin-top:4px}
+.ins-add input{min-width:0;font:12px var(--mono)}
+.btn{background:#3a3d41;border:1px solid transparent;border-radius:3px;padding:3px 10px;cursor:pointer;color:var(--ink)}
+.btn:hover{background:#45494e}
+.btn.pri{background:var(--acc);color:#fff}.btn.pri:hover{background:#1177bb}
+.btn.danger:hover{background:#5a1d1d;color:#f48771}
+.ins-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.ins-note{color:var(--mute);font-size:11px;margin:4px 0;line-height:1.4}
+.ins-colors{display:flex;gap:10px;flex-wrap:wrap}
+.ins-colors label{display:flex;align-items:center;gap:4px;color:var(--mute);font-size:12px}
+.static #inspector input,.static #inspector textarea,.static #inspector select{pointer-events:none;opacity:.7}
+
+/* ---------- thanh công cụ trên đồ thị ---------- */
+#toolbar{position:absolute;top:8px;left:8px;display:flex;gap:2px;align-items:center;background:#252526f0;border:1px solid #454545;border-radius:6px;padding:3px;box-shadow:0 2px 8px #0006}
+#toolbar button{background:none;border:0;border-radius:4px;padding:3px 8px;cursor:pointer;color:#cccccc;white-space:nowrap}
+#toolbar button:hover{background:#ffffff14}
+#toolbar button.on{background:var(--acc);color:#fff}
+#toolbar select{height:24px}
+#right{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.tabs{display:flex;background:var(--side);height:35px;flex:none;overflow:hidden}
+.tab{display:flex;align-items:center;padding:0 14px;color:var(--mute);background:var(--tab);border-right:1px solid var(--side);cursor:pointer;white-space:nowrap}
+.tab.on{background:var(--bg);color:var(--bright);border-top:1px solid var(--acc2)}
+.tab-btn{margin:5px 8px 5px auto;background:none;border:1px solid transparent;border-radius:4px;color:var(--mute);cursor:pointer;padding:0 8px;font-size:12px;white-space:nowrap}
+.tab-btn:hover{background:#ffffff14;color:var(--ink)}
+.tab-btn.on{color:#fff;background:var(--acc);border-color:var(--acc)}
+#fname{cursor:default;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#fname.dirty::after{content:" ●";color:var(--ink)}
+
+/* ---------- khung văn bản có tô màu ---------- */
+#ed{flex:1;display:flex;min-height:0;font:13px/20px var(--mono)}
+#gut{margin:0;padding:8px 10px 72px 6px;   /* đệm dưới dư để cuộn được bằng textarea (textarea có thanh cuộn ngang) */min-width:52px;text-align:right;color:#858585;background:var(--bg);overflow:hidden;user-select:none;font:inherit}
+#gut .e{color:var(--err);font-weight:700}
+#gut .h{color:#c6c6c6}
+#code{position:relative;flex:1;min-width:0}
+#hl,#src{position:absolute;inset:0;margin:0;padding:8px 8px 40px;font:inherit;white-space:pre;tab-size:2;border:0;overflow:auto}
+#hl{color:var(--ink);pointer-events:none;overflow:hidden;padding-bottom:52px;padding-right:20px}   /* +12px: bù thanh cuộn của textarea */
+#src{background:transparent;color:transparent;caret-color:#aeafad;resize:none;outline:0}
+#src::selection{background:#264f78b0;color:transparent}
+.t-head{color:var(--k-sec)}                        /* tiêu đề section */
+.t-id,.t-ref{color:var(--k-node)}                  /* @id (node và section), @tham chiếu, ID trong link, module import */
+.t-link{color:var(--k-link)}                       /* loại link (như tên hàm) */
+.t-meta{color:var(--k-meta)}                       /* tên trường (meta, content, link, ask, show) và khóa meta */
+.t-val{color:var(--k-val)}                         /* giá trị sau '=' và giá trị của show */
+.t-text,.t-text .t-bold{color:var(--k-text)}       /* nội dung thường: tiêu đề node, content, ask, [ ... ] */
+.t-text .t-ref{color:var(--k-node)}
+.t-fm,.t-fence,.t-code{color:var(--ink)}
+.t-com,.t-text .t-com{color:var(--c-com);font-style:italic}
+/* Alt+Z ngắt dòng: textarea và lớp tô màu phải ngắt giống hệt nhau */
+body.wrap #src,body.wrap #hl{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
+body.wrap #src{overflow-x:hidden}
+#hl .ln{min-height:20px}
+/* chọn màu: tên màu có sẵn + bảng màu */
+.cc{display:flex;gap:4px;align-items:center}.cc select{flex:1;min-width:0}   /* không đổi độ đậm: chữ phải cùng bề rộng với textarea */
+
+/* ---------- problems ---------- */
+.panel-title{flex:none;border-top:1px solid var(--line);padding:4px 10px;font-size:11px;color:var(--mute);letter-spacing:.04em}
+#nprob{background:#4d4d4d;color:var(--bright);border-radius:9px;padding:0 6px;margin-left:4px}
+#log{max-height:26%;min-height:26px;overflow:auto;padding:0 10px 6px;font-size:12px}
+#log div{cursor:pointer;padding:1px 0}#log div:hover{background:var(--hover)}
+#log .err{color:var(--err)}#log .err::before{content:"⊗ "}
+#log .warn{color:var(--warn)}#log .warn::before{content:"⚠ "}
+
+/* ---------- 3 view ---------- */
+#views{flex:1;position:relative;min-height:0}
+.view{position:absolute;inset:0;display:none;overflow:auto}
+.view.on{display:block}
+#g{position:absolute;inset:0;background:var(--bg)}
+#hint{position:absolute;left:10px;bottom:8px;color:var(--mute);background:#252526e6;padding:2px 8px;border-radius:4px;pointer-events:none;font-size:12px}
+
+/* tree */
+#treeView{padding:6px 0;font-size:13px}
+.tr{display:flex;align-items:center;gap:6px;height:22px;padding-right:10px;cursor:pointer;white-space:nowrap}
+.tr:hover{background:var(--hover)}
+.tr.on{background:#04395e;outline:1px solid var(--focus)}
+.tr .tw{width:14px;text-align:center;color:var(--mute);flex:none}
+.tr .ic{flex:none;font-size:11px;font-weight:700;width:16px;text-align:center}
+.tr .ic.sec{color:var(--c-head)}.tr .ic.nod{color:var(--c-id)}.tr .ic.ext{color:var(--mute)}
+.tr .nm{overflow:hidden;text-overflow:ellipsis}
+.tr .via{font-size:11px}
+.tr .meta{color:var(--mute);font-size:11px;overflow:hidden;text-overflow:ellipsis}
+/* bộ màu chung ở Tree / Outline: section xanh dương, node vàng nhạt, khóa meta hồng, giá trị nâu */
+.tr .nm.sec{color:var(--k-sec)}.tr .nm.nod,.tr .nm.ext{color:var(--k-node)}
+.tr .meta .mk{color:var(--k-meta)}.tr .meta .mv{color:var(--k-val)}
+.tr.hide .nm{opacity:.55}
+.tr .ask{color:var(--c-ask)}
+
+/* module: đồ thị lồng nhau (SVG). Section = chữ nhật góc vuông, nhóm = chữ nhật bo góc, node nội dung = hình tròn */
+#moduleView{overflow:hidden}
+#moduleView.on{display:flex;flex-direction:column}
+.mbar{flex:none;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 12px;background:var(--bg);border-bottom:1px solid #ffffff10}
+.mbar .btn{white-space:nowrap}
+.mlinks{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12px;color:var(--mute)}
+.mlinks b{font:12px var(--mono)}.mlinks label{display:flex;align-items:center;gap:3px;font:12px var(--mono)}
+#msvg{flex:1;width:100%;min-height:0;cursor:grab;user-select:none}
+#msvg:active{cursor:grabbing}
+#msvg .mod{cursor:pointer}
+#msvg text{font:13px system-ui,sans-serif;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+#msvg .mgt{text-anchor:start;font-weight:600;fill:var(--k-node)}      /* tên nhóm (node): vàng nhạt */
+#msvg .mgt.sec{fill:var(--k-sec)}                                      /* tên section: xanh dương */
+#msvg .mgc{text-anchor:start;font-size:11px;fill:var(--mute)}
+#msvg .mtw{text-anchor:middle;fill:#bbbbbb;font-size:13px;pointer-events:all;cursor:pointer}
+#msvg .mtw:hover{fill:#fff}
+#msvg .mask{fill:var(--c-ask);font-size:12px}
+#msvg .mlabel{font-size:10px;fill:var(--k-link);paint-order:stroke;stroke:#1e1e1e;stroke-width:3px}
+#msvg .mleaf:hover .shape{stroke-width:2.5}
+#msvg .mgroup:hover>.shape{stroke-opacity:1;stroke-width:2}
+#msvg .mod.on>.shape{stroke:var(--focus);stroke-width:3}
+.mhint{flex:none;color:var(--mute);font-size:12px;padding:4px 12px}
+
+/* book */
+#bookView{padding:28px 40px 80px;line-height:1.6}
+.book{max-width:760px;margin:0 auto;font:15px/1.65 "Segoe UI",system-ui,sans-serif}
+.book h1,.book h2,.book h3,.book h4,.book h5,.book h6{color:var(--k-sec);margin:1.4em 0 .5em;line-height:1.3}
+.book p,.book li,.book td,.book .ask{color:var(--k-text)}
+.book h1{font-size:1.9em;border-bottom:1px solid var(--line);padding-bottom:.25em}
+.book h2{font-size:1.45em;border-bottom:1px solid var(--line);padding-bottom:.2em}
+.book h3{font-size:1.2em}
+.book article{border-left:3px solid #3e7bb6;background:#252526;border-radius:0 6px 6px 0;padding:10px 16px;margin:12px 0}
+.book article.on{outline:1px solid var(--focus)}
+.book article h4{margin:0 0 4px;font-size:1.05em;color:var(--k-node)}
+.book .chip .mv{color:var(--k-val)}
+.book a[data-go]{color:var(--k-node)}                 /* link tới node trong sách: vàng nhạt */
+.book article h4 small{color:var(--mute);font:12px var(--mono);margin-left:8px}
+.book .chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.book .chip{font:12px var(--mono);border-radius:10px;padding:0 8px;background:#333;border:1px solid #444}
+.book .chip b{font-weight:400}
+.book a{color:#3794ff;text-decoration:none;cursor:pointer}.book a:hover{text-decoration:underline}
+.book code{font:13px var(--mono);background:#ffffff14;border-radius:3px;padding:0 4px;color:var(--c-code)}
+.book pre{background:#1e1e1e;border:1px solid var(--line);border-radius:4px;padding:8px 10px;overflow:auto;font:13px/1.45 var(--mono)}
+.book table{border-collapse:collapse;margin:8px 0;font-size:14px;display:block;overflow-x:auto}
+.book th,.book td{border:1px solid var(--line);padding:4px 10px;text-align:left;vertical-align:top}
+.book th{background:#ffffff0d;color:var(--bright);font-weight:600}
+.book .ask{color:var(--c-ask);font-style:italic;border-left:2px solid var(--c-ask);padding-left:8px;margin:6px 0}
+.book .note{color:var(--mute)}
+.book .empty{color:var(--mute);font-style:italic}
+
+/* ---------- thanh trạng thái ---------- */
+#statusbar{flex:none;display:flex;gap:14px;align-items:center;height:22px;padding:0 10px;background:var(--acc2);color:#fff;font-size:12px;white-space:nowrap}
+#statusbar>span{overflow:hidden;text-overflow:ellipsis}
+#status{flex:1;text-align:right}
+#status.err{color:#ffd7d0;font-weight:600}
+body.static #statusbar{background:#68217a}
+
+/* ---------- bản tĩnh ---------- */
+.static .edit{display:none!important}
+.static-only{display:none}
+.static .static-only{display:inline;color:#e2c08d;font-size:12px;margin-left:10px}
+.static-only code{font:12px var(--mono);background:#ffffff14;padding:0 4px;border-radius:3px}
+.static-only a{color:#3794ff}
+
+/* ---------- hộp thoại ---------- */
+dialog{background:var(--side);color:var(--ink);border:1px solid #454545;border-radius:8px;width:min(560px,92vw);padding:14px;box-shadow:0 8px 24px #000a}
+dialog::backdrop{background:#0008}
+#dpath{width:100%;margin-top:8px}
+#dlist{height:50vh;overflow:auto;margin:8px 0;border:1px solid var(--line);border-radius:4px}
+#dlist div{padding:3px 8px;cursor:pointer}#dlist div:hover{background:var(--hover)}
+#dlist small{color:var(--mute)}
+dialog menu{display:flex;justify-content:flex-end;gap:6px;margin:0;padding:0}
+dialog button{background:#3a3d41;border:0;border-radius:3px;padding:4px 12px;cursor:pointer}
+dialog button.on{background:var(--acc);color:#fff}
+
+@media (max-width:900px){#explorer,#splitE,#inspector,#splitI{display:none}}
+@media (max-width:700px){main{flex-direction:column}#left{width:auto!important;height:45%}.split{display:none}#title{display:none}}
+</style>
+</head>
+<body>
+<header id="menubar">
+  <span class="logo" title="KING Markdown: Knowledge is KING">K</span>
+
+  <div class="menu" id="mFile">
+    <button class="mbtn">File</button>
+    <div class="drop">
+      <button class="item edit" id="bFolder">Mở thư mục…</button>
+      <button class="item edit" id="bNew">File mới…</button>
+      <button class="item edit" id="bSave">Lưu<kbd>Ctrl+S</kbd></button>
+      <button class="item edit" id="bUndo">Hoàn tác thao tác đồ thị<kbd>Ctrl+Z</kbd></button>
+      <button class="item" id="bSvg">Xuất SVG của đồ thị</button>
+    </div>
+  </div>
+
+  <div class="menu" id="mView">
+    <button class="mbtn">View</button>
+    <div class="drop">
+      <button class="item" data-view="graph">Graph<kbd>Ctrl+1</kbd></button>
+      <button class="item" data-view="tree">Tree<kbd>Ctrl+2</kbd></button>
+      <button class="item" data-view="book">Book<kbd>Ctrl+3</kbd></button>
+      <button class="item" data-view="module">Module<kbd>Ctrl+4</kbd></button>
+      <div class="sep"></div>
+      <button class="item" data-panel="explorer">Explorer<kbd>Ctrl+B</kbd></button>
+      <button class="item" data-panel="inspector">Inspector<kbd>Ctrl+Alt+B</kbd></button>
+      <button class="item" data-panel="left">Khung văn bản<kbd>Ctrl+E</kbd></button>
+      <button class="item" id="bWrap">Ngắt dòng<kbd>Alt+Z</kbd></button>
+    </div>
+  </div>
+
+  <div class="menu" id="mFormat">
+    <button class="mbtn">Format</button>
+    <div class="drop wide">
+      <div class="label edit">Node / link đang chọn trên đồ thị (đủ thuộc tính hơn ở Inspector bên phải)</div>
+      <div class="row edit" id="fmt">
+        <select data-p="font" title="Font">
+          <option value="">font</option><option>system-ui</option><option>Arial</option><option>Times New Roman</option><option>Georgia</option><option>Consolas</option>
+        </select>
+        <input type="number" data-p="font-size" min="8" max="48" placeholder="cỡ" title="Cỡ chữ">
+        <select data-p="shape" title="Hình">
+          <option value="">hình</option><option value="ellipse">elip</option><option value="box">chữ nhật</option><option value="circle">tròn</option><option value="square">vuông</option>
+          <option value="diamond">thoi</option><option value="hexagon">lục giác</option><option value="triangle">tam giác</option><option value="star">sao</option><option value="dot">chấm</option><option value="database">trụ</option><option value="text">chỉ chữ</option>
+        </select>
+        <label title="Màu nền (với link: màu đường)">nền <input type="color" data-p="color" value="#e0f2f1"></label>
+        <label title="Màu viền (với link: màu đường)">viền <input type="color" data-p="border-color" value="#607d8b"></label>
+        <label title="Màu chữ">chữ <input type="color" data-p="font-color" value="#1f2328"></label>
+        <input type="number" data-p="border" min="0" max="10" placeholder="dày" title="Độ dày viền (với link: độ dày đường)">
+        <select data-p="dash" title="Kiểu nét"><option value="">nét</option><option value="false">liền</option><option value="true">đứt</option></select>
+        <button id="bClear" title="Bỏ định dạng riêng của node/loại link đang chọn">Xóa format</button>
+      </div>
+
+      <div class="sep edit"></div>
+      <div class="label edit">Chế độ trên đồ thị (cũng có trên thanh công cụ của Graph)</div>
+      <div class="row edit">
+        <button data-mode="select">Chọn</button>
+        <button data-mode="add">+ Node</button>
+        <button data-mode="link">Nối</button>
+        <button data-mode="move">Chuyển nhóm</button>
+      </div>
+
+      <div class="sep"></div>
+      <div class="label">Nhóm (part-of / contain)</div>
+      <div class="row">
+        <button data-mode="fold">Thu gọn</button>
+        <button id="bFoldAll" title="Thu gọn mọi node cha">Thu hết</button>
+        <button id="bUnfoldAll" title="Bung mọi node">Bung hết</button>
+        <label title="Hiện cạnh section → node"><input type="checkbox" id="showTree" checked> cạnh chứa</label>
+        <label title="Hiện trên đồ thị các node định nghĩa schema/style viết ngay trong file dữ liệu"><input type="checkbox" id="showDefs"> node schema/style</label>
+      </div>
+
+      <div class="sep"></div>
+      <div class="label">Nhãn trên đồ thị (Graph, Module)</div>
+      <div class="row">
+        <label title="Hiện tên node (dưới hình)"><input type="checkbox" data-lab="node" checked> nhãn node</label>
+        <label title="Hiện tên section"><input type="checkbox" data-lab="section" checked> nhãn section</label>
+        <label title="Hiện tên loại link trên đường nối"><input type="checkbox" data-lab="link" checked> nhãn link</label>
+        <button id="bLabAll" title="Ẩn / hiện mọi nhãn">Ẩn / hiện tất cả</button>
+      </div>
+
+      <div class="sep edit"></div>
+      <div class="label edit">Schema</div>
+      <div class="row edit">
+        <button data-schema="type" title="Thêm kiểu node vào schema.kg.md">+ Kiểu</button>
+        <button data-schema="key" title="Thêm khóa meta vào schema.kg.md">+ Meta</button>
+        <button data-schema="link" title="Thêm loại link vào schema.kg.md">+ Link</button>
+      </div>
+    </div>
+  </div>
+
+  <span class="static-only" id="toEdit">Bản chỉ xem. Muốn sửa: chạy <code>king serve</code> rồi mở <a id="editLink" href="http://127.0.0.1:8765/">editor</a>.</span>
+  <span id="title"></span>
+</header>
+
+<main>
+  <aside id="explorer" class="side">
+    <div class="side-head">EXPLORER
+      <span class="side-acts edit">
+        <button id="exNew" title="File mới">＋</button><button id="exFolder" title="Mở thư mục">📁</button><button id="exRefresh" title="Tải lại danh sách">⟳</button>
+      </span>
+    </div>
+    <div class="side-sec" id="exRoot"></div>
+    <div id="exFiles"></div>
+    <div class="side-sec">OUTLINE</div>
+    <div id="exOutline"></div>
+  </aside>
+  <div class="split" id="splitE" data-target="explorer" data-side="left"></div>
+
+  <section id="left">
+    <div class="tabs"><span id="fname" class="tab on"></span>
+      <button id="bWrap2" class="tab-btn" title="Ngắt dòng (Alt+Z)">↵ Wrap</button></div>
+    <div id="ed">
+      <pre id="gut"></pre>
+      <div id="code"><pre id="hl" aria-hidden="true"></pre><textarea id="src" spellcheck="false" wrap="off"></textarea></div>
+    </div>
+    <div class="panel-title">PROBLEMS <span id="nprob"></span></div>
+    <div id="log"></div>
+  </section>
+  <div class="split" id="split" data-target="left" data-side="left"></div>
+
+  <section id="right">
+    <div class="tabs" id="viewTabs">
+      <span class="tab" data-view="graph">Graph</span><span class="tab" data-view="tree">Tree</span><span class="tab" data-view="book">Book</span><span class="tab" data-view="module">Module</span>
+    </div>
+    <div id="views">
+      <div id="graphView" class="view">
+        <div id="g"></div>
+        <div id="toolbar">
+          <button data-mode="select" class="edit" title="Chọn, kéo node để sắp xếp (Esc)">⬚ Chọn</button>
+          <button data-mode="add" class="edit" title="Bấm nền: node cuối file · bấm section: node trong section (N)">＋ Node</button>
+          <button data-mode="link" class="edit" title="Kéo từ node nguồn sang node đích (L)">⤳ Nối</button>
+          <select id="linkSel" class="edit" title="Loại link khi nối"></select>
+          <button data-mode="move" class="edit" title="Kéo node thả lên một section để chuyển nhóm">⇲ Chuyển nhóm</button>
+          <button data-mode="fold" title="Bấm node cha để thu gọn / bung">▾ Thu gọn</button>
+          <button id="bFit" title="Vừa khung">⤢</button>
+        </div>
+        <div id="hint"></div>
+      </div>
+      <div id="treeView" class="view"></div>
+      <div id="bookView" class="view"></div>
+      <div id="moduleView" class="view"></div>
+    </div>
+  </section>
+
+  <div class="split" id="splitI" data-target="inspector" data-side="right"></div>
+  <aside id="inspector" class="side">
+    <div class="side-head">INSPECTOR</div>
+    <div id="insBody"></div>
+  </aside>
+</main>
+
+<footer id="statusbar">
+  <span id="sbRoot"></span>
+  <span id="sbProb"></span>
+  <span id="status"></span>
+  <span id="sbView"></span>
+</footer>
+
+<dialog id="dlg">
+  <b>Mở thư mục</b>
+  <input id="dpath" type="text" title="Gõ đường dẫn rồi Enter">
+  <div id="dlist"></div>
+  <menu><button id="dcancel">Hủy</button><button id="dok" class="on">Mở thư mục này</button></menu>
+</dialog>
+<datalist id="dlNodes"></datalist><datalist id="dlKeys"></datalist><datalist id="dlLinks"></datalist>
+<script>
+// editor.js - trạng thái chung, gọi API, khung văn bản (có tô màu), mở/lưu file
+const ST = {"name": "documentation.kg.md", "text": "---\nkg: 0.2\nuse: king/schema, king/style\n---\n\n# KING Markdown Documentation @documentation\n\nKING Markdown (Knowledge In Nodes & Graphs), language version 0.2. This document is itself a `.kg.md` file: open it with `king serve docs` to read it as a Graph, Tree, Book or Module. It uses the system schema and style (`use: king/schema, king/style`).\n\n## 1. Goals and author @goals-and-author\n\n@what: What is KING Markdown\n- content: KING Markdown is a Markdown dialect for writing **knowledge graphs** as plain text. A `.kg.md` file is valid Markdown: headings are sections, lines starting with `@id` are nodes, and a few `- field:` lines attach metadata, content and typed links to a node.\n\n  Data, schema (vocabulary and validation rules) and style (presentation rules) are written in the same syntax and read by a single parser. The result is a node-link graph in JSON that tools such as networkx, an HTML editor or Typst can use. *Knowledge is KING.*\n  See also @goals, @file-structure.\n\n@goals: Goals\n- content: KING Markdown aims to:\n  - Write knowledge once, as text, and read it as a graph, a tree, a book or nested modules.\n  - Keep the text as the single source of truth: every action in the editor becomes a text edit, so files work with Git and any text editor.\n  - Make prerequisites, part-whole structure and references explicit with typed links, so that a course or a body of knowledge can be checked and navigated.\n  - Let teachers, students and AI assistants work on the same file: an `ask` field marks a node that is waiting to be written.\n  - Validate knowledge with a schema and present it with style rules for HTML and Typst.\n  - Stay small: the Python side uses only the standard library.\n  See also @principles.\n\n@principles: Design principles\n- content: \n  - Text is the only source. The editor keeps no private data; graph actions are turned into text edits. Only node positions on screen are stored in the browser.\n  - One syntax for three layers: data, schema and style are all `.kg.md`, so one parser reads all three.\n  - One parser. The server and the editor never parse the language again; the browser receives parsed JSON.\n  - No external dependencies. Python uses the standard library; the browser loads only vis-network from a CDN.\n\n@author: Dr. Thu-Le Tran\n- meta: important=true\n- content: KING Markdown is designed and written by **Dr. Thu-Le Tran**: the language, the parser, the editor and this documentation.\n  See also @what.\n\n@tooling: Tools in this repository\n- content: \n  - `king serve [folder]` opens the editor in the browser (local server, standard library only).\n  - `king parse file.kg.md [-o graph.json] [--strict]` prints or writes JSON; `--strict` exits with code 1 on errors (for CI).\n  - `king html file.kg.md [out.html]` writes a static, read-only page with the same interface.\n  - Install with `pip install -e .`, or run without installing: `PYTHONPATH=src python -m king_markdown ...`.\n  - Code lives in `src/king_markdown/` (parser, ops, server, cli, web); internals are described in `docs/architecture.md`.\n  See also @cli, @views.\n\n## 2. Basic syntax @basic-syntax\n\n@file-structure: File structure\n- content: A file has an optional frontmatter, then headings (sections) and nodes. A complete example:\n  ```markdown\n  ---\n  kg: 0.2\n  use: schema, style\n  import: math, lop11.tiep-tuyen\n  ---\n\n  # Calculus @calculus\n\n  @integral: Integral\n  - meta: type=concept, role=Xuất\n  - content: Area under a curve. Related to @derivative.\n  - ask: Explain intuitively, with a picture.\n  - link: part-of(analysis), needs(derivative, math.limit)\n  - show: none\n  ```\n- link: needs(frontmatter, sections, nodes, fields, links)\n\n@frontmatter: Frontmatter\n- content: Optional block between two `---` lines at the top of the file. One key per line, values separated by commas.\n\n  | Key | Meaning |\n  |---|---|\n  | `kg` | Language version, currently `0.2` |\n  | `use` | Rule files applied to this file: `schema` reads `schema.kg.md`, `style` reads `style.kg.md` next to the file; `king/schema`, `king/style` read the system files |\n  | `import` | Nodes from elsewhere: `math` imports a whole module (refer to `math.limit`), `lop11.tiep-tuyen` imports one node (refer to `tiep-tuyen`) |\n  | `from M` | `from lop11: tiep-tuyen, dao-ham` imports two single nodes |\n\n  Without `use:` (and without schema or style inside the file) nothing is validated and nothing is styled. The v0.1 keys `meta:` and `link:` in the frontmatter are ignored with a warning.\n  See also @attach, @imports.\n\n@sections: Sections\n- content: \n  - Headings `#` to `######` are sections. Go down one level at a time; skipping a level gives a warning.\n  - An `@id` at the end of a heading gives it an explicit, stable ID: `# Calculus @calculus`. Without it the ID is generated from the title and changes when the title changes, so do not link to it.\n  - Plain text under a heading that does not belong to a node is a free note; it is not part of the graph.\n  - Every node and section belongs to the nearest section above it. The parser generates a `contains` edge from the section to it.\n\n@nodes: Nodes\n- content: \n  - A line `@id: Title` opens a node; without a title the ID is used as title.\n  - IDs use `a-z`, `0-9` and `-`, are unique in the file and **never change**: links refer to them.\n  - A node ends at the next node or the next heading.\n- link: needs(sections)\n\n@fields: The five fields\n- content: Under a node, each field is one line `- name: value`. There are exactly five fields; any other name is an error.\n\n  | Field | Value |\n  |---|---|\n  | `meta` | `key=value` pairs separated by commas; values become `true` / `false`, numbers or strings; put strings with commas in quotes: `allow=\"role, important\"` |\n  | `content` | The text of the node. Following lines that are not fields are appended (indent them for readability); fenced code blocks are kept as they are. Long text can be wrapped in square brackets: everything from the opening bracket to the line that ends with the closing bracket is plain content, even lines that look like fields, nodes or headings (the brackets are removed). Same for `ask` |\n  | `ask` | An instruction for an AI or a co-author. A node that still has `ask` is waiting to be written |\n  | `link` | Typed links to other nodes |\n  | `show` | `none`: the node is in the graph but not in the book |\n  See also @links, @builtin-meta.\n- link: needs(nodes)\n\n@links: Links\n- content: A link has a type and arguments; A is the node being written:\n  ```text\n  type(B)       edge A → B\n  type!(B)      edge B → A   (reversed)\n  type(B, C)    two edges\n  type()        edge to the nearest enclosing section that has an explicit ID\n  ```\n  Example: `needs(derivative)`, `part-of(analysis)`, `export()`. Several links can share one line, separated by commas. An edge may be declared only once. Arguments may be IDs in the file, `module.id` for imported modules, or the short name of a single imported node.\n  See also @generated-links, @schema.\n- link: needs(fields)\n\n@comments: Comments and text rules\n- content: \n  - Two slashes start a comment only when preceded by a space (or at the start of the line), so URLs are safe.\n  - Double percent signs mark a comment inside a line.\n  - An `@` starts a reference only at the start of the text or after a space; `@` inside code (backticks or fenced blocks) is not a reference.\n  - Fenced code blocks are kept unchanged.\n  ```markdown\n  - link: export()        // a comment until the end of the line\n  - link: needs(a) %% a comment in the middle %%, see(b)\n  ```\n\n@naming: Naming conventions\n- content: \n  - Field names and meta keys are **English verbs in the infinitive**, lower case, joined with `-`: `ask`, `show`, `link`, `contain`. Write `contain`, not `contains`, `containing` or `container`. New link types should follow the same rule.\n  - Kept for compatibility: the fields `content` and `meta`, the key `type`, the link types `needs` and `part-of`, and the generated edges `contains` and `mention`.\n  - The extension is `.kg.md`; the repository is `king-markdown`; the command is `king`.\n\n## 3. Advanced syntax @advanced-syntax\n\n@builtin-meta: Built-in meta keys\n- content: Two meta keys belong to the language. They are always allowed, need no schema declaration and are not limited by `allow`.\n\n  | Key | Value |\n  |---|---|\n  | `type` | The node type; with a schema it must be a declared `kind=type` |\n  | `contain` | IDs of child nodes: `contain=a` or `contain=\"a, b\"`. Each ID generates a `contain` edge from this node to the child, even across sections. Cycles are errors |\n  ```markdown\n  @analysis: Analysis\n  - meta: type=group, contain=\"derivative, integral\"\n  ```\n  See also @generated-links.\n- link: needs(fields)\n\n@generated-links: Generated edges\n- content: The parser creates three kinds of edges; never write them by hand in `- link:`.\n  - `contains`: from a section to each node and sub-section under it (the outline tree).\n  - `mention`: from a node to every `@id` written in its `content` or `ask`.\n  - `contain`: from a node to every ID in its `meta: contain=...`.\n- link: needs(links, builtin-meta)\n\n@schema: Schema\n- content: A schema is a set of nodes whose meta has `kind`. Headings in a schema are only for reading.\n  ```markdown\n  @concept\n  - meta: kind=type, allow=\"role, important\"\n\n  @role\n  - meta: kind=key, values=\"Nạp | Xuất | Cầu | Phụ\", required=true\n\n  @important\n  - meta: kind=key, value=bool\n\n  @part-of\n  - meta: kind=link, dag=true, to=group\n  ```\n  | `kind` | Options |\n  |---|---|\n  | `type` | `allow`: meta keys allowed for this type (empty means any key) |\n  | `key` | `values=\"a \\| b\"` allowed values; `value=bool\\|int\\|number\\|text`; `required=true` for types that allow the key |\n  | `link` | `dag=true` forbids cycles; `from=` / `to=` required types of source and target |\n\n  With a schema, undeclared node types, meta keys and link types are errors. A schema without link declarations accepts every link type, and `needs` and `part-of` are acyclic by default.\n  See also @attach, @validation.\n- link: needs(fields, links)\n\n@style: Style\n- content: A style rule is a node with `select` plus `html.*` and `typst.*` keys.\n  ```markdown\n  @section-look\n  - meta: select=\"kind=section\", html.shape=box, html.radius=0, html.color=lightgray\n\n  @key-idea\n  - meta: select=\"role=Xuất important=true\", html.border=3, typst.frame=highlight\n\n  @needs-look\n  - meta: select=\"link=needs\", html.color=red, html.width=2, html.arrows=both\n  ```\n  | Selector | Matches | Priority |\n  |---|---|---|\n  | `*` or empty | every node | 0 |\n  | `kind=section`, `kind=node`, `kind=external` | by node kind | 1 |\n  | `type=concept`, `role=Nạp`, `show=none`, `ask` | by meta or field (a bare name means \"has a value\"); combine with spaces | 10 per condition |\n  | `#integral` | one node | 100 |\n  | `link`, `link=needs` | every link / one link type | 0 / 10 |\n\n  Higher priority wins; on equal priority the later rule wins.\n  - `html.*` for nodes: `shape` (ellipse, box, circle, square, diamond, hexagon, triangle, star, dot, database, text), `color`, `border`, `border-color`, `dash`, `radius` (corner radius of a box, `0` = square corners), `font`, `font-size`, `font-color`, `size`, `opacity`.\n  - `html.*` for links: `color`, `width`, `dash`, `arrows` (`to`, `from`, `both`, `none`), `opacity`.\n  - Colors are CSS names (`red`, `green`, `blue`, `orange`, `purple`, `gray`, `lightblue`, …) or `#rrggbb`.\n  - `typst.*` only names a format (`typst.frame=highlight`); the parser passes it to the JSON for a Typst template.\n  See also @attach.\n- link: needs(fields)\n\n@attach: Three ways to attach schema and style\n- content: The same knowledge graph can take its rules from three places (see `examples/hinh-thcs/hinh1.kg.md`, `hinh2.kg.md`, `hinh3.kg.md`):\n\n  | Source | How |\n  |---|---|\n  | System | `use: king/schema, king/style`: the files in `templates/` shipped with KING Markdown |\n  | Current folder | `use: schema, style`: `schema.kg.md` and `style.kg.md` next to the file |\n  | Inside the file | Nodes with `kind=type/key/link` or `select=` (usually under `# Schema` and `# Style`); no `use:` needed |\n\n  Rules inside the file come after rules from `use:`, so they win on equal priority. Definition nodes are not validated as data; the editor hides them from Graph and Book and shows them faded in Tree and Outline. The editor never writes to system files: formatting a file that uses `king/style` writes to the folder's `style.kg.md` and adds `style` to `use:`.\n- link: needs(schema, style)\n\n@imports: Imports and external nodes\n- content: \n  - `import: math` makes every `math.x` a valid link target; `import: lop11.tiep-tuyen` or `from lop11: tiep-tuyen` makes `tiep-tuyen` usable by its short name.\n  - Imported nodes appear as `kind=external` nodes in the graph; they are read-only.\n  - A reference to a module that is not imported is an error.\n- link: needs(frontmatter, links)\n\n@validation: Validation rules\n- content: \n  | Level | Rule |\n  |---|---|\n  | Error | Duplicate ID; field outside the five fields; malformed link |\n  | Error | Link to a missing node or to a module that is not imported; edge declared twice; `contains`, `mention` or `contain` written by hand |\n  | Error | `contain` pointing to a missing node, empty, or making a cycle |\n  | Error (schema) | Undeclared meta key, node type or link type; key not in the type's `allow`; value outside `values` or of the wrong `value` type; missing `required` key |\n  | Error (schema) | Source or target with the wrong type (`from` / `to`); cycle in a `dag` link type |\n  | Error | File in `use:` not found |\n  | Warning | Skipped heading level; unknown frontmatter key; unsupported `html.*`; unknown `kind` |\n  See also @json.\n- link: needs(schema)\n\n@json: JSON output\n- content: The parser outputs a networkx node-link graph. Every node and link has `line`, the line number in the source file, which the editor uses to edit the right place.\n  ```json\n  {\n    \"directed\": true, \"multigraph\": true,\n    \"graph\": { \"file\": \"vidu.kg.md\", \"use\": [\"schema.kg.md\", \"style.kg.md\"],\n               \"schema\": { \"types\": {}, \"keys\": {}, \"links\": {} }, \"dag\": [\"needs\", \"part-of\", \"contain\"],\n               \"errors\": [], \"warnings\": [] },\n    \"nodes\": [ { \"id\": \"derivative\", \"title\": \"Derivative\", \"kind\": \"node\", \"parent\": \"calculus\", \"line\": 26,\n                 \"meta\": { \"type\": \"concept\" }, \"style\": { \"html\": { \"shape\": \"circle\" }, \"typst\": {} } } ],\n    \"links\": [ { \"source\": \"derivative\", \"target\": \"analysis\", \"type\": \"part-of\", \"line\": 29, \"key\": \"part-of:0\" } ]\n  }\n  ```\n  ```python\n  import json, networkx as nx\n  G = nx.node_link_graph(json.load(open(\"graph.json\", encoding=\"utf-8\")), edges=\"links\")\n  ```\n- link: needs(validation)\n\n@views: The editor\n- content: `king serve [folder]` opens a dark, VS Code-like editor: Explorer | text | view | Inspector, all resizable. Closing the last tab stops the server (use `--keep` to keep it running).\n  - Views: **Graph** (Ctrl+1), **Tree** (Ctrl+2), **Book** (Ctrl+3), **Module** (Ctrl+4). Module draws nested groups: sections as rectangles, groups as rounded rectangles, content nodes as circles; each group can show or hide its children.\n  - Inspector: edit the title, meta, content, ask, show, links and format of the selected node or link; every change is written back to the `.kg.md` file or to the style file.\n  - Explorer: files of the folder (schema and style files can be opened and edited directly) and an outline of the current file.\n  - Graph tools: Select, Add node, Connect (with a link type), Move to section, Fold.\n  - One palette everywhere (text editor, Graph, Tree, Book, Module, Inspector): section titles blue; IDs, nodes and imported modules light yellow; link types orange; field names and meta keys pink; values after `=` brown; plain content white. The system style (`king/style`) uses the same colors for shapes and lines.\n  - In Graph, plain nodes are ellipses and every label is drawn below its shape. Format › Labels hides node, section or link labels (also in Module).\n  - Text shortcuts: Ctrl+/ toggles comments, Ctrl+C / Ctrl+X copy or cut the whole line when nothing is selected, Ctrl+V pastes it above, Alt+Z toggles word wrap, Ctrl+S saves.\n  - Node shortcuts (in Graph, Tree, Book): Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste whole nodes (IDs are renamed when needed), Ctrl+/ comments out the selected nodes, Delete removes them, Ctrl+Z undoes.\n- link: needs(tooling)\n\n@cli: Command line\n- content: \n  ```bash\n  king serve examples/python-course          # editor; stops when the last tab closes\n  king serve docs --keep --port 8800         # keep running, other port\n  king parse file.kg.md -o graph.json        # JSON\n  king parse file.kg.md --strict             # exit code 1 on errors (CI)\n  king html  file.kg.md file.html            # static, read-only page\n  python -m unittest discover -s tests       # tests\n  ```\n  See also @tooling.\n\n## 4. Improvement plan @roadmap\n\n@r-name-check: Check the name and choose a license\n- ask: Priority high. Check that `king-markdown` is free on GitHub and PyPI, then choose a license (MIT or Apache-2.0) and add the `LICENSE` file.\n\n@r-packaging: Ship templates inside the package and publish\n- ask: Priority medium. `templates/` is found from the repository root, which only works with `pip install -e .`. Move the system schema and style into `src/king_markdown/templates/`, then publish to PyPI.\n- link: needs(r-name-check)\n\n@r-typst: Typst output\n- ask: Priority high. A Typst template that reads the JSON and the `typst.*` style keys to typeset a book (frames for roles, hidden nodes with `show: none`).\n  See also @style.\n\n@r-layout: Hierarchical layout for Graph\n- ask: Priority medium. Lay out the graph by the containment tree (sections above, nodes below) instead of the force layout, and optionally save node positions in a shared layout file so that the layout is the same on every machine.\n\n@r-sections: Create sections from the graph\n- ask: Priority medium. Today a section is created by typing a heading in the text. Add it to the Graph tools and to the Inspector.\n\n@r-fold-edges: Reroute edges of folded nodes in Graph\n- ask: Priority low. The Module view already attaches the edges of hidden children to the folded group; do the same in the Graph view.\n\n@r-editor-safety: Safer edits and undo for rule files\n- ask: Priority medium.\n  - Undo also for edits written to `schema.kg.md` and `style.kg.md`.\n  - Keep inline comments when the editor rewrites a `- link:` line.\n  - Detect two tabs editing the same file and merge instead of overwrite.\n\n@r-naming: Apply the naming convention to built-in names\n- ask: Priority low. Open question: rename `needs` to `need`, and the generated `contains` edge to a name that cannot be confused with `contain`, with warnings for the old names.\n  See also @naming.\n\n@r-negation: Negated links\n- ask: Priority low. Open question: a syntax such as `needs*(algebra)` for \"does not need algebra\", or a dedicated link type declared in the schema.\n  See also @links.\n\n@r-external: Editing imported nodes\n- ask: Priority low. Open question: should the editor open and edit the source of an imported node, or keep imported nodes read-only?\n  See also @imports.\n", "graph": {"directed": true, "multigraph": true, "graph": {"file": "documentation.kg.md", "kg": "0.2", "use": ["king/schema.kg.md", "king/style.kg.md"], "fields": ["content", "meta", "link", "show", "ask"], "schema": {"types": {"concept": {"title": "Khái niệm", "file": "schema.kg.md", "line": 7, "allow": ["role", "important"]}, "group": {"title": "Nhóm", "file": "schema.kg.md", "line": 10, "allow": ["important"]}, "module": {"title": "Module", "file": "schema.kg.md", "line": 13, "allow": null}, "dien-tich": {"title": "dien-tich", "file": "schema.kg.md", "line": 16, "allow": null}}, "keys": {"role": {"title": "Vai trò", "file": "schema.kg.md", "line": 21, "value": null, "values": ["Nạp", "Xuất", "Cầu", "Phụ"], "required": true}, "important": {"title": "Quan trọng", "file": "schema.kg.md", "line": 24, "value": "bool", "values": null, "required": false}}, "links": {"export": {"title": "Xuất ra node chứa", "file": "schema.kg.md", "line": 29, "dag": false, "from": null, "to": null}, "needs": {"title": "Cần biết trước", "file": "schema.kg.md", "line": 32, "dag": true, "from": null, "to": null}, "part-of": {"title": "Là phần của", "file": "schema.kg.md", "line": 35, "dag": true, "from": null, "to": "group"}}}, "dag": ["needs", "part-of", "contain"], "import_modules": [], "import_names": {}, "errors": [], "warnings": []}, "nodes": [{"id": "documentation", "line": 6, "external": false, "title": "KING Markdown Documentation", "kind": "section", "level": 1, "parent": null, "auto_id": false, "style": {"html": {"shape": "box", "radius": 0, "color": "lightblue", "border-color": "dodgerblue"}}}, {"id": "goals-and-author", "line": 10, "external": false, "title": "1. Goals and author", "kind": "section", "level": 2, "parent": "documentation", "auto_id": false, "style": {"html": {"shape": "box", "radius": 0, "color": "lightblue", "border-color": "dodgerblue"}}}, {"id": "what", "line": 12, "content": "KING Markdown is a Markdown dialect for writing **knowledge graphs** as plain text. A `.kg.md` file is valid Markdown: headings are sections, lines starting with `@id` are nodes, and a few `- field:` lines attach metadata, content and typed links to a node.\n\nData, schema (vocabulary and validation rules) and style (presentation rules) are written in the same syntax and read by a single parser. The result is a node-link graph in JSON that tools such as networkx, an HTML editor or Typst can use. *Knowledge is KING.*\nSee also @goals, @file-structure.", "external": false, "title": "What is KING Markdown", "kind": "node", "parent": "goals-and-author", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "goals", "line": 18, "content": "KING Markdown aims to:\n- Write knowledge once, as text, and read it as a graph, a tree, a book or nested modules.\n- Keep the text as the single source of truth: every action in the editor becomes a text edit, so files work with Git and any text editor.\n- Make prerequisites, part-whole structure and references explicit with typed links, so that a course or a body of knowledge can be checked and navigated.\n- Let teachers, students and AI assistants work on the same file: an `ask` field marks a node that is waiting to be written.\n- Validate knowledge with a schema and present it with style rules for HTML and Typst.\n- Stay small: the Python side uses only the standard library.\nSee also @principles.", "external": false, "title": "Goals", "kind": "node", "parent": "goals-and-author", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "principles", "line": 28, "content": "- Text is the only source. The editor keeps no private data; graph actions are turned into text edits. Only node positions on screen are stored in the browser.\n- One syntax for three layers: data, schema and style are all `.kg.md`, so one parser reads all three.\n- One parser. The server and the editor never parse the language again; the browser receives parsed JSON.\n- No external dependencies. Python uses the standard library; the browser loads only vis-network from a CDN.", "external": false, "title": "Design principles", "kind": "node", "parent": "goals-and-author", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "author", "line": 35, "meta": {"important": true}, "content": "KING Markdown is designed and written by **Dr. Thu-Le Tran**: the language, the parser, the editor and this documentation.\nSee also @what.", "external": false, "title": "Dr. Thu-Le Tran", "kind": "node", "parent": "goals-and-author", "auto_id": false, "meta_line": 36, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "border": 3}}}, {"id": "tooling", "line": 40, "content": "- `king serve [folder]` opens the editor in the browser (local server, standard library only).\n- `king parse file.kg.md [-o graph.json] [--strict]` prints or writes JSON; `--strict` exits with code 1 on errors (for CI).\n- `king html file.kg.md [out.html]` writes a static, read-only page with the same interface.\n- Install with `pip install -e .`, or run without installing: `PYTHONPATH=src python -m king_markdown ...`.\n- Code lives in `src/king_markdown/` (parser, ops, server, cli, web); internals are described in `docs/architecture.md`.\nSee also @cli, @views.", "external": false, "title": "Tools in this repository", "kind": "node", "parent": "goals-and-author", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "basic-syntax", "line": 49, "external": false, "title": "2. Basic syntax", "kind": "section", "level": 2, "parent": "documentation", "auto_id": false, "style": {"html": {"shape": "box", "radius": 0, "color": "lightblue", "border-color": "dodgerblue"}}}, {"id": "file-structure", "line": 51, "content": "A file has an optional frontmatter, then headings (sections) and nodes. A complete example:\n  ```markdown\n  ---\n  kg: 0.2\n  use: schema, style\n  import: math, lop11.tiep-tuyen\n  ---\n\n  # Calculus @calculus\n\n  @integral: Integral\n  - meta: type=concept, role=Xuất\n  - content: Area under a curve. Related to @derivative.\n  - ask: Explain intuitively, with a picture.\n  - link: part-of(analysis), needs(derivative, math.limit)\n  - show: none\n  ```", "external": false, "title": "File structure", "kind": "node", "parent": "basic-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "frontmatter", "line": 71, "content": "Optional block between two `---` lines at the top of the file. One key per line, values separated by commas.\n\n| Key | Meaning |\n|---|---|\n| `kg` | Language version, currently `0.2` |\n| `use` | Rule files applied to this file: `schema` reads `schema.kg.md`, `style` reads `style.kg.md` next to the file; `king/schema`, `king/style` read the system files |\n| `import` | Nodes from elsewhere: `math` imports a whole module (refer to `math.limit`), `lop11.tiep-tuyen` imports one node (refer to `tiep-tuyen`) |\n| `from M` | `from lop11: tiep-tuyen, dao-ham` imports two single nodes |\n\nWithout `use:` (and without schema or style inside the file) nothing is validated and nothing is styled. The v0.1 keys `meta:` and `link:` in the frontmatter are ignored with a warning.\nSee also @attach, @imports.", "external": false, "title": "Frontmatter", "kind": "node", "parent": "basic-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "sections", "line": 84, "content": "- Headings `#` to `######` are sections. Go down one level at a time; skipping a level gives a warning.\n- An `@id` at the end of a heading gives it an explicit, stable ID: `# Calculus @calculus`. Without it the ID is generated from the title and changes when the title changes, so do not link to it.\n- Plain text under a heading that does not belong to a node is a free note; it is not part of the graph.\n- Every node and section belongs to the nearest section above it. The parser generates a `contains` edge from the section to it.", "external": false, "title": "Sections", "kind": "node", "parent": "basic-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "nodes", "line": 91, "content": "- A line `@id: Title` opens a node; without a title the ID is used as title.\n- IDs use `a-z`, `0-9` and `-`, are unique in the file and **never change**: links refer to them.\n- A node ends at the next node or the next heading.", "external": false, "title": "Nodes", "kind": "node", "parent": "basic-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "fields", "line": 98, "content": "Under a node, each field is one line `- name: value`. There are exactly five fields; any other name is an error.\n\n| Field | Value |\n|---|---|\n| `meta` | `key=value` pairs separated by commas; values become `true` / `false`, numbers or strings; put strings with commas in quotes: `allow=\"role, important\"` |\n| `content` | The text of the node. Following lines that are not fields are appended (indent them for readability); fenced code blocks are kept as they are. Long text can be wrapped in square brackets: everything from the opening bracket to the line that ends with the closing bracket is plain content, even lines that look like fields, nodes or headings (the brackets are removed). Same for `ask` |\n| `ask` | An instruction for an AI or a co-author. A node that still has `ask` is waiting to be written |\n| `link` | Typed links to other nodes |\n| `show` | `none`: the node is in the graph but not in the book |\nSee also @links, @builtin-meta.", "external": false, "title": "The five fields", "kind": "node", "parent": "basic-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "links", "line": 111, "content": "A link has a type and arguments; A is the node being written:\n  ```text\n  type(B)       edge A → B\n  type!(B)      edge B → A   (reversed)\n  type(B, C)    two edges\n  type()        edge to the nearest enclosing section that has an explicit ID\n  ```\nExample: `needs(derivative)`, `part-of(analysis)`, `export()`. Several links can share one line, separated by commas. An edge may be declared only once. Arguments may be IDs in the file, `module.id` for imported modules, or the short name of a single imported node.\nSee also @generated-links, @schema.", "external": false, "title": "Links", "kind": "node", "parent": "basic-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "comments", "line": 123, "content": "- Two slashes start a comment only when preceded by a space (or at the start of the line), so URLs are safe.\n- Double percent signs mark a comment inside a line.\n- An `@` starts a reference only at the start of the text or after a space; `@` inside code (backticks or fenced blocks) is not a reference.\n- Fenced code blocks are kept unchanged.\n  ```markdown\n  - link: export()        // a comment until the end of the line\n  - link: needs(a) %% a comment in the middle %%, see(b)\n  ```", "external": false, "title": "Comments and text rules", "kind": "node", "parent": "basic-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "naming", "line": 134, "content": "- Field names and meta keys are **English verbs in the infinitive**, lower case, joined with `-`: `ask`, `show`, `link`, `contain`. Write `contain`, not `contains`, `containing` or `container`. New link types should follow the same rule.\n- Kept for compatibility: the fields `content` and `meta`, the key `type`, the link types `needs` and `part-of`, and the generated edges `contains` and `mention`.\n- The extension is `.kg.md`; the repository is `king-markdown`; the command is `king`.", "external": false, "title": "Naming conventions", "kind": "node", "parent": "basic-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "advanced-syntax", "line": 140, "external": false, "title": "3. Advanced syntax", "kind": "section", "level": 2, "parent": "documentation", "auto_id": false, "style": {"html": {"shape": "box", "radius": 0, "color": "lightblue", "border-color": "dodgerblue"}}}, {"id": "builtin-meta", "line": 142, "content": "Two meta keys belong to the language. They are always allowed, need no schema declaration and are not limited by `allow`.\n\n| Key | Value |\n|---|---|\n| `type` | The node type; with a schema it must be a declared `kind=type` |\n| `contain` | IDs of child nodes: `contain=a` or `contain=\"a, b\"`. Each ID generates a `contain` edge from this node to the child, even across sections. Cycles are errors |\n  ```markdown\n  @analysis: Analysis\n  - meta: type=group, contain=\"derivative, integral\"\n  ```\nSee also @generated-links.", "external": false, "title": "Built-in meta keys", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "generated-links", "line": 156, "content": "The parser creates three kinds of edges; never write them by hand in `- link:`.\n- `contains`: from a section to each node and sub-section under it (the outline tree).\n- `mention`: from a node to every `@id` written in its `content` or `ask`.\n- `contain`: from a node to every ID in its `meta: contain=...`.", "external": false, "title": "Generated edges", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "schema", "line": 163, "content": "A schema is a set of nodes whose meta has `kind`. Headings in a schema are only for reading.\n  ```markdown\n  @concept\n  - meta: kind=type, allow=\"role, important\"\n\n  @role\n  - meta: kind=key, values=\"Nạp | Xuất | Cầu | Phụ\", required=true\n\n  @important\n  - meta: kind=key, value=bool\n\n  @part-of\n  - meta: kind=link, dag=true, to=group\n  ```\n| `kind` | Options |\n|---|---|\n| `type` | `allow`: meta keys allowed for this type (empty means any key) |\n| `key` | `values=\"a \\| b\"` allowed values; `value=bool\\|int\\|number\\|text`; `required=true` for types that allow the key |\n| `link` | `dag=true` forbids cycles; `from=` / `to=` required types of source and target |\n\nWith a schema, undeclared node types, meta keys and link types are errors. A schema without link declarations accepts every link type, and `needs` and `part-of` are acyclic by default.\nSee also @attach, @validation.", "external": false, "title": "Schema", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "style", "line": 188, "content": "A style rule is a node with `select` plus `html.*` and `typst.*` keys.\n  ```markdown\n  @section-look\n  - meta: select=\"kind=section\", html.shape=box, html.radius=0, html.color=lightgray\n\n  @key-idea\n  - meta: select=\"role=Xuất important=true\", html.border=3, typst.frame=highlight\n\n  @needs-look\n  - meta: select=\"link=needs\", html.color=red, html.width=2, html.arrows=both\n  ```\n| Selector | Matches | Priority |\n|---|---|---|\n| `*` or empty | every node | 0 |\n| `kind=section`, `kind=node`, `kind=external` | by node kind | 1 |\n| `type=concept`, `role=Nạp`, `show=none`, `ask` | by meta or field (a bare name means \"has a value\"); combine with spaces | 10 per condition |\n| `#integral` | one node | 100 |\n| `link`, `link=needs` | every link / one link type | 0 / 10 |\n\nHigher priority wins; on equal priority the later rule wins.\n- `html.*` for nodes: `shape` (ellipse, box, circle, square, diamond, hexagon, triangle, star, dot, database, text), `color`, `border`, `border-color`, `dash`, `radius` (corner radius of a box, `0` = square corners), `font`, `font-size`, `font-color`, `size`, `opacity`.\n- `html.*` for links: `color`, `width`, `dash`, `arrows` (`to`, `from`, `both`, `none`), `opacity`.\n- Colors are CSS names (`red`, `green`, `blue`, `orange`, `purple`, `gray`, `lightblue`, …) or `#rrggbb`.\n- `typst.*` only names a format (`typst.frame=highlight`); the parser passes it to the JSON for a Typst template.\nSee also @attach.", "external": false, "title": "Style", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "attach", "line": 216, "content": "The same knowledge graph can take its rules from three places (see `examples/hinh-thcs/hinh1.kg.md`, `hinh2.kg.md`, `hinh3.kg.md`):\n\n| Source | How |\n|---|---|\n| System | `use: king/schema, king/style`: the files in `templates/` shipped with KING Markdown |\n| Current folder | `use: schema, style`: `schema.kg.md` and `style.kg.md` next to the file |\n| Inside the file | Nodes with `kind=type/key/link` or `select=` (usually under `# Schema` and `# Style`); no `use:` needed |\n\nRules inside the file come after rules from `use:`, so they win on equal priority. Definition nodes are not validated as data; the editor hides them from Graph and Book and shows them faded in Tree and Outline. The editor never writes to system files: formatting a file that uses `king/style` writes to the folder's `style.kg.md` and adds `style` to `use:`.", "external": false, "title": "Three ways to attach schema and style", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "imports", "line": 228, "content": "- `import: math` makes every `math.x` a valid link target; `import: lop11.tiep-tuyen` or `from lop11: tiep-tuyen` makes `tiep-tuyen` usable by its short name.\n- Imported nodes appear as `kind=external` nodes in the graph; they are read-only.\n- A reference to a module that is not imported is an error.", "external": false, "title": "Imports and external nodes", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "validation", "line": 235, "content": "| Level | Rule |\n|---|---|\n| Error | Duplicate ID; field outside the five fields; malformed link |\n| Error | Link to a missing node or to a module that is not imported; edge declared twice; `contains`, `mention` or `contain` written by hand |\n| Error | `contain` pointing to a missing node, empty, or making a cycle |\n| Error (schema) | Undeclared meta key, node type or link type; key not in the type's `allow`; value outside `values` or of the wrong `value` type; missing `required` key |\n| Error (schema) | Source or target with the wrong type (`from` / `to`); cycle in a `dag` link type |\n| Error | File in `use:` not found |\n| Warning | Skipped heading level; unknown frontmatter key; unsupported `html.*`; unknown `kind` |\nSee also @json.", "external": false, "title": "Validation rules", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "json", "line": 249, "content": "The parser outputs a networkx node-link graph. Every node and link has `line`, the line number in the source file, which the editor uses to edit the right place.\n  ```json\n  {\n    \"directed\": true, \"multigraph\": true,\n    \"graph\": { \"file\": \"vidu.kg.md\", \"use\": [\"schema.kg.md\", \"style.kg.md\"],\n               \"schema\": { \"types\": {}, \"keys\": {}, \"links\": {} }, \"dag\": [\"needs\", \"part-of\", \"contain\"],\n               \"errors\": [], \"warnings\": [] },\n    \"nodes\": [ { \"id\": \"derivative\", \"title\": \"Derivative\", \"kind\": \"node\", \"parent\": \"calculus\", \"line\": 26,\n                 \"meta\": { \"type\": \"concept\" }, \"style\": { \"html\": { \"shape\": \"circle\" }, \"typst\": {} } } ],\n    \"links\": [ { \"source\": \"derivative\", \"target\": \"analysis\", \"type\": \"part-of\", \"line\": 29, \"key\": \"part-of:0\" } ]\n  }\n  ```\n  ```python\n  import json, networkx as nx\n  G = nx.node_link_graph(json.load(open(\"graph.json\", encoding=\"utf-8\")), edges=\"links\")\n  ```", "external": false, "title": "JSON output", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "views", "line": 268, "content": "`king serve [folder]` opens a dark, VS Code-like editor: Explorer | text | view | Inspector, all resizable. Closing the last tab stops the server (use `--keep` to keep it running).\n- Views: **Graph** (Ctrl+1), **Tree** (Ctrl+2), **Book** (Ctrl+3), **Module** (Ctrl+4). Module draws nested groups: sections as rectangles, groups as rounded rectangles, content nodes as circles; each group can show or hide its children.\n- Inspector: edit the title, meta, content, ask, show, links and format of the selected node or link; every change is written back to the `.kg.md` file or to the style file.\n- Explorer: files of the folder (schema and style files can be opened and edited directly) and an outline of the current file.\n- Graph tools: Select, Add node, Connect (with a link type), Move to section, Fold.\n- One palette everywhere (text editor, Graph, Tree, Book, Module, Inspector): section titles blue; IDs, nodes and imported modules light yellow; link types orange; field names and meta keys pink; values after `=` brown; plain content white. The system style (`king/style`) uses the same colors for shapes and lines.\n- In Graph, plain nodes are ellipses and every label is drawn below its shape. Format › Labels hides node, section or link labels (also in Module).\n- Text shortcuts: Ctrl+/ toggles comments, Ctrl+C / Ctrl+X copy or cut the whole line when nothing is selected, Ctrl+V pastes it above, Alt+Z toggles word wrap, Ctrl+S saves.\n- Node shortcuts (in Graph, Tree, Book): Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste whole nodes (IDs are renamed when needed), Ctrl+/ comments out the selected nodes, Delete removes them, Ctrl+Z undoes.", "external": false, "title": "The editor", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "cli", "line": 280, "content": "  ```bash\n  king serve examples/python-course          # editor; stops when the last tab closes\n  king serve docs --keep --port 8800         # keep running, other port\n  king parse file.kg.md -o graph.json        # JSON\n  king parse file.kg.md --strict             # exit code 1 on errors (CI)\n  king html  file.kg.md file.html            # static, read-only page\n  python -m unittest discover -s tests       # tests\n  ```\nSee also @tooling.", "external": false, "title": "Command line", "kind": "node", "parent": "advanced-syntax", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod"}}}, {"id": "roadmap", "line": 292, "external": false, "title": "4. Improvement plan", "kind": "section", "level": 2, "parent": "documentation", "auto_id": false, "style": {"html": {"shape": "box", "radius": 0, "color": "lightblue", "border-color": "dodgerblue"}}}, {"id": "r-name-check", "line": 294, "ask": "Priority high. Check that `king-markdown` is free on GitHub and PyPI, then choose a license (MIT or Apache-2.0) and add the `LICENSE` file.", "external": false, "title": "Check the name and choose a license", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-packaging", "line": 297, "ask": "Priority medium. `templates/` is found from the repository root, which only works with `pip install -e .`. Move the system schema and style into `src/king_markdown/templates/`, then publish to PyPI.", "external": false, "title": "Ship templates inside the package and publish", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-typst", "line": 301, "ask": "Priority high. A Typst template that reads the JSON and the `typst.*` style keys to typeset a book (frames for roles, hidden nodes with `show: none`).\nSee also @style.", "external": false, "title": "Typst output", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-layout", "line": 305, "ask": "Priority medium. Lay out the graph by the containment tree (sections above, nodes below) instead of the force layout, and optionally save node positions in a shared layout file so that the layout is the same on every machine.", "external": false, "title": "Hierarchical layout for Graph", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-sections", "line": 308, "ask": "Priority medium. Today a section is created by typing a heading in the text. Add it to the Graph tools and to the Inspector.", "external": false, "title": "Create sections from the graph", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-fold-edges", "line": 311, "ask": "Priority low. The Module view already attaches the edges of hidden children to the folded group; do the same in the Graph view.", "external": false, "title": "Reroute edges of folded nodes in Graph", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-editor-safety", "line": 314, "ask": "Priority medium.\n- Undo also for edits written to `schema.kg.md` and `style.kg.md`.\n- Keep inline comments when the editor rewrites a `- link:` line.\n- Detect two tabs editing the same file and merge instead of overwrite.", "external": false, "title": "Safer edits and undo for rule files", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-naming", "line": 320, "ask": "Priority low. Open question: rename `needs` to `need`, and the generated `contains` edge to a name that cannot be confused with `contain`, with warnings for the old names.\nSee also @naming.", "external": false, "title": "Apply the naming convention to built-in names", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-negation", "line": 324, "ask": "Priority low. Open question: a syntax such as `needs*(algebra)` for \"does not need algebra\", or a dedicated link type declared in the schema.\nSee also @links.", "external": false, "title": "Negated links", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}, {"id": "r-external", "line": 328, "ask": "Priority low. Open question: should the editor open and edit the source of an imported node, or keep imported nodes read-only?\nSee also @imports.", "external": false, "title": "Editing imported nodes", "kind": "node", "parent": "roadmap", "auto_id": false, "style": {"html": {"shape": "ellipse", "color": "lightyellow", "border-color": "goldenrod", "dash": true}}}], "links": [{"source": "file-structure", "target": "frontmatter", "type": "needs", "line": 69, "declared_at": "file-structure", "reversed": false, "key": "needs:0", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "file-structure", "target": "sections", "type": "needs", "line": 69, "declared_at": "file-structure", "reversed": false, "key": "needs:1", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "file-structure", "target": "nodes", "type": "needs", "line": 69, "declared_at": "file-structure", "reversed": false, "key": "needs:2", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "file-structure", "target": "fields", "type": "needs", "line": 69, "declared_at": "file-structure", "reversed": false, "key": "needs:3", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "file-structure", "target": "links", "type": "needs", "line": 69, "declared_at": "file-structure", "reversed": false, "key": "needs:4", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "nodes", "target": "sections", "type": "needs", "line": 96, "declared_at": "nodes", "reversed": false, "key": "needs:5", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "fields", "target": "nodes", "type": "needs", "line": 109, "declared_at": "fields", "reversed": false, "key": "needs:6", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "links", "target": "fields", "type": "needs", "line": 121, "declared_at": "links", "reversed": false, "key": "needs:7", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "builtin-meta", "target": "fields", "type": "needs", "line": 154, "declared_at": "builtin-meta", "reversed": false, "key": "needs:8", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "generated-links", "target": "links", "type": "needs", "line": 161, "declared_at": "generated-links", "reversed": false, "key": "needs:9", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "generated-links", "target": "builtin-meta", "type": "needs", "line": 161, "declared_at": "generated-links", "reversed": false, "key": "needs:10", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "schema", "target": "fields", "type": "needs", "line": 186, "declared_at": "schema", "reversed": false, "key": "needs:11", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "schema", "target": "links", "type": "needs", "line": 186, "declared_at": "schema", "reversed": false, "key": "needs:12", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "style", "target": "fields", "type": "needs", "line": 214, "declared_at": "style", "reversed": false, "key": "needs:13", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "attach", "target": "schema", "type": "needs", "line": 226, "declared_at": "attach", "reversed": false, "key": "needs:14", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "attach", "target": "style", "type": "needs", "line": 226, "declared_at": "attach", "reversed": false, "key": "needs:15", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "imports", "target": "frontmatter", "type": "needs", "line": 233, "declared_at": "imports", "reversed": false, "key": "needs:16", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "imports", "target": "links", "type": "needs", "line": 233, "declared_at": "imports", "reversed": false, "key": "needs:17", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "validation", "target": "schema", "type": "needs", "line": 247, "declared_at": "validation", "reversed": false, "key": "needs:18", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "json", "target": "validation", "type": "needs", "line": 266, "declared_at": "json", "reversed": false, "key": "needs:19", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "views", "target": "tooling", "type": "needs", "line": 278, "declared_at": "views", "reversed": false, "key": "needs:20", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "r-packaging", "target": "r-name-check", "type": "needs", "line": 299, "declared_at": "r-packaging", "reversed": false, "key": "needs:21", "style": {"html": {"color": "orange", "width": 1.5}}}, {"source": "what", "target": "goals", "type": "mention", "line": 12, "declared_at": "what", "reversed": false, "key": "mention:22", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "what", "target": "file-structure", "type": "mention", "line": 12, "declared_at": "what", "reversed": false, "key": "mention:23", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "goals", "target": "principles", "type": "mention", "line": 18, "declared_at": "goals", "reversed": false, "key": "mention:24", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "author", "target": "what", "type": "mention", "line": 35, "declared_at": "author", "reversed": false, "key": "mention:25", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "tooling", "target": "cli", "type": "mention", "line": 40, "declared_at": "tooling", "reversed": false, "key": "mention:26", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "tooling", "target": "views", "type": "mention", "line": 40, "declared_at": "tooling", "reversed": false, "key": "mention:27", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "frontmatter", "target": "attach", "type": "mention", "line": 71, "declared_at": "frontmatter", "reversed": false, "key": "mention:28", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "frontmatter", "target": "imports", "type": "mention", "line": 71, "declared_at": "frontmatter", "reversed": false, "key": "mention:29", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "fields", "target": "links", "type": "mention", "line": 98, "declared_at": "fields", "reversed": false, "key": "mention:30", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "fields", "target": "builtin-meta", "type": "mention", "line": 98, "declared_at": "fields", "reversed": false, "key": "mention:31", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "links", "target": "generated-links", "type": "mention", "line": 111, "declared_at": "links", "reversed": false, "key": "mention:32", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "links", "target": "schema", "type": "mention", "line": 111, "declared_at": "links", "reversed": false, "key": "mention:33", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "builtin-meta", "target": "generated-links", "type": "mention", "line": 142, "declared_at": "builtin-meta", "reversed": false, "key": "mention:34", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "schema", "target": "attach", "type": "mention", "line": 163, "declared_at": "schema", "reversed": false, "key": "mention:35", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "schema", "target": "validation", "type": "mention", "line": 163, "declared_at": "schema", "reversed": false, "key": "mention:36", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "style", "target": "attach", "type": "mention", "line": 188, "declared_at": "style", "reversed": false, "key": "mention:37", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "validation", "target": "json", "type": "mention", "line": 235, "declared_at": "validation", "reversed": false, "key": "mention:38", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "cli", "target": "tooling", "type": "mention", "line": 280, "declared_at": "cli", "reversed": false, "key": "mention:39", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "r-typst", "target": "style", "type": "mention", "line": 301, "declared_at": "r-typst", "reversed": false, "key": "mention:40", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "r-naming", "target": "naming", "type": "mention", "line": 320, "declared_at": "r-naming", "reversed": false, "key": "mention:41", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "r-negation", "target": "links", "type": "mention", "line": 324, "declared_at": "r-negation", "reversed": false, "key": "mention:42", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "r-external", "target": "imports", "type": "mention", "line": 328, "declared_at": "r-external", "reversed": false, "key": "mention:43", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.7}}}, {"source": "documentation", "target": "goals-and-author", "type": "contains", "tree": true, "key": "contains:44", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "goals-and-author", "target": "what", "type": "contains", "tree": true, "key": "contains:45", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "goals-and-author", "target": "goals", "type": "contains", "tree": true, "key": "contains:46", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "goals-and-author", "target": "principles", "type": "contains", "tree": true, "key": "contains:47", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "goals-and-author", "target": "author", "type": "contains", "tree": true, "key": "contains:48", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "goals-and-author", "target": "tooling", "type": "contains", "tree": true, "key": "contains:49", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "documentation", "target": "basic-syntax", "type": "contains", "tree": true, "key": "contains:50", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "basic-syntax", "target": "file-structure", "type": "contains", "tree": true, "key": "contains:51", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "basic-syntax", "target": "frontmatter", "type": "contains", "tree": true, "key": "contains:52", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "basic-syntax", "target": "sections", "type": "contains", "tree": true, "key": "contains:53", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "basic-syntax", "target": "nodes", "type": "contains", "tree": true, "key": "contains:54", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "basic-syntax", "target": "fields", "type": "contains", "tree": true, "key": "contains:55", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "basic-syntax", "target": "links", "type": "contains", "tree": true, "key": "contains:56", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "basic-syntax", "target": "comments", "type": "contains", "tree": true, "key": "contains:57", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "basic-syntax", "target": "naming", "type": "contains", "tree": true, "key": "contains:58", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "documentation", "target": "advanced-syntax", "type": "contains", "tree": true, "key": "contains:59", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "builtin-meta", "type": "contains", "tree": true, "key": "contains:60", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "generated-links", "type": "contains", "tree": true, "key": "contains:61", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "schema", "type": "contains", "tree": true, "key": "contains:62", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "style", "type": "contains", "tree": true, "key": "contains:63", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "attach", "type": "contains", "tree": true, "key": "contains:64", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "imports", "type": "contains", "tree": true, "key": "contains:65", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "validation", "type": "contains", "tree": true, "key": "contains:66", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "json", "type": "contains", "tree": true, "key": "contains:67", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "views", "type": "contains", "tree": true, "key": "contains:68", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "advanced-syntax", "target": "cli", "type": "contains", "tree": true, "key": "contains:69", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "documentation", "target": "roadmap", "type": "contains", "tree": true, "key": "contains:70", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-name-check", "type": "contains", "tree": true, "key": "contains:71", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-packaging", "type": "contains", "tree": true, "key": "contains:72", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-typst", "type": "contains", "tree": true, "key": "contains:73", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-layout", "type": "contains", "tree": true, "key": "contains:74", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-sections", "type": "contains", "tree": true, "key": "contains:75", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-fold-edges", "type": "contains", "tree": true, "key": "contains:76", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-editor-safety", "type": "contains", "tree": true, "key": "contains:77", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-naming", "type": "contains", "tree": true, "key": "contains:78", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-negation", "type": "contains", "tree": true, "key": "contains:79", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}, {"source": "roadmap", "target": "r-external", "type": "contains", "tree": true, "key": "contains:80", "style": {"html": {"color": "orange", "width": 1, "dash": true, "opacity": 0.4}}}]}};   // king html thay bằng dữ liệu → chế độ chỉ xem
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = (v, d) => { const x = parseFloat(v); return isNaN(x) ? d : x; };
+const H = x => (x.style && x.style.html) || {};
+const S = {root:"", name:"", text:"", dirty:false, mtime:0, side:0, graph:null, byId:{}, edgeMap:{},
+           mode:"select", view:"graph", pending:{}, hl:0, bad:new Set(), undo:[],
+           kids:{}, parents:{}, folded:new Set(), hidden:new Set(), foldKey:null};
+const src = $("#src"), gut = $("#gut"), hlEl = $("#hl");
+
+// ---------- tiện ích ----------
+function status(msg, kind) {
+  const el = $("#status"); el.textContent = msg; el.title = msg; el.className = kind || "";
+  $("#fname").classList.toggle("dirty", S.dirty);
+}
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} :
+    {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  const j = await r.json().catch(() => ({error:"HTTP " + r.status}));
+  if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+const posKey = () => "kgpos:" + (S.root || "static") + "|" + S.name;
+function loadPos() { try { return JSON.parse(localStorage.getItem(posKey()) || "{}"); } catch (e) { return {}; } }
+function savePos() {   // chỉ ghi node đang hiện; node đang bị thu gọn giữ vị trí cũ
+  try { localStorage.setItem(posKey(), JSON.stringify({...loadPos(), ...net.getPositions(nodesDS.getIds({filter:n => !n.hidden}))})); } catch (e) {}
+}
+const foldKey = () => "kgfold:" + (S.root || "static") + "|" + S.name;
+function loadFold() { try { return new Set(JSON.parse(localStorage.getItem(foldKey()) || "[]")); } catch (e) { return new Set(); } }
+function saveFold() { try { localStorage.setItem(foldKey(), JSON.stringify([...S.folded])); } catch (e) {} }
+
+// ---------- màu riêng cho từng khóa meta / loại link ----------
+const PALETTE = ["#4fc1ff", "#c586c0", "#dcdcaa", "#4ec9b0", "#ce9178", "#f48771", "#b5cea8", "#d7ba7d", "#c5a5ff", "#9cdcfe"];
+function hashColor(s, salt) {
+  let h = salt || 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+}
+// bộ màu chung cho khung văn bản và 4 view (khớp các biến --k-* trong app.css)
+const PAL = {sec:"#4fa3ff", node:"#f5e3a1", link:"#f0a04b", meta:"#f48fb8", val:"#c9915e", text:"#ffffff"};
+const keyColor = () => PAL.meta;            // khóa meta: hồng ở mọi nơi
+const _cx = document.createElement("canvas").getContext("2d");
+function readable(c) {         // chữ trên nền tối: màu quá tối (blue, black, navy…) thì pha trắng cho dễ đọc
+  _cx.fillStyle = "#000000"; _cx.fillStyle = String(c || "");
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(_cx.fillStyle);
+  if (!m) return c;
+  const [r, g, b] = m.slice(1).map(x => parseInt(x, 16));
+  if (0.2126 * r + 0.7152 * g + 0.0722 * b >= 110) return c;
+  const mix = x => Math.round(x + (255 - x) * 0.55);
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+}
+const linkText = () => PAL.link;            // tên loại link dạng chữ (Tree, Book, Inspector): cam; màu đường nối vẫn theo style
+function linkColor(t) {        // style.kg.md (select="link=loại", html.color) thắng; không có thì màu theo tên
+  const l = S.graph && S.graph.links.find(l => l.type === t && !l.tree && H(l).color);
+  return l ? H(l).color : LINK_ORANGE;
+}
+const LINK_ORANGE = "#f0a04b";      // màu mặc định của link: cam (cùng bộ màu với khung văn bản và style hệ thống)
+
+// ---------- tô màu văn bản .kg.md: chỉ 4 màu ----------
+// section: xanh dương · node / module import / ID được tham chiếu: vàng nhạt · loại link: cam · meta và khóa của nó: hồng.
+// Phần còn lại giữ màu chữ thường (comment làm mờ).
+const FIELDS = ["content", "meta", "link", "show", "ask"];
+const span = (cls, s, color) => `<span class="${cls}"${color ? ` style="color:${esc(color)}"` : ""}>${esc(s)}</span>`;
+function splitComment(line) {
+  const m = line.match(/(^|\s)\/\//);
+  return m ? [line.slice(0, m.index + m[1].length), line.slice(m.index + m[1].length)] : [line, ""];
+}
+function hlInline(s) {
+  let out = "", last = 0;
+  const re = /(`[^`]*`)|(\*\*[^*]+\*\*)|(%%.*?%%)|((?:^|(?<=\s))@[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)?)/g;
+  for (const m of s.matchAll(re)) {
+    out += esc(s.slice(last, m.index));
+    out += span(m[1] ? "t-code" : m[2] ? "t-bold" : m[3] ? "t-com" : "t-ref", m[0]);
+    last = m.index + m[0].length;
+  }
+  return out + esc(s.slice(last));
+}
+const hlValue = v => span("t-val", v);          // giá trị sau dấu '=': nâu
+function hlMeta(v) {
+  const parts = []; let buf = "", q = null;
+  for (const c of v) {
+    if (q) { buf += c; if (c === q) q = null; }
+    else if (c === '"' || c === "'") { buf += c; q = c; }
+    else if (c === ",") { parts.push(buf); parts.push(","); buf = ""; }
+    else buf += c;
+  }
+  parts.push(buf);
+  return parts.map(p => {
+    if (p === ",") return ",";
+    const m = p.match(/^(\s*)([^=]*?)(\s*=\s*)([\s\S]*)$/);
+    if (!m) { const k = p.trim(); return k ? esc(p.slice(0, p.indexOf(k))) + span("t-meta", k) + esc(p.slice(p.indexOf(k) + k.length)) : esc(p); }
+    return esc(m[1]) + span("t-meta", m[2]) + esc(m[3]) + hlValue(m[4]);
+  }).join("");
+}
+function hlLinks(v) {
+  let out = "", last = 0;
+  for (const m of v.matchAll(/([a-z][a-z0-9-]*)(!?)\(([^)]*)\)/g)) {
+    out += esc(v.slice(last, m.index)) + span("t-link", m[1]) +
+      (m[2] ? span("t-link", "!") : "") + "(" + span("t-ref", m[3]) + ")";
+    last = m.index + m[0].length;
+  }
+  return out + esc(v.slice(last));
+}
+// nội dung thường: trắng (riêng @tham chiếu vàng, `code` giữ nguyên)
+const hlText = s => `<span class="t-text">${hlInline(s)}</span>`;
+function highlight(text) {
+  const L = text.split("\n"), out = [];
+  let fm = L[0] && L[0].trim() === "---" ? 1 : 0, fence = false, inNode = false, field = null, br = false;
+  L.forEach((raw, i) => {
+    if (br) {                                   // nội dung [ ... ] nhiều dòng: chữ thường tới dấu ']'
+      br = !raw.trim().endsWith("]");
+      out.push(hlText(raw)); return;
+    }
+    if (fm) {
+      if (i > 0 && raw.trim() === "---") fm = 0;
+      // frontmatter: tên module / node được import tô vàng nhạt như node
+      const m = raw.match(/^(\s*)([^:]+)(:)(.*)$/), imp = m && /^(import|from\s)/.test(m[2].trim());
+      out.push(raw.trim() === "---" ? span("t-fm", raw) : m ? esc(m[1]) + span("t-fm", m[2]) + m[3] + (imp ? span("t-ref", m[4]) : esc(m[4])) : esc(raw));
+      return;
+    }
+    if (/^\s*(```|~~~)/.test(raw)) { fence = !fence; out.push(span("t-fence", raw)); return; }
+    if (fence) { out.push(span("t-code", raw)); return; }
+    const [code, com] = splitComment(raw), tail = com ? span("t-com", com) : "";
+    let m;
+    if ((m = code.match(/^(#{1,6}\s+)(.*?)(\s+@[a-z0-9][a-z0-9-]*)?(\s*)$/))) {
+      inNode = false; field = null;
+      // tiêu đề section xanh dương; @id của section vàng nhạt như mọi ID
+      out.push(span("t-head", m[1] + m[2]) + (m[3] ? span("t-id", m[3]) : "") + esc(m[4]) + tail); return;
+    }
+    if ((m = code.match(/^(\s*)(@[a-z0-9][a-z0-9-]*)(\s*:\s*)?(.*)$/))) {
+      inNode = true; field = null;
+      out.push(esc(m[1]) + span("t-id", m[2]) + esc(m[3] || "") + span("t-text", m[4]) + tail); return;
+    }
+    if (inNode && (m = code.match(/^(\s*[-*]\s+)([a-z][a-z0-9-]*)(\s*:\s*)(.*)$/))) {
+      // tên trường (meta, content, link, ask, show) hồng; trường lạ gạch đỏ
+      const f = m[2], ok = FIELDS.includes(f); field = ok ? f : null;
+      const v = m[4], text = f === "content" || f === "ask";
+      if (text && v.trim().startsWith("[") && !v.includes("]")) br = true;   // mở nội dung [ ... ] nhiều dòng
+      const val = f === "meta" ? hlMeta(v) : f === "link" ? hlLinks(v) : f === "show" ? hlValue(v) : hlText(v);
+      out.push(esc(m[1]) + `<span class="t-meta"${ok ? "" : ' style="color:var(--err);text-decoration:underline wavy"'}>${esc(f)}</span>` +
+        esc(m[3]) + val + tail); return;
+    }
+    if (!code.trim()) { if (["link", "meta", "show"].includes(field)) field = null; out.push(esc(code) + tail); return; }
+    out.push((inNode && field === "link" ? hlLinks(code) : hlText(code)) + tail);
+  });
+  return out.join("\n") + "\n ";
+}
+let hlPending = false;
+function paint() {
+  if (hlPending) return; hlPending = true;
+  requestAnimationFrame(() => {
+    hlPending = false;
+    const html = highlight(S.text);
+    if (S.wrap) {        // mỗi dòng một khối để đo chiều cao sau khi ngắt, rồi kéo lề số dòng cho khớp
+      hlEl.innerHTML = html.replace(/\n $/, "").split("\n").map(l => `<div class="ln">${l || " "}</div>`).join("");
+      gut.innerHTML = gutterHTML([...hlEl.children].map(d => d.offsetHeight));
+    } else hlEl.innerHTML = html;
+    syncScroll();
+  });
+}
+function syncScroll() { hlEl.scrollTop = src.scrollTop; hlEl.scrollLeft = src.scrollLeft; gut.scrollTop = src.scrollTop; }
+
+// ---------- khung trái ----------
+function gutterHTML(heights) {     // heights: chiều cao từng dòng khi ngắt dòng (Alt+Z)
+  const n = S.text.split("\n").length; let h = "";
+  for (let i = 1; i <= n; i++) {
+    const c = (S.bad.has(i) ? "e " : "") + (i === S.hl ? "h" : "");
+    h += heights ? `<div class="${c}" style="height:${heights[i - 1] || 20}px">${i}</div>`
+                 : (c ? `<span class="${c}">${i}</span>` : i) + "\n";
+  }
+  return h;
+}
+function updateGutter() {
+  if (!S.wrap) gut.innerHTML = gutterHTML();     // khi ngắt dòng, paint() vẽ lề sau khi đo
+  gut.scrollTop = src.scrollTop;
+  $("#fname").classList.toggle("dirty", S.dirty);
+  paint();
+}
+function setText(t, keepUndo) {
+  if (!keepUndo && t !== S.text) { S.undo.push(S.text); if (S.undo.length > 50) S.undo.shift(); }
+  const st = src.scrollTop; src.value = t; src.scrollTop = st;
+  if (t !== S.text) S.dirty = true;
+  S.text = t; updateGutter();
+}
+function jumpTo(line, focus) {   // focus=true: chuyển con trỏ vào khung văn bản; bấm trên đồ thị thì không (để Ctrl+C/V/ dùng cho node)
+  const L = S.text.split("\n"); let off = 0;
+  for (let i = 0; i < line - 1 && i < L.length; i++) off += L[i].length + 1;
+  if (focus) src.focus({preventScroll:true});
+  src.setSelectionRange(off, off + (L[line - 1] || "").length);
+  const row = S.wrap && hlEl.children[line - 1];
+  src.scrollTop = Math.max(0, row ? row.offsetTop - 60 : (line - 4) * 20); syncScroll();
+  S.hl = line; updateGutter();
+}
+function nodeAtLine(ln) {
+  let best = null;
+  for (const n of (S.graph ? S.graph.nodes : [])) if (n.kind !== "external" && n.line <= ln && (!best || n.line > best.line)) best = n;
+  return best;
+}
+function caretSync() {
+  if (!S.graph) return;
+  const ln = src.value.slice(0, src.selectionStart).split("\n").length;
+  S.hl = ln; updateGutter();
+  const best = nodeAtLine(ln);
+  if (best && nodesDS.get(best.id) && !S.hidden.has(best.id)) { net.selectNodes([best.id]); fillFormat(); }
+  if (best) focusNode(best.id, false);
+}
+let tmr;
+src.addEventListener("input", () => {
+  S.text = src.value; S.dirty = true; status("Đang sửa…"); updateGutter();
+  clearTimeout(tmr); tmr = setTimeout(async () => { await reparse(); await save(); }, 600);
+});
+src.addEventListener("scroll", syncScroll);
+src.addEventListener("click", caretSync);
+src.addEventListener("keyup", e => { if (/^(Arrow|Page|Home|End)/.test(e.key)) caretSync(); });
+// ---------- phím tắt kiểu VS Code trong khung văn bản ----------
+const lineBounds = (v, a, b) => { const s = v.lastIndexOf("\n", a - 1) + 1; let e = v.indexOf("\n", b); if (e < 0) e = v.length; return [s, e]; };
+function replaceRange(s, e, text, selS, selE) {    // execCommand giữ được Ctrl+Z của trình duyệt
+  src.setSelectionRange(s, e); document.execCommand("insertText", false, text);
+  if (selS !== undefined) src.setSelectionRange(selS, selE);
+}
+function toggleComment() {                           // Ctrl+/: thêm / bỏ "// " đầu các dòng đang chọn
+  const v = src.value, a = src.selectionStart, b0 = src.selectionEnd;
+  const b = b0 > a && v[b0 - 1] === "\n" ? b0 - 1 : b0;
+  const [s, e] = lineBounds(v, a, b), lines = v.slice(s, e).split("\n"), body = lines.filter(l => l.trim());
+  if (!body.length) return;
+  const off = body.every(l => /^\s*\/\/ ?/.test(l)), ind = Math.min(...body.map(l => l.match(/^\s*/)[0].length));
+  const t = lines.map(l => !l.trim() ? l : off ? l.replace(/^(\s*)\/\/ ?/, "$1") : l.slice(0, ind) + "// " + l.slice(ind)).join("\n");
+  replaceRange(s, e, t, s, s + t.length);
+}
+src.addEventListener("keydown", e => {
+  const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  if (e.key === "Tab") { e.preventDefault(); if (!src.readOnly) document.execCommand("insertText", false, "  "); return; }
+  if (mod && (k === "/" || e.code === "Slash")) { e.preventDefault(); if (!src.readOnly) toggleComment(); return; }
+  if (mod && (k === "c" || k === "x") && src.selectionStart === src.selectionEnd) {
+    // không chọn gì: Ctrl+C / Ctrl+X lấy cả dòng (trình duyệt tự sao chép phần đang chọn)
+    const v = src.value, p = src.selectionStart, [s, end] = lineBounds(v, p, p);
+    S.lineClip = v.slice(s, end) + "\n"; S.lineMode = true;
+    src.setSelectionRange(s, Math.min(end + 1, v.length));
+    if (k === "c") setTimeout(() => src.setSelectionRange(p, p), 0);
+  }
+});
+["copy", "cut"].forEach(ev => src.addEventListener(ev, () => { if (!S.lineMode) S.lineClip = null; S.lineMode = false; }));
+src.addEventListener("paste", e => {                // dán cả dòng vừa sao chép: chèn lên trên dòng hiện tại
+  const t = e.clipboardData && e.clipboardData.getData("text/plain");
+  if (!S.lineClip || src.readOnly || src.selectionStart !== src.selectionEnd || (t !== S.lineClip && t + "\n" !== S.lineClip)) return;
+  e.preventDefault();
+  const p = src.selectionStart, [s] = lineBounds(src.value, p, p), n = S.lineClip.length;
+  replaceRange(s, s, S.lineClip, p + n, p + n);
+});
+
+// ---------- Alt+Z: ngắt dòng ----------
+function setWrap(on) {
+  S.wrap = on; document.body.classList.toggle("wrap", on); src.wrap = on ? "soft" : "off";
+  $$("#bWrap, #bWrap2").forEach(b => b.classList.toggle("on", on));
+  try { localStorage.setItem("kgwrap", on ? "1" : ""); } catch (e) {}
+  updateGutter();
+}
+new ResizeObserver(() => { if (S.wrap) paint(); }).observe($("#code"));
+
+// ---------- file ----------
+function showFiles(files) { S.files = files; renderExplorer(); }
+async function refreshState() {
+  const s = await api("/api/state"); S.root = s.root; S.files = s.files;
+  showFiles(s.files); $("#sbRoot").textContent = "📁 " + s.root;
+  // trang (JS) mới nhưng tiến trình Python cũ: thiếu phép sửa → Inspector không ghi được
+  const need = ["set_meta", "set_field", "set_style", "add_link"], miss = need.filter(o => !(s.ops || []).includes(o));
+  if (miss.length && !S.warnedOld) {
+    S.warnedOld = true;
+    const msg = "Server đang chạy là bản cũ (thiếu " + miss.join(", ") + "): sửa trên Inspector sẽ không lưu. Tắt server (Ctrl+C) rồi chạy lại king serve.";
+    status(msg, "err"); alert(msg);
+  }
+  return s;
+}
+async function openFile(name) {
+  if (S.dirty) await save();
+  nodesDS.clear(); edgesDS.clear(); S.undo = []; S.graph = null; S.hl = 0; S.selected = null; S.selLink = null;
+  S.name = name || ""; showFiles(S.files || []); renderInspector(true);
+  if (!name) { src.value = S.text = ""; $("#fname").textContent = "(chưa mở file)"; updateGutter(); $("#log").innerHTML = ""; renderViews(); return; }
+  const f = await api("/api/file?name=" + encodeURIComponent(name));
+  S.mtime = f.mtime; S.side = f.side; src.value = S.text = f.text; S.dirty = false;
+  $("#fname").textContent = name; $("#title").textContent = name + " — " + S.root;
+  document.title = name + " · KING Markdown";
+  history.replaceState(null, "", "?file=" + encodeURIComponent(name) + (S.view !== "graph" ? "&view=" + S.view : ""));
+  await reparse(); status("Đã mở " + name);
+}
+let seq = 0;
+async function reparse() {
+  if (ST || !S.name) return;
+  const my = ++seq;
+  try { const g = await api("/api/parse", {name:S.name, text:S.text}); if (my === seq) render(g); }
+  catch (e) { status(e.message, "err"); }
+}
+async function save() {
+  if (ST || !S.name || !S.dirty) return;
+  try { const r = await api("/api/save", {name:S.name, text:S.text}); S.mtime = r.mtime; S.dirty = false; status("Đã lưu " + S.name); }
+  catch (e) { status("Lưu lỗi: " + e.message, "err"); }
+}
+async function undo() {
+  if (!S.undo.length) return status("Không còn gì để hoàn tác.");
+  setText(S.undo.pop(), true); S.dirty = true; await reparse(); await save(); status("Đã hoàn tác.");
+}
+async function op(name, args, before) {
+  if (ST || !S.name) return;
+  try {
+    const r = await api("/api/op", {name:S.name, text:S.text, op:name, args});
+    if (before) before(r);
+    if (r.text !== S.text) setText(r.text);
+    await reparse(); await save();
+    if (r.msg) status(r.msg);
+    return r;
+  } catch (e) { status(e.message, "err"); alert(e.message); }
+}
+</script>
+<script>
+// graph.js - đồ thị vis-network: vẽ, chế độ, sự kiện, Format, Schema, xuất SVG
+const nodesDS = new vis.DataSet(), edgesDS = new vis.DataSet();
+const net = new vis.Network($("#g"), {nodes:nodesDS, edges:edgesDS}, {
+  physics:{enabled:false, solver:"forceAtlas2Based", stabilization:{iterations:300}},
+  edges:{smooth:false}, interaction:{hover:true, multiselect:true},
+  manipulation:{enabled:false, addEdge:(d, cb) => { cb(null); onAddEdge(d); }}
+});
+
+// ---------- vẽ ----------
+function tip(n) {
+  const el = document.createElement("div");
+  el.style.cssText = "white-space:pre-wrap;max-width:340px;font:12px system-ui";
+  el.textContent = [n.id + (n.kind !== "node" ? " (" + n.kind + ")" : ""),
+    ...Object.entries(n.meta || {}).map(([k, v]) => k + " = " + v),
+    n.content ? "\n" + n.content : "", n.ask ? "\nask: " + n.ask : ""].filter(Boolean).join("\n");
+  return el;
+}
+const LABEL_OUTSIDE = new Set(["dot", "star", "triangle", "diamond", "hexagon", "text"]), LABEL_OUT_COLOR = "#d4d4d4";
+// màu nhãn mặc định theo bộ màu chung: section xanh dương, node vàng nhạt (khi xuất SVG nền trắng thì đổi sang chữ tối)
+const labelColor = n => n.kind === "section" ? PAL.sec : PAL.node;
+const svgText = c => [LABEL_OUT_COLOR, PAL.sec, PAL.node].includes(c) ? "#1f2328" : c;
+
+// ---------- thu gọn / bung: con part-of cha, hoặc cha có meta contain=con ----------
+function buildFold(g) {
+  S.kids = {}; S.parents = {};
+  const add = (p, c) => { if (p === c) return; (S.kids[p] = S.kids[p] || new Set()).add(c); (S.parents[c] = S.parents[c] || new Set()).add(p); };
+  for (const l of g.links) {
+    if (l.type === "part-of") add(l.target, l.source);
+    else if (l.type === "contain") add(l.source, l.target);
+  }
+  for (const id of [...S.folded]) if (!S.kids[id]) S.folded.delete(id);
+  // ẩn mọi con cháu của node đang thu gọn; node thu gọn nằm dưới một node thu gọn khác cũng bị ẩn
+  S.hidden = new Set();
+  const stack = [...S.folded].flatMap(id => [...S.kids[id]]);
+  while (stack.length) {
+    const id = stack.pop();
+    if (S.hidden.has(id)) continue;
+    S.hidden.add(id); if (S.kids[id]) stack.push(...S.kids[id]);
+  }
+  // schema/style viết ngay trong file dữ liệu: ẩn các node định nghĩa (và section chỉ chứa chúng) khỏi Graph, Book.
+  // Tree / Outline vẫn hiện để chọn và sửa. Format › "node schema/style" để hiện lên đồ thị.
+  S.defHide = new Set();
+  if (g.nodes.some(n => n.kind === "node" && !n.def)) {
+    const sub = {};
+    g.nodes.forEach(n => { if (n.parent) (sub[n.parent] = sub[n.parent] || []).push(n); });
+    g.nodes.forEach(n => {
+      if (n.def || (n.kind === "section" && sub[n.id] && sub[n.id].every(c => c.def))) S.defHide.add(n.id);
+    });
+  }
+  if (!S.showDefs) S.defHide.forEach(id => S.hidden.add(id));
+}
+function countBelow(id) {
+  const seen = new Set(), st = [...(S.kids[id] || [])];
+  while (st.length) { const x = st.pop(); if (seen.has(x) || x === id) continue; seen.add(x); st.push(...(S.kids[x] || [])); }
+  return seen.size;
+}
+function toggleFold(id) {
+  if (!S.kids[id]) return status("Node " + id + " không có node con (part-of / contain).");
+  if (S.folded.has(id)) S.folded.delete(id); else S.folded.add(id);
+  saveFold(); render(S.graph);
+  status((S.folded.has(id) ? "Đã thu gọn " : "Đã bung ") + id);
+}
+function foldAll(on) {
+  if (!S.graph) return;
+  S.folded = on ? new Set(Object.keys(S.kids)) : new Set();
+  saveFold(); render(S.graph); if (!on) net.fit();
+}
+
+// ---------- Graph: hình nhỏ, nhãn luôn nằm DƯỚI hình ----------
+// elip / tròn / chữ nhật / vuông: tự vẽ bằng ctxRenderer (vis đặt chữ bên trong các hình này);
+// tam giác, sao, thoi, lục giác, chấm: vis vốn đặt nhãn dưới hình.
+const CUSTOM_SHAPES = new Set(["ellipse", "circle", "box", "square"]);
+function shapeBox(shape, size) {
+  if (shape === "ellipse") return {w:size * 2.6, h:size * 1.7};
+  if (shape === "circle" || shape === "square") return {w:size * 2, h:size * 2};
+  return {w:size * 2.8, h:size * 1.6};                    // box
+}
+function wrapLabel(ctx, text, max) {
+  const lines = []; let cur = "";
+  for (const w of String(text).split(/\s+/)) {
+    const nx = cur ? cur + " " + w : w;
+    if (cur && ctx.measureText(nx).width > max) { lines.push(cur); cur = w; } else cur = nx;
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 3);
+}
+function shapePath(ctx, m, x, y) {
+  ctx.beginPath();
+  if (m.shape === "ellipse") ctx.ellipse(x, y, m.w / 2, m.h / 2, 0, 0, 2 * Math.PI);
+  else if (m.shape === "circle") ctx.arc(x, y, m.w / 2, 0, 2 * Math.PI);
+  else {
+    const r = Math.max(0, Math.min(m.radius, m.h / 2)), l = x - m.w / 2, t = y - m.h / 2;
+    if (ctx.roundRect) ctx.roundRect(l, t, m.w, m.h, r); else ctx.rect(l, t, m.w, m.h);
+  }
+}
+function renderer(m) {
+  return ({ctx, x, y, state}) => ({
+    drawNode() {
+      const on = state.selected || state.hover;
+      ctx.globalAlpha = m.opacity;
+      shapePath(ctx, m, x, y);
+      ctx.fillStyle = m.bg; ctx.fill();
+      ctx.lineWidth = on ? m.bw + 2 : m.bw; ctx.strokeStyle = on ? "#3794ff" : m.bd;
+      ctx.setLineDash(m.dash ? [5, 4] : []); ctx.stroke(); ctx.setLineDash([]);
+    },
+    drawExternalLabel() {
+      if (!m.label) return;
+      ctx.globalAlpha = m.opacity;
+      ctx.font = `${m.fontSize}px ${m.font}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.lineWidth = 3; ctx.strokeStyle = "#1e1e1e"; ctx.fillStyle = m.fontColor; ctx.lineJoin = "round";
+      wrapLabel(ctx, m.label, 150).forEach((t, i) => {
+        const ty = y + m.h / 2 + 4 + i * (m.fontSize + 2);
+        ctx.strokeText(t, x, ty); ctx.fillText(t, x, ty);
+      });
+    },
+    nodeDimensions:{width:m.w, height:m.h},
+  });
+}
+function visNode(n) {
+  const s = H(n), err = n.kind !== "external" && S.bad.has(n.line), sec = n.kind === "section";
+  const bg = s.color || (sec ? "#dbeafe" : "#fff7cc"), bd = err ? "#b00020" : (s["border-color"] || (sec ? "#3b82f6" : "#c9a227"));
+  const bw = num(s.border, 1.5), shape = s.shape || (sec ? "box" : "ellipse");
+  const fold = !S.kids[n.id] ? "" : S.folded.has(n.id) ? ` ▸ +${countBelow(n.id)}` : " ▾";
+  const hide = (S.hideLab || {})[sec ? "section" : "node"];
+  const label = hide ? "" : (n.title || n.id) + (n.ask ? " ✎" : "") + fold;
+  const font = {face:s.font || "system-ui", size:num(s["font-size"], 13), color:s["font-color"] || labelColor(n)};
+  const base = {id:n.id, title:tip(n), hidden:S.hidden.has(n.id), opacity:num(s.opacity, 1)};
+  if (CUSTOM_SHAPES.has(shape)) {
+    const m = {shape, ...shapeBox(shape, num(s.size, sec ? 13 : 14)), radius:num(s.radius, shape === "box" ? 6 : 0),
+               bg, bd, bw:err ? 3 : bw, dash:s.dash === true, opacity:num(s.opacity, 1),
+               label, font:font.face, fontSize:font.size, fontColor:font.color};
+    return {...base, shape:"custom", ctxRenderer:renderer(m), label, kg:m};
+  }
+  return {...base, label, shape, size:num(s.size, 14), font,
+    color:{background:bg, border:bd, highlight:{background:bg, border:"#3794ff"}, hover:{background:bg, border:"#3794ff"}},
+    borderWidth:err ? 3 : bw, borderWidthSelected:bw + 2,
+    shapeProperties:{borderDashes:s.dash === true ? [5, 4] : false}};
+}
+function visEdges() {
+  S.edgeMap = {}; const show = $("#showTree").checked, out = [];
+  S.graph.links.forEach((l, i) => {
+    if (l.tree && !show) return;
+    if (S.hidden.has(l.source) || S.hidden.has(l.target)) return;
+    S.edgeMap[i] = l; const s = H(l);
+    const arrows = s.arrows === "none" ? "" : s.arrows === "both" ? "to, from" : (s.arrows || "to");
+    out.push({id:i, from:l.source, to:l.target, arrows,
+      label:l.tree || (S.hideLab || {}).link ? "" : l.type, dashes:s.dash === true, width:num(s.width, 1),
+      color:{color:s.color || (l.tree ? "#5a5a5a" : linkColor(l.type)), highlight:"#3794ff", hover:"#3794ff", opacity:num(s.opacity, 1)},
+      font:{size:10, align:"middle", color:PAL.link, strokeWidth:3, strokeColor:"#1e1e1e"}});
+  });
+  return out;
+}
+function render(g) {
+  S.graph = g; S.byId = Object.fromEntries(g.nodes.map(n => [n.id, n]));
+  S.bad = new Set(g.graph.errors.filter(e => !e.file).map(e => e.line));
+  if (S.foldKey !== foldKey()) { S.foldKey = foldKey(); S.folded = loadFold(); }
+  const wasHidden = S.hidden; buildFold(g);
+  const saved = loadPos(), old = new Set(nodesDS.getIds()), fresh = !old.size;
+  const view = net.getViewPosition(); let missing = 0;
+  const items = g.nodes.map(n => {
+    const v = visNode(n);
+    if (old.has(n.id) && wasHidden.has(n.id) && !S.hidden.has(n.id) && !saved[n.id]) {
+      const par = [...(S.parents[n.id] || [])].find(p => !S.hidden.has(p));     // vừa bung: đặt cạnh node cha
+      const q = par ? net.getPositions([par])[par] : view;
+      v.x = q.x + (Math.random() - .5) * 160; v.y = q.y + 70 + Math.random() * 40;
+    }
+    if (!old.has(n.id)) {
+      let p = S.pending[n.id] || saved[n.id];
+      if (!p && !fresh) {
+        const par = n.parent && old.has(n.parent) ? net.getPositions([n.parent])[n.parent] : view;
+        p = {x:par.x + (Math.random() - .5) * 160, y:par.y + 70 + Math.random() * 40};
+      }
+      if (p) { v.x = p.x; v.y = p.y; } else missing++;
+    }
+    return v;
+  });
+  S.pending = {};
+  nodesDS.remove([...old].filter(id => !S.byId[id]));
+  nodesDS.update(items);
+  edgesDS.clear(); edgesDS.add(visEdges());
+  if (fresh && missing) {
+    net.setOptions({physics:{enabled:true}});
+    net.once("stabilizationIterationsDone", () => { net.setOptions({physics:{enabled:false}}); savePos(); net.fit(); });
+    net.stabilize(300);
+  } else if (fresh) net.fit();
+  fillLinkSel(g); showLog(g); updateGutter(); renderViews();
+  fillLists(g); renderExplorer(); renderInspector();
+  if (S.mode === "link") net.addEdgeMode();
+}
+function linkTypes(g) {        // loại link chọn được khi nối: schema khai báo, hoặc đã dùng + needs, part-of
+  const declared = Object.keys(g.graph.schema.links || {});
+  const used = g.links.filter(l => !l.tree && !AUTO_LINKS.includes(l.type)).map(l => l.type);
+  return declared.length ? declared : [...new Set([...used, "needs", "part-of"])];
+}
+function fillLists(g) {        // datalist cho Inspector: node, khóa meta, loại link
+  const opt = (v, label) => `<option value="${esc(v)}">${label ? esc(label) : ""}</option>`;
+  const names = g.graph.import_names || {};
+  const ref = n => {            // tên viết trong link: node import lẻ viết ngắn, node của module viết đủ
+    if (n.kind !== "external") return n.id;
+    const i = n.id.indexOf("."), mod = n.id.slice(0, i), name = n.id.slice(i + 1);
+    return names[name] === mod ? name : n.id;
+  };
+  $("#dlNodes").innerHTML = g.nodes.filter(n => n.kind !== "section" || !n.auto_id).map(n => opt(ref(n), n.title)).join("");
+  const keys = new Set([...Object.keys(g.graph.schema.keys || {}), "type", "contain"]);
+  g.nodes.forEach(n => Object.keys(n.meta || {}).forEach(k => keys.add(k)));
+  $("#dlKeys").innerHTML = [...keys].map(k => opt(k, (g.graph.schema.keys[k] || {}).title)).join("");
+  $("#dlLinks").innerHTML = linkTypes(g).map(t => opt(t)).join("");
+}
+function fillLinkSel(g) {
+  const sel = $("#linkSel"), cur = sel.value;
+  const opts = linkTypes(g);
+  sel.innerHTML = opts.map(t => `<option>${esc(t)}</option>`).join("");
+  if (opts.includes(cur)) sel.value = cur;
+}
+function showLog(g) {
+  const L = [...g.graph.errors.map(e => ({...e, c:"err", t:"Lỗi"})), ...g.graph.warnings.map(e => ({...e, c:"warn", t:"Cảnh báo"}))];
+  $("#log").innerHTML = L.length
+    ? L.map((e, i) => `<div class="${e.c}" data-i="${i}">${e.t} ${e.file ? esc(e.file) + ":" : "dòng "}${e.line}: ${esc(e.msg)}</div>`).join("")
+    : '<span style="color:var(--mute)">Không có lỗi.</span>';
+  const ne = g.graph.errors.length, nw = g.graph.warnings.length;
+  $("#nprob").textContent = ne + nw;
+  $("#sbProb").textContent = `⊗ ${ne}  ⚠ ${nw}`;
+  $$("#log [data-i]").forEach(d => d.onclick = () => { const e = L[+d.dataset.i]; if (!e.file) jumpTo(e.line, true); });
+}
+
+// ---------- chế độ, sự kiện đồ thị ----------
+const AUTO_LINKS = ["mention", "contain"];   // parser sinh từ @id / meta contain: sửa trong văn bản
+const HINT = {
+  fold:"Bấm node cha (▾) để thu gọn các node con part-of / contain · bấm lại (▸) để bung",
+  select:"Kéo node để sắp xếp · bấm node: nhảy tới dòng · nhấp đúp: đổi tiêu đề · Delete: xóa node/link",
+  add:"Bấm nền: thêm node cuối file · bấm một section: thêm node vào section đó",
+  link:"Kéo từ node nguồn sang node đích để nối (loại link chọn ở menu)",
+  move:"Kéo node thả lên một section để chuyển node sang section đó"};
+function setMode(m) {
+  S.mode = m;
+  $$("[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+  net.disableEditMode(); if (m === "link") net.addEdgeMode();
+  $("#hint").textContent = ST && m !== "fold" ? "Bản tĩnh: chỉ xem. Sửa bằng: king serve" : HINT[m];
+}
+net.on("click", async p => {
+  const a = document.activeElement;              // bấm vào đồ thị: rời ô nhập để phím tắt dùng cho node
+  if (a && a !== document.body && a.matches("input,textarea,select")) a.blur();
+  if (S.mode === "fold") { if (p.nodes[0]) toggleFold(p.nodes[0]); return; }
+  if (S.mode === "add" && !ST) {
+    const id = p.nodes[0], n = id && S.byId[id];
+    if (n && n.kind !== "section") return;
+    const t = (prompt(n ? `Node mới trong section "${n.title}" (có thể viết "id: Tiêu đề"):`
+                        : 'Node mới ở cuối file (có thể viết "id: Tiêu đề"):') || "").trim();
+    if (!t) return;
+    const m = t.match(/^([a-z0-9][a-z0-9-]*)\s*:\s*(.+)$/);
+    let pt = p.pointer.canvas;
+    if (n) { const q = net.getPositions([id])[id]; pt = {x:q.x + (Math.random() - .5) * 120, y:q.y + 80}; }
+    await op("add_node", {title:m ? m[2] : t, id:m ? m[1] : null, section:n ? id : null}, r => { S.pending[r.id] = pt; });
+    return;
+  }
+  const id = p.nodes[0];
+  if (id && S.byId[id] && S.byId[id].kind !== "external") jumpTo(S.byId[id].line);
+  else if (!id && p.edges.length) { const l = S.edgeMap[p.edges[0]]; if (l && l.line) jumpTo(l.line); }
+});
+net.on("doubleClick", async p => {
+  if (ST || S.mode !== "select" || !p.nodes.length) return;
+  const n = S.byId[p.nodes[0]]; if (!n || n.kind === "external") return;
+  const t = (prompt("Tiêu đề mới cho " + n.id + (n.auto_id ? " (section không có @id: ID sẽ đổi theo)" : "") + ":", n.title) || "").trim();
+  if (t && t !== n.title) await op("rename", {id:n.id, title:t});
+});
+net.on("select", p => {
+  fillFormat();
+  if (p.nodes.length) focusNode(p.nodes[0], false);
+  else if (p.edges.length && S.edgeMap[p.edges[0]]) selectLink(S.edgeMap[p.edges[0]]);
+});
+const inBox = (b, c) => b && c.x >= b.left && c.x <= b.right && c.y >= b.top && c.y <= b.bottom;
+net.on("dragEnd", async p => {
+  if (!p.nodes.length) return;
+  savePos();
+  if (S.mode !== "move" || ST) return;
+  const c = p.pointer.canvas;
+  const tgt = S.graph.nodes.find(n => n.kind === "section" && !p.nodes.includes(n.id) && inBox(net.getBoundingBox(n.id), c));
+  const ids = p.nodes.filter(id => S.byId[id] && S.byId[id].kind === "node" && (!tgt || S.byId[id].parent !== tgt.id));
+  if (tgt && ids.length) await op("move_node", {ids, section:tgt.id});
+});
+async function onAddEdge(d) {
+  if (d.from === d.to) { net.addEdgeMode(); return; }
+  const type = $("#linkSel").value;
+  if (!type) { alert("Chưa có loại link. Thêm bằng Schema → + Link."); return; }
+  await op("add_link", {source:d.from, target:d.to, type});
+  if (S.mode === "link") net.addEdgeMode();
+}
+document.addEventListener("keydown", async e => {
+  const typing = ["TEXTAREA", "INPUT", "SELECT"].includes(document.activeElement.tagName);
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && k === "s") { e.preventDefault(); await save(); return; }
+  if (typing || ST || $("#dlg").open) return;
+  if ((e.ctrlKey || e.metaKey) && k === "z") { e.preventDefault(); await undo(); return; }
+  if (e.key !== "Delete" && e.key !== "Backspace") return;
+  const ns = net.getSelectedNodes().filter(id => S.byId[id] && S.byId[id].kind === "node");
+  const es = net.getSelectedEdges().map(i => S.edgeMap[i]).filter(l => l && !l.tree && !AUTO_LINKS.includes(l.type));
+  if (ns.length) { if (confirm("Xóa node " + ns.join(", ") + " khỏi " + S.name + "?")) await op("delete_node", {ids:ns}); }
+  else if (es.length) await op("delete_link", {links:es.map(l => ({source:l.source, target:l.target, type:l.type}))});
+  else if (net.getSelectedEdges().length) status("Cạnh chứa, meta contain và tham chiếu @ sửa trong văn bản.");
+});
+
+// ---------- Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+/ trên node (đồ thị, Tree, Book) ----------
+const onGraph = () => { const a = document.activeElement; return !a || a === document.body || !a.matches("input,textarea,select,[contenteditable]"); };
+function pickedNodes() {
+  const ids = net.getSelectedNodes().filter(id => S.byId[id] && S.byId[id].kind === "node");
+  if (!ids.length && S.selected && S.byId[S.selected] && S.byId[S.selected].kind === "node") ids.push(S.selected);
+  return ids;
+}
+function nodeText(id) {          // khối văn bản của node: từ dòng @id tới trước node / heading kế tiếp
+  const L = S.text.split("\n"), i = S.byId[id].line - 1;
+  const starts = new Set(S.graph.nodes.filter(n => n.kind !== "external" && n.line).map(n => n.line - 1));
+  let j = i + 1;
+  while (j < L.length && !starts.has(j)) j++;
+  while (j > i + 1 && !L[j - 1].trim()) j--;
+  return L.slice(i, j).join("\n");
+}
+function copyNodes(e, cut) {
+  if (!onGraph() || !S.graph || String(getSelection()).trim()) return;   // đang bôi đen chữ: chép chữ như thường
+  const ids = pickedNodes().sort((a, b) => S.byId[a].line - S.byId[b].line);
+  if (!ids.length) return;
+  e.preventDefault();
+  e.clipboardData.setData("text/plain", ids.map(nodeText).join("\n\n") + "\n");
+  status((cut ? "Đã cắt " : "Đã sao chép ") + ids.join(", ") + " · Ctrl+V để dán thành node mới");
+  if (cut && !ST) op("delete_node", {ids});
+}
+document.addEventListener("copy", e => copyNodes(e, false));
+document.addEventListener("cut", e => copyNodes(e, true));
+document.addEventListener("paste", async e => {
+  if (!onGraph() || ST || !S.name) return;
+  const clip = e.clipboardData && e.clipboardData.getData("text/plain");
+  if (!clip || !/^\s*@[a-z0-9]/m.test(clip)) return;
+  e.preventDefault();
+  // dán vào section của node đang chọn (hoặc section đang chọn); không chọn gì thì dán cuối file
+  const cur = S.selected && S.byId[S.selected];
+  const section = cur ? (cur.kind === "section" ? cur.id : cur.parent) : null;
+  const r = await op("paste_nodes", {clip, section: section && S.byId[section] && S.byId[section].kind === "section" ? section : null},
+    r => { const c = net.getViewPosition(); r.ids.forEach((id, k) => { S.pending[id] = {x:c.x + 40 + k * 30, y:c.y + 40 + k * 30}; }); });
+  if (r && r.ids) { net.selectNodes(r.ids.filter(id => nodesDS.get(id))); focusNode(r.ids[0], false); }
+});
+document.addEventListener("keydown", e => {
+  if (!(e.ctrlKey || e.metaKey) || !(e.key === "/" || e.code === "Slash") || !onGraph() || ST) return;
+  const ids = pickedNodes();
+  if (!ids.length) return;
+  e.preventDefault();
+  S.selected = null; op("comment_nodes", {ids});
+});
+
+// ---------- format → style.kg.md ----------
+function fillFormat() {
+  const ns = net.getSelectedNodes(), n = ns.length === 1 && S.byId[ns[0]], s = n ? H(n) : {};
+  $$("#fmt [data-p]").forEach(el => {
+    const v = s[el.dataset.p];
+    if (el.type === "color") { if (/^#[0-9a-f]{6}$/i.test(v || "")) el.value = v; }
+    else el.value = v === undefined ? "" : String(v);
+  });
+}
+const LINKMAP = {color:"color", "border-color":"color", border:"width", dash:"dash"};
+function targets() {
+  const ns = net.getSelectedNodes();
+  if (ns.length) return {sel:ns.map(id => "#" + id)};
+  const ls = net.getSelectedEdges().map(i => S.edgeMap[i]).filter(Boolean);
+  if (ls.length) return {sel:[...new Set(ls.map(l => "link=" + l.type))], link:true};
+  return null;
+}
+async function applyFmt(p, v) {
+  const t = targets();
+  if (!t) return status("Chọn node hoặc link trước khi format.", "err");
+  let k = p;
+  if (t.link) { k = LINKMAP[p]; if (!k) return status("Thuộc tính này không áp cho link.", "err"); }
+  await op("set_style", {selectors:t.sel, props:{[k]:v}});
+}
+$$("#fmt [data-p]").forEach(el => el.addEventListener("change", () => {
+  let v = el.value; if (v === "") return;
+  if (el.type === "number") v = +v;
+  if (el.dataset.p === "dash") v = v === "true";
+  applyFmt(el.dataset.p, v);
+}));
+$("#bClear").onclick = async () => { const t = targets(); if (t) await op("set_style", {selectors:t.sel, props:null}); else status("Chọn node hoặc link trước.", "err"); };
+
+// ---------- schema ----------
+$$("[data-schema]").forEach(b => b.onclick = async () => {
+  const kind = b.dataset.schema, L = {type:"kiểu node", key:"khóa meta", link:"loại link"}[kind];
+  const id = (prompt(`ID ${L} mới (a-z, 0-9, -):`) || "").trim(); if (!id) return;
+  const title = (prompt("Tên hiển thị (có thể bỏ trống):") || "").trim(), extra = {};
+  if (kind === "type") {
+    const a = (prompt("Các khóa meta kiểu này được dùng, ngăn bằng dấu phẩy (bỏ trống = mọi khóa):") || "").trim();
+    if (a) extra.allow = a;
+  } else if (kind === "key") {
+    const v = (prompt('Giá trị cho phép ngăn bằng | (ví dụ "Nạp | Xuất"), hoặc bool / int / number / text (bỏ trống = tự do):') || "").trim();
+    if (/^(bool|int|number|text)$/.test(v)) extra.value = v; else if (v) extra.values = v;
+    if (confirm("Bắt buộc với các kiểu node có khóa này trong allow?")) extra.required = true;
+  } else {
+    if (confirm("Cấm vòng lặp (dag)?")) extra.dag = true;
+    const to = (prompt("Đích phải có type nào? (bỏ trống = bất kỳ)") || "").trim(); if (to) extra.to = to;
+  }
+  await op("schema_add", {kind, id, title, extra});
+});
+
+// ---------- SVG ----------
+function poly(s, x, y, r) {
+  let p = [];
+  if (s === "diamond") p = [[x, y - r], [x + r, y], [x, y + r], [x - r, y]];
+  else if (s === "triangle") p = [[x, y - r], [x + r * .866, y + r * .5], [x - r * .866, y + r * .5]];
+  else if (s === "hexagon") for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i; p.push([x + r * Math.cos(a), y + r * Math.sin(a)]); }
+  else for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + Math.PI / 5 * i, q = i % 2 ? r * .45 : r; p.push([x + q * Math.cos(a), y + q * Math.sin(a)]); }
+  return p.map(q => q.map(v => v.toFixed(1)).join(",")).join(" ");
+}
+function exportSVG() {
+  const ids = nodesDS.getIds({filter:n => !n.hidden}); if (!ids.length) return status("Đồ thị trống.", "err");
+  const pos = net.getPositions(), G = {}, OUT = new Set(["dot", "star", "triangle", "diamond", "square", "hexagon"]);
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const id of ids) {
+    const n = nodesDS.get(id), b = net.getBoundingBox(id), out = OUT.has(n.shape) || !!n.kg;
+    let g;
+    if (n.kg) {                       // hình tự vẽ (elip, tròn, chữ nhật, vuông): nhãn dưới hình
+      g = {n, out, kg:n.kg, cx:pos[id].x, cy:pos[id].y, rx:n.kg.w / 2, ry:n.kg.h / 2};
+      if (n.kg.shape === "circle") g.r = n.kg.w / 2;
+      b.left = g.cx - Math.max(g.rx, 75); b.right = g.cx + Math.max(g.rx, 75); b.top = g.cy - g.ry; b.bottom = g.cy + g.ry + 40;
+    } else g = out ? {n, out, cx:pos[id].x, cy:pos[id].y, r:n.size}
+                   : {n, out, cx:(b.left + b.right) / 2, cy:(b.top + b.bottom) / 2, rx:(b.right - b.left) / 2, ry:(b.bottom - b.top) / 2};
+    G[id] = g; x0 = Math.min(x0, b.left); y0 = Math.min(y0, b.top); x1 = Math.max(x1, b.right); y1 = Math.max(y1, b.bottom);
+  }
+  const pad = 24, W = x1 - x0 + 2 * pad, Hh = y1 - y0 + 2 * pad, X = v => (v - x0 + pad).toFixed(1), Y = v => (v - y0 + pad).toFixed(1);
+  const clip = (g, dx, dy) => {
+    const L = Math.hypot(dx, dy) || 1; let t;
+    if (g.r !== undefined) t = g.r / L;
+    else if ((g.kg ? g.kg.shape : g.n.shape) === "ellipse") t = 1 / Math.sqrt((dx / g.rx) ** 2 + (dy / g.ry) ** 2);
+    else t = Math.min(g.rx / (Math.abs(dx) || 1e-9), g.ry / (Math.abs(dy) || 1e-9));
+    return [g.cx + dx * t, g.cy + dy * t];
+  };
+  const marks = {}; let defs = "", body = "";
+  const mk = c => { if (!(c in marks)) { const k = "m" + Object.keys(marks).length; marks[c] = k;
+    defs += `<marker id="${k}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="${c}"/></marker>`; } return marks[c]; };
+  for (const e of edgesDS.get()) {
+    const a = G[e.from], b = G[e.to]; if (!a || !b || a === b) continue;
+    const dx = b.cx - a.cx, dy = b.cy - a.cy, [sx, sy] = clip(a, dx, dy), [ex, ey] = clip(b, -dx, -dy), c = e.color.color, m = mk(c);
+    body += `<line x1="${X(sx)}" y1="${Y(sy)}" x2="${X(ex)}" y2="${Y(ey)}" stroke="${c}" stroke-width="${e.width}"` +
+      (e.dashes ? ' stroke-dasharray="5,4"' : "") + (e.color.opacity < 1 ? ` opacity="${e.color.opacity}"` : "") +
+      (e.arrows.includes("to") ? ` marker-end="url(#${m})"` : "") + (e.arrows.includes("from") ? ` marker-start="url(#${m})"` : "") + "/>";
+    if (e.label) body += `<text x="${X((sx + ex) / 2)}" y="${Y((sy + ey) / 2)}" font-family="system-ui,sans-serif" font-size="10" fill="#555" text-anchor="middle" dominant-baseline="central" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`;
+  }
+  for (const id of ids) {
+    const g = G[id], n = g.n, cx = +X(g.cx), cy = +Y(g.cy), r = g.r;
+    if (g.kg) {
+      const m = g.kg, st = `fill="${esc(m.bg)}" stroke="${esc(m.bd)}" stroke-width="${m.bw}"` +
+        (m.dash ? ' stroke-dasharray="5,4"' : "") + (m.opacity < 1 ? ` opacity="${m.opacity}"` : "");
+      body += m.shape === "ellipse" ? `<ellipse cx="${cx}" cy="${cy}" rx="${g.rx.toFixed(1)}" ry="${g.ry.toFixed(1)}" ${st}/>`
+        : m.shape === "circle" ? `<circle cx="${cx}" cy="${cy}" r="${g.r.toFixed(1)}" ${st}/>`
+        : `<rect x="${(cx - g.rx).toFixed(1)}" y="${(cy - g.ry).toFixed(1)}" width="${(2 * g.rx).toFixed(1)}" height="${(2 * g.ry).toFixed(1)}" rx="${Math.min(m.radius, g.ry)}" ${st}/>`;
+      if (m.label) {
+        const fill = svgText(m.fontColor);
+        _cx.font = `${m.fontSize}px ${m.font}`;
+        wrapLabel(_cx, m.label, 150).forEach((t, i) => {
+          body += `<text x="${cx}" y="${(cy + g.ry + 4 + i * (m.fontSize + 2)).toFixed(1)}" font-family="${esc(m.font)}" font-size="${m.fontSize}" fill="${esc(fill)}" text-anchor="middle" dominant-baseline="hanging">${esc(t)}</text>`;
+        });
+      }
+      continue;
+    }
+    const st = `fill="${n.color.background}" stroke="${n.color.border}" stroke-width="${n.borderWidth}"` +
+      (n.shapeProperties.borderDashes ? ' stroke-dasharray="5,4"' : "") + (n.opacity < 1 ? ` opacity="${n.opacity}"` : "");
+    let shp = "";
+    if (n.shape === "ellipse") shp = `<ellipse cx="${cx}" cy="${cy}" rx="${g.rx.toFixed(1)}" ry="${g.ry.toFixed(1)}" ${st}/>`;
+    else if (n.shape === "circle" || n.shape === "dot") shp = `<circle cx="${cx}" cy="${cy}" r="${r.toFixed(1)}" ${st}/>`;
+    else if (n.shape === "square") shp = `<rect x="${(cx - r).toFixed(1)}" y="${(cy - r).toFixed(1)}" width="${2 * r}" height="${2 * r}" ${st}/>`;
+    else if (g.out) shp = `<polygon points="${poly(n.shape, cx, cy, r)}" ${st}/>`;
+    else if (n.shape !== "text") shp = `<rect x="${(cx - g.rx).toFixed(1)}" y="${(cy - g.ry).toFixed(1)}" width="${(2 * g.rx).toFixed(1)}" height="${(2 * g.ry).toFixed(1)}" rx="5" ${st}/>`;
+    const f = n.font, ty = g.out ? cy + r + f.size * .9 : cy;
+    const fill = svgText(f.color);     // SVG nền trắng: chữ sáng mặc định đổi lại tối
+    body += shp + `<text x="${cx}" y="${ty.toFixed(1)}" font-family="${esc(f.face)}" font-size="${f.size}" fill="${fill}" text-anchor="middle" dominant-baseline="central"${n.opacity < 1 ? ` opacity="${n.opacity}"` : ""}>${esc(n.label)}</text>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(0)}" height="${Hh.toFixed(0)}" viewBox="0 0 ${W.toFixed(1)} ${Hh.toFixed(1)}"><defs>${defs}</defs><rect width="100%" height="100%" fill="#fff"/>${body}</svg>`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([svg], {type:"image/svg+xml"}));
+  a.download = (S.name || "graph").replace(/\.kg\.md$/, "") + ".svg"; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000); status("Đã xuất " + a.download);
+}
+</script>
+<script>
+// explorer.js - chọn thư mục, tạo file; View Tree (cây section → node, node con part-of / contain dưới node cha)
+// ---------- thư mục ----------
+async function listDirs(p) {
+  try {
+    const r = await api("/api/dirs?path=" + encodeURIComponent(p || ""));
+    $("#dpath").value = r.path;
+    $("#dlist").innerHTML = (r.parent ? `<div data-p="${esc(r.parent)}">⬆ ..</div>` : "") +
+      r.dirs.map(d => `<div data-p="${esc(d.path)}">📁 ${esc(d.name)}${d.kg ? ` <small>${d.kg} file .kg.md</small>` : ""}</div>`).join("") +
+      (r.files.length ? `<div style="cursor:default;color:var(--mute)">Trong thư mục: ${r.files.map(esc).join(", ")}</div>` : "");
+    $$("#dlist [data-p]").forEach(d => d.onclick = () => listDirs(d.dataset.p));
+  } catch (e) { alert(e.message); }
+}
+function openFolderDialog() { closeMenus(); listDirs(S.root); $("#dlg").showModal(); }
+$("#bFolder").onclick = openFolderDialog; $("#exFolder").onclick = openFolderDialog;
+$("#dpath").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); listDirs(e.target.value); } };
+$("#dcancel").onclick = () => $("#dlg").close();
+$("#dok").onclick = async () => {
+  try {
+    if (S.dirty) await save();
+    await api("/api/open-folder", {path:$("#dpath").value}); $("#dlg").close();
+    const s = await refreshState(); await openFile(s.files[0] || "");
+    if (!s.files.length) status("Thư mục chưa có file .kg.md: File → File mới…");
+  } catch (e) { alert(e.message); }
+};
+$("#bNew").onclick = $("#exNew").onclick = async () => {
+  closeMenus();
+  const n = (prompt("Tên file mới (không cần đuôi .kg.md):") || "").trim(); if (!n) return;
+  try { const r = await api("/api/new", {name:n}); await refreshState(); await openFile(r.name); } catch (e) { alert(e.message); }
+};
+$("#exRefresh").onclick = async () => { try { await refreshState(); status("Đã tải lại danh sách file."); } catch (e) { status(e.message, "err"); } };
+
+// ---------- Explorer: file trong thư mục (schema / style mở và sửa trực tiếp) + outline ----------
+function fileRole(f) {
+  const used = (S.graph && S.graph.graph.use) || [];
+  if (/^schema\b/.test(f) || (used.includes(f) && /schema/.test(f))) return "schema";
+  if (/^style\b/.test(f) || (used.includes(f) && /style/.test(f))) return "style";
+  return "";
+}
+function renderExplorer() {
+  const files = ST ? [ST.name] : (S.files || []);
+  $("#exRoot").textContent = ST ? "BẢN TĨNH" : (S.root.split(/[\\/]/).pop() || S.root);
+  $("#exRoot").title = S.root;
+  const role = f => { const r = fileRole(f); return r ? `<span class="role ${r}">${r}</span>` : ""; };
+  $("#exFiles").innerHTML = files.length
+    ? files.map(f => `<div class="fi${f === S.name ? " on" : ""}" data-f="${esc(f)}" title="${esc(f)}"><span class="ic">K</span><span class="nm">${esc(f)}</span>${role(f)}</div>`).join("")
+    : '<div class="fi" style="cursor:default;color:var(--mute)">(chưa có file .kg.md)</div>';
+  $$("#exFiles [data-f]").forEach(el => el.onclick = () => { if (!ST && el.dataset.f !== S.name) openFile(el.dataset.f); });
+  renderTree($("#exOutline"));
+}
+
+// ---------- View Tree ----------
+const treeClosed = new Set();
+function treeChildren() {
+  // cha trong cây: node part-of / được contain → node cha đó; còn lại → section chứa nó
+  const kids = {}, roots = [], byLine = (a, b) => (a.line || 1e9) - (b.line || 1e9);
+  const nodes = S.graph.nodes.slice().sort(byLine);
+  for (const n of nodes) {
+    const ps = [...(S.parents[n.id] || [])].filter(p => S.byId[p]);
+    const via = ps.length ? (S.graph.links.some(l => l.type === "part-of" && l.source === n.id && l.target === ps[0]) ? "part-of" : "contain") : null;
+    const p = ps[0] || n.parent;
+    if (p && S.byId[p]) (kids[p] = kids[p] || []).push({n, via}); else roots.push({n, via:null});
+  }
+  return {kids, roots};
+}
+function treeRow(n, depth, has, via) {
+  const ic = n.kind === "section" ? ["sec", "#"] : n.kind === "external" ? ["ext", "↗"] : ["nod", "@"];
+  // khóa meta hồng, giá trị nâu (cùng bộ màu với khung văn bản)
+  const meta = Object.entries(n.meta || {}).filter(([k]) => k !== "contain")
+    .map(([k, v]) => `<span class="mk">${esc(k)}</span>=<span class="mv">${esc(v)}</span>`).join(" ");
+  return `<div class="tr${n.show === "none" || n.def ? " hide" : ""}" data-id="${esc(n.id)}" style="padding-left:${8 + depth * 14}px" title="${esc(n.id)}${n.def ? " (" + n.def + ")" : ""}">` +
+    `<span class="tw">${has ? (treeClosed.has(n.id) ? "▸" : "▾") : ""}</span>` +
+    `<span class="ic ${ic[0]}">${ic[1]}</span><span class="nm ${ic[0]}">${esc(n.title || n.id)}</span>` +
+    (via ? `<span class="via" style="color:${esc(linkText(via))}">${via}</span>` : "") +
+    (n.ask ? '<span class="ask">✎</span>' : "") + (meta ? `<span class="meta">${meta}</span>` : "") + "</div>";
+}
+function renderTree(el) {           // vẽ vào View Tree, hoặc vào Outline của Explorer
+  el = el || $("#treeView");
+  if (!S.graph) { el.innerHTML = '<div class="tr"><span class="nm" style="color:var(--mute)">(chưa có dữ liệu)</span></div>'; return; }
+  const {kids, roots} = treeChildren(), out = [];
+  const walk = (items, depth, path) => {
+    for (const {n, via} of items) {
+      if (path.has(n.id)) continue;                      // phòng vòng lặp
+      const ch = kids[n.id] || [];
+      out.push(treeRow(n, depth, ch.length > 0, via));
+      if (ch.length && !treeClosed.has(n.id)) walk(ch, depth + 1, new Set([...path, n.id]));
+    }
+  };
+  walk(roots, 0, new Set());
+  el.innerHTML = out.join("");
+  el.querySelectorAll(".tr[data-id]").forEach(r => r.onclick = e => {
+    const id = r.dataset.id, n = S.byId[id];
+    if (e.target.classList.contains("tw") && e.target.textContent) {
+      if (treeClosed.has(id)) treeClosed.delete(id); else treeClosed.add(id);
+      renderTree($("#exOutline")); if (S.view === "tree") renderTree();
+      return;
+    }
+    if (n && n.kind !== "external") jumpTo(n.line);
+    focusNode(id, false);
+  });
+  if (S.selected) markSelected(S.selected, false);
+}
+
+// ---------- chọn node: đánh dấu ở Tree / Outline / Book / Graph, hiện ở Inspector ----------
+function markSelected(id, scroll) {
+  for (const el of $$(".tr.on, .book article.on, .mod.on")) el.classList.remove("on");
+  if (!id) return;
+  const sel = `[data-id="${CSS.escape(id)}"]`;
+  for (const el of $$(`#treeView .tr${sel}, #exOutline .tr${sel}, #bookView article${sel}, #moduleView .mod${sel}`)) {
+    el.classList.add("on");
+    if (el.closest("#moduleView")) continue;                // SVG có pan / zoom riêng, không cuộn
+    if (scroll !== false || el.closest(".view.on, #exOutline")) el.scrollIntoView({block:"nearest"});
+  }
+}
+function focusNode(id, scroll) {
+  S.selected = id; S.selLink = null;
+  if (nodesDS.get(id) && !S.hidden.has(id) && !net.getSelectedNodes().includes(id)) net.selectNodes([id]);
+  markSelected(id, scroll);
+  renderInspector();
+}
+</script>
+<script>
+// book.js - View Book: dàn trang như sách. Section → tiêu đề, node → thẻ có meta, nội dung, link.
+// Node có show=none không hiện (đúng nghĩa "có trong đồ thị, không hiện trong sách").
+// @ref: id trong file, module.id, hoặc tên ngắn của node import lẻ (lop11.tiep-tuyen viết @tiep-tuyen)
+const findRef = r => S.byId[r] || S.graph.nodes.find(n => n.kind === "external" && n.id.endsWith("." + r));
+function mdInline(s) {
+  let out = "", last = 0;
+  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*\s][^*]*\*)|(\[[^\]]+\]\([^)\s]+\))|(https?:\/\/[^\s)]+)|((?:^|(?<=\s))@[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)?)/g;
+  for (const m of s.matchAll(re)) {
+    out += esc(s.slice(last, m.index)); last = m.index + m[0].length;
+    const t = m[0];
+    if (m[1]) out += `<code>${esc(t.slice(1, -1))}</code>`;
+    else if (m[2]) out += `<strong>${esc(t.slice(2, -2))}</strong>`;
+    else if (m[3]) out += `<em>${esc(t.slice(1, -1))}</em>`;
+    else if (m[4]) { const k = t.match(/^\[([^\]]+)\]\(([^)]+)\)$/); out += `<a href="${esc(k[2])}" target="_blank" rel="noopener">${esc(k[1])}</a>`; }
+    else if (m[5]) out += `<a href="${esc(t)}" target="_blank" rel="noopener">${esc(t)}</a>`;
+    else { const n = findRef(t.slice(1)), id = n ? n.id : t.slice(1); out += `<a data-go="${esc(id)}">${esc(n ? n.title || id : t)}</a>`; }
+  }
+  return out + esc(s.slice(last));
+}
+function mdCells(row) {            // "| a | b \| c |" → ["a", "b | c"]
+  return row.trim().replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map(c => c.trim().replace(/\\\|/g, "|"));
+}
+function mdBlock(text) {
+  const out = []; let para = [], list = [], table = [], code = null;
+  const flush = () => {
+    if (para.length) out.push(`<p>${mdInline(para.join(" "))}</p>`);
+    if (list.length) out.push(`<ul>${list.map(x => `<li>${mdInline(x)}</li>`).join("")}</ul>`);
+    if (table.length) {              // bảng Markdown: dòng đầu là tiêu đề, bỏ dòng |---|
+      const rows = table.filter(r => !/^\s*\|?\s*:?-{2,}/.test(r)).map(mdCells);
+      out.push(`<table><thead><tr>${rows[0].map(c => `<th>${mdInline(c)}</th>`).join("")}</tr></thead><tbody>` +
+        rows.slice(1).map(r => `<tr>${r.map(c => `<td>${mdInline(c)}</td>`).join("")}</tr>`).join("") + "</tbody></table>");
+    }
+    para = []; list = []; table = [];
+  };
+  const pre = lines => {             // bỏ phần thụt lề chung của khối code
+    const ind = Math.min(...lines.filter(l => l.trim()).map(l => l.match(/^\s*/)[0].length), 99);
+    return `<pre>${esc(lines.map(l => l.slice(ind)).join("\n"))}</pre>`;
+  };
+  for (const line of String(text || "").split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      if (code) { out.push(pre(code)); code = null; } else { flush(); code = []; }
+      continue;
+    }
+    if (code) { code.push(line); continue; }
+    if (/^\s*\|/.test(line)) { if (!table.length) flush(); table.push(line); continue; }
+    if (table.length) flush();
+    const li = line.match(/^\s*[-*]\s+(.*)$/);
+    if (li) { if (para.length) { const l = list; list = []; flush(); list = l; } list.push(li[1]); }
+    else if (!line.trim()) flush();
+    else { if (list.length) { const p = para; para = []; flush(); para = p; } para.push(line.trim()); }
+  }
+  if (code) out.push(pre(code));
+  flush();
+  return out.join("");
+}
+function bookLinks(n) {
+  const outs = S.graph.links.filter(l => l.source === n.id && !l.tree && l.type !== "mention");
+  const ins = S.graph.links.filter(l => l.target === n.id && !l.tree && l.type !== "mention");
+  const chip = (l, other, arrow) => {
+    const o = S.byId[other];
+    return `<span class="chip" style="border-color:${esc(linkText(l.type))}"><b style="color:${esc(linkText(l.type))}">${esc(l.type)}</b> ${arrow} ` +
+      `<a data-go="${esc(other)}">${esc(o ? o.title || other : other)}</a></span>`;
+  };
+  return (outs.length || ins.length)
+    ? `<div class="chips">${outs.map(l => chip(l, l.target, "→")).join("")}${ins.map(l => chip(l, l.source, "←")).join("")}</div>` : "";
+}
+function renderBook() {
+  const el = $("#bookView");
+  if (!S.graph) { el.innerHTML = '<div class="book"><p class="empty">(chưa có dữ liệu)</p></div>'; return; }
+  const items = S.graph.nodes.filter(n => n.kind !== "external").sort((a, b) => a.line - b.line), out = [];
+  let hidden = 0;
+  for (const n of items) {
+    if (S.defHide && S.defHide.has(n.id)) continue;          // schema/style trong file: không phải nội dung sách
+    if (n.show === "none") { hidden++; continue; }
+    if (n.kind === "section") {
+      const h = Math.min(Math.max(n.level || 1, 1), 6);
+      out.push(`<h${h} data-id="${esc(n.id)}" data-line="${n.line}">${mdInline(n.title || n.id)}</h${h}>`);
+      continue;
+    }
+    const meta = Object.entries(n.meta || {}).map(([k, v]) =>
+      `<span class="chip"><b style="color:${esc(keyColor(k))}">${esc(k)}</b>=<span class="mv">${esc(v)}</span></span>`).join("");
+    out.push(`<article data-id="${esc(n.id)}" data-line="${n.line}">` +
+      `<h4>${mdInline(n.title || n.id)}<small>@${esc(n.id)}</small></h4>` +
+      (meta ? `<div class="chips">${meta}</div>` : "") +
+      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(chưa có nội dung)</p>')) +
+      (n.ask ? `<div class="ask">✎ ${mdInline(n.ask)}</div>` : "") +
+      bookLinks(n) + "</article>");
+  }
+  if (hidden) out.push(`<p class="note">${hidden} mục có <code>show: none</code> không hiện trong sách.</p>`);
+  el.innerHTML = `<div class="book">${out.join("")}</div>`;
+  el.querySelectorAll("[data-go]").forEach(a => a.onclick = e => {
+    e.stopPropagation(); const id = a.dataset.go;
+    if (!el.querySelector(`[data-id="${CSS.escape(id)}"]`)) return status(id + " không hiện trong sách (show: none hoặc node import).");
+    focusNode(id, true);
+  });
+  el.querySelectorAll("[data-line]").forEach(b => b.onclick = e => {
+    if (e.target.closest("a")) return;
+    jumpTo(+b.dataset.line); focusNode(b.dataset.id, false);
+  });
+  if (S.selected) markSelected(S.selected, false);
+}
+</script>
+<script>
+// module.js - View Module: đồ thị lồng nhau. Node có node con = nhóm (hình chữ nhật bo góc) chứa các node con bên trong;
+// node nội dung = hình tròn. Cha–con: con part-of cha, cha contain con, node trong section, + loại link tick thêm.
+// Các link khác vẽ giữa các node như Graph. Mỗi nhóm bật / tắt hiện node con (▾ / ▸, hoặc nhấp đúp).
+let modClosed = new Set(), modLinks = new Set();      // modLinks: loại link thêm vào quan hệ chứa (nguồn nằm trong đích)
+const MV = {k:1, tx:20, ty:20, fit:true};             // pan / zoom
+const modKey = () => "kgmod:" + (S.root || "static") + "|" + S.name;
+function loadMod() {
+  try {
+    const v = JSON.parse(localStorage.getItem(modKey()) || "{}");
+    modClosed = new Set(Array.isArray(v) ? v : v.closed || []); modLinks = new Set(v.links || []);
+  } catch (e) { modClosed = new Set(); modLinks = new Set(); }
+  S.modKey = modKey(); MV.fit = true;
+}
+function saveMod() { try { localStorage.setItem(modKey(), JSON.stringify({closed:[...modClosed], links:[...modLinks]})); } catch (e) {} }
+
+function modChildren() {
+  // cha của một node: đích của part-of / của loại link đã chọn, nguồn của contain; không có thì section chứa nó.
+  // Node có nhiều cha thì hiện trong nhóm của từng cha.
+  const ps = {}, kids = {}, roots = [], seen = new Set();
+  const add = (c, p, via) => {
+    const k = c + ">" + p;
+    if (c === p || !S.byId[p] || !S.byId[c] || seen.has(k)) return;
+    seen.add(k); (ps[c] = ps[c] || []).push({p, via});
+  };
+  for (const l of S.graph.links) {
+    if (l.type === "part-of" || modLinks.has(l.type)) add(l.source, l.target, l.type);
+    else if (l.type === "contain") add(l.target, l.source, "contain");
+  }
+  for (const n of S.graph.nodes.slice().sort((a, b) => (a.line || 1e9) - (b.line || 1e9))) {
+    const list = ps[n.id];
+    if (list) list.forEach(({p, via}) => (kids[p] = kids[p] || []).push({n, via}));
+    else if (n.parent && S.byId[n.parent]) (kids[n.parent] = kids[n.parent] || []).push({n, via:null});
+    else roots.push({n, via:null});
+  }
+  return {kids, roots};
+}
+
+// ---------- đo và xếp ----------
+const _mc = document.createElement("canvas").getContext("2d");
+function textW(t, size, bold) { _mc.font = `${bold ? "600 " : ""}${size}px system-ui, sans-serif`; return _mc.measureText(String(t)).width; }
+function wrapText(t, max) {
+  const lines = []; let cur = "";
+  for (const w of String(t).split(/\s+/)) {
+    const nx = cur ? cur + " " + w : w;
+    if (cur && textW(nx, 13) > max) { lines.push(cur); cur = w; } else cur = nx;
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 4);
+}
+const PAD = 18, GAP = 48, HEAD = 32;      // GAP rộng để thấy được link giữa các node đứng cạnh nhau
+const modVisible = n => S.showDefs || !(S.defHide && S.defHide.has(n.id));
+function flow(items, maxW) {          // xếp thành hàng, mỗi hàng căn giữa; trả kích thước khối
+  const rows = []; let row = [], rw = 0;
+  for (const it of items) {
+    if (row.length && rw + GAP + it.w > maxW) { rows.push(row); row = []; rw = 0; }
+    rw += (row.length ? GAP : 0) + it.w; row.push(it);
+  }
+  if (row.length) rows.push(row);
+  const widths = rows.map(r => r.reduce((s, it, i) => s + it.w + (i ? GAP : 0), 0)), inner = Math.max(0, ...widths);
+  let y = 0;
+  rows.forEach((r, i) => {
+    const rh = Math.max(...r.map(it => it.h)); let x = (inner - widths[i]) / 2;
+    r.forEach(it => { it.x = x; it.y = y + (rh - it.h) / 2; x += it.w + GAP; });
+    y += rh + GAP;
+  });
+  return {w:inner, h:Math.max(0, y - GAP)};
+}
+function measure(item, kids, path) {
+  const n = item.n, title = n.title || n.id;
+  const ch = (kids[n.id] || []).filter(c => modVisible(c.n) && !path.has(c.n.id));
+  const box = {n, via:item.via};
+  if (!ch.length && n.kind !== "section" && n.id !== "__ext") {        // node nội dung: hình tròn
+    const lines = wrapText(title, 112), tw = Math.max(...lines.map(l => textW(l, 13)));
+    const r = Math.max(30, Math.hypot(tw / 2 + 6, lines.length * 8 + 4) + 4);
+    return Object.assign(box, {leaf:true, lines, r, w:2 * r, h:2 * r, children:[]});
+  }
+  const tw = textW(title, 13, true) + 64;                                  // nhóm: hình chữ nhật bo góc
+  Object.assign(box, {leaf:false, count:ch.length, closed:modClosed.has(n.id) && ch.length > 0});
+  if (box.closed || !ch.length) {
+    box.children = []; box.hiddenIds = box.closed ? descendants(n.id, kids, path) : [];
+    box.w = Math.max(150, tw); box.h = HEAD + (ch.length ? 24 : 12);
+    return box;
+  }
+  const np = new Set([...path, n.id]);
+  box.children = ch.map(c => measure(c, kids, np));
+  const area = box.children.reduce((s, c) => s + (c.w + GAP) * (c.h + GAP), 0);
+  const sz = flow(box.children, Math.max(tw, ...box.children.map(c => c.w), Math.sqrt(area) * 1.5));
+  box.w = Math.max(sz.w, tw) + 2 * PAD; box.h = HEAD + sz.h + PAD;
+  const off = (box.w - 2 * PAD - sz.w) / 2;
+  box.children.forEach(c => { c.x += PAD + off; c.y += HEAD; });
+  return box;
+}
+function descendants(id, kids, path) {
+  const out = [], st = [...(kids[id] || [])], seen = new Set(path);
+  while (st.length) { const {n} = st.pop(); if (seen.has(n.id)) continue; seen.add(n.id); out.push(n.id); st.push(...(kids[n.id] || [])); }
+  return out;
+}
+function place(box, ox, oy, at, groups, leaves, up) {   // toạ độ tuyệt đối; at: id → hộp đầu tiên hiện node đó
+  box.ax = ox + box.x; box.ay = oy + box.y; box.up = up || null;
+  if (!(box.n.id in at)) at[box.n.id] = box;
+  (box.leaf ? leaves : groups).push(box);
+  (box.hiddenIds || []).forEach(id => { if (!(id in at)) at[id] = box; });
+  box.children.forEach(c => place(c, box.ax, box.ay, at, groups, leaves, box));
+}
+const inside = (a, g) => { for (let x = a.up; x; x = x.up) if (x === g) return true; return false; };
+
+// ---------- vẽ SVG ----------
+function clipTo(b, tx, ty) {            // điểm trên mép hình của b, hướng về (tx, ty)
+  const cx = b.ax + b.w / 2, cy = b.ay + b.h / 2, dx = tx - cx, dy = ty - cy, L = Math.hypot(dx, dy) || 1;
+  if (b.leaf) return [cx + dx / L * b.r, cy + dy / L * b.r];
+  const t = Math.min((b.w / 2) / (Math.abs(dx) || 1e-9), (b.h / 2) / (Math.abs(dy) || 1e-9));
+  return [cx + dx * t, cy + dy * t];
+}
+function renderModule() {
+  const el = $("#moduleView");
+  if (!S.graph) { el.innerHTML = '<p class="ins-empty">(chưa có dữ liệu)</p>'; return; }
+  if (S.modKey !== modKey()) loadMod();
+  const {kids, roots} = modChildren();
+  const main = roots.filter(r => r.n.kind !== "external" && modVisible(r.n)), ext = roots.filter(r => r.n.kind === "external");
+  if (ext.length) { kids.__ext = ext; main.push({n:{id:"__ext", title:"Node import", kind:"section"}, via:null}); }
+  const top = main.map(r => measure(r, kids, new Set()));
+  const area = top.reduce((s, c) => s + (c.w + GAP) * (c.h + GAP), 0);
+  flow(top, Math.max(700, Math.sqrt(area) * 1.6, ...top.map(c => c.w)));
+  const at = {}, groups = [], leaves = [];
+  top.forEach(b => place(b, 0, 0, at, groups, leaves));
+
+  // link: mọi link không dùng cho quan hệ chứa
+  const nest = new Set(["part-of", "contain", ...modLinks]), marks = {};
+  let defs = "", edges = "";
+  for (const l of S.graph.links) {
+    if (l.tree || nest.has(l.type)) continue;
+    const a = at[l.source], b = at[l.target];
+    if (!a || !b || a === b || inside(a, b) || inside(b, a)) continue;   // link tới nhóm đang chứa nó: đã thấy qua việc lồng
+    const s = H(l), color = s.color || linkColor(l.type);
+    if (!(color in marks)) {
+      marks[color] = "mk" + Object.keys(marks).length;
+      defs += `<marker id="${marks[color]}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="${esc(color)}"/></marker>`;
+    }
+    const [x1, y1] = clipTo(a, b.ax + b.w / 2, b.ay + b.h / 2), [x2, y2] = clipTo(b, a.ax + a.w / 2, a.ay + a.h / 2);
+    const arrows = s.arrows || "to", m = `url(#${marks[color]})`;
+    edges += `<g class="medge"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${esc(color)}" stroke-width="${num(s.width, 1.5)}"` +
+      (s.dash === true ? ' stroke-dasharray="5,4"' : "") + (s.opacity !== undefined ? ` opacity="${num(s.opacity, 1)}"` : "") +
+      (arrows === "to" || arrows === "both" ? ` marker-end="${m}"` : "") + (arrows === "from" || arrows === "both" ? ` marker-start="${m}"` : "") + "/>" +
+      ((S.hideLab || {}).link ? "" : `<text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2}" class="mlabel">${esc(l.type)}</text>`) + "</g>";
+  }
+  const gsvg = groups.map(b => {
+    const s = H(b.n), sec = b.n.kind === "section", stroke = s["border-color"] || (sec ? "#6b7280" : "#7f95ab");
+    const fill = s.color || (sec ? "none" : "#7f95ab"), has = b.count > 0;
+    return `<g class="mod mgroup" data-id="${esc(b.n.id)}">` +
+      // section: hình chữ nhật góc vuông; nhóm (node có node con): hình chữ nhật bo góc
+      `<rect class="shape" x="${b.ax}" y="${b.ay}" width="${b.w}" height="${b.h}" rx="${num(s.radius, sec ? 0 : 14)}" fill="${esc(fill)}" fill-opacity="${sec ? 0 : 0.16}"` +
+      ` stroke="${esc(stroke)}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="6,4"' : ""}/>` +
+      (has ? `<text class="mtw" x="${b.ax + 14}" y="${b.ay + 21}">${b.closed ? "▸" : "▾"}</text>` : "") +
+      (sec && (S.hideLab || {}).section ? "" : `<text class="mgt${sec ? " sec" : ""}" x="${b.ax + (has ? 30 : 14)}" y="${b.ay + 21}">${esc(b.n.title || b.n.id)}</text>`) +
+      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}">+${b.count} con · nhấp đúp để mở</text>` : "") + "</g>";
+  }).join("");
+  const lsvg = leaves.map(b => {
+    const s = H(b.n), cx = b.ax + b.r, cy = b.ay + b.r, lh = 16, y0 = cy - (b.lines.length - 1) * lh / 2;
+    return `<g class="mod mleaf" data-id="${esc(b.n.id)}"><circle class="shape" cx="${cx}" cy="${cy}" r="${b.r}" fill="${esc(s.color || "#dfe9f3")}"` +
+      ` stroke="${esc(s["border-color"] || "#607d8b")}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="5,4"' : ""}/>` +
+      ((S.hideLab || {}).node ? "" : b.lines.map((t, i) => `<text x="${cx}" y="${y0 + i * lh}" fill="${esc(s["font-color"] || "#1f2328")}">${esc(t)}</text>`).join("")) +
+      (b.n.ask ? `<text x="${cx + b.r * 0.72}" y="${cy - b.r * 0.72}" class="mask">✎</text>` : "") + "</g>";
+  }).join("");
+
+  const types = [...new Set(S.graph.links.filter(l => !l.tree && !["part-of", "contain", "mention"].includes(l.type)).map(l => l.type))];
+  const parents = groups.filter(b => b.count > 0 && b.n.id !== "__ext").map(b => b.n.id);
+  el.innerHTML =
+    `<div class="mbar"><button class="btn" data-mall="open">Bung hết</button><button class="btn" data-mall="close">Thu hết</button>` +
+    `<button class="btn" data-mall="fit" title="Vừa khung">⤢</button>` +
+    `<span class="mlinks" title="Mặc định: con part-of cha, cha contain con, node trong section. Tick thêm loại link: nguồn nằm trong đích.">Lồng theo: ` +
+    `<b style="color:${esc(linkText("part-of"))}">part-of</b>, <b style="color:${esc(linkText("contain"))}">contain</b>` +
+    types.map(t => `<label><input type="checkbox" data-mlink="${esc(t)}"${modLinks.has(t) ? " checked" : ""}> <span style="color:${esc(linkText(t))}">${esc(t)}</span></label>`).join("") +
+    `</span></div>` +
+    `<svg id="msvg" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs><g id="mz">${gsvg}${edges}${lsvg}</g></svg>` +
+    `<div class="mhint">▾ / ▸ hoặc nhấp đúp nhóm: hiện / ẩn node con · kéo nền: di chuyển · cuộn: phóng to</div>`;
+  const svg = el.querySelector("#msvg"), z = el.querySelector("#mz");
+  const apply = () => z.setAttribute("transform", `translate(${MV.tx},${MV.ty}) scale(${MV.k})`);
+  const fit = () => {
+    const bb = z.getBBox(), W = svg.clientWidth || 600, Hh = svg.clientHeight || 400;
+    if (!bb.width) return;
+    MV.k = Math.min(1.4, (W - 40) / bb.width, (Hh - 40) / bb.height);
+    MV.tx = (W - bb.width * MV.k) / 2 - bb.x * MV.k; MV.ty = Math.max(16, (Hh - bb.height * MV.k) / 2) - bb.y * MV.k; apply();
+  };
+  if (MV.fit && svg.clientWidth) { MV.fit = false; fit(); } else apply();
+
+  el.querySelectorAll("[data-mlink]").forEach(c => c.onchange = () => {
+    if (c.checked) modLinks.add(c.dataset.mlink); else modLinks.delete(c.dataset.mlink);
+    saveMod(); MV.fit = true; renderModule();
+  });
+  el.querySelectorAll("[data-mall]").forEach(b => b.onclick = () => {
+    if (b.dataset.mall === "fit") return fit();
+    modClosed = b.dataset.mall === "close" ? new Set(parents) : new Set(); saveMod(); MV.fit = true; renderModule();
+  });
+  const toggle = id => { if (modClosed.has(id)) modClosed.delete(id); else modClosed.add(id); saveMod(); renderModule(); };
+  el.querySelectorAll(".mod[data-id]").forEach(g => {
+    g.addEventListener("click", e => {
+      e.stopPropagation();
+      const id = g.dataset.id, n = S.byId[id];
+      if (e.target.classList.contains("mtw")) return toggle(id);
+      if (!n) return;
+      if (n.kind !== "external" && n.line) jumpTo(n.line);
+      focusNode(id, false);
+    });
+    if (g.classList.contains("mgroup")) g.addEventListener("dblclick", e => { e.stopPropagation(); if (g.querySelector(".mtw")) toggle(g.dataset.id); });
+  });
+  // kéo nền để di chuyển, cuộn để phóng to quanh con trỏ
+  svg.onmousedown = e => {
+    if (e.target.closest(".mod")) return;
+    const x0 = e.clientX - MV.tx, y0 = e.clientY - MV.ty;
+    const mv = ev => { MV.tx = ev.clientX - x0; MV.ty = ev.clientY - y0; apply(); };
+    const up = () => { removeEventListener("mousemove", mv); removeEventListener("mouseup", up); };
+    addEventListener("mousemove", mv); addEventListener("mouseup", up);
+  };
+  svg.onwheel = e => {
+    e.preventDefault();
+    const r = svg.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, f = Math.exp(-e.deltaY * 0.0015);
+    const k = Math.min(4, Math.max(0.15, MV.k * f));
+    MV.tx = px - (px - MV.tx) * k / MV.k; MV.ty = py - (py - MV.ty) * k / MV.k; MV.k = k; apply();
+  };
+  if (S.selected) markSelected(S.selected, false);
+}
+</script>
+<script>
+// inspect.js - Inspector (thanh bên phải): node / link đang chọn.
+// Sửa tiêu đề, meta, nội dung, link → ghi vào .kg.md; sửa format → ghi luật vào style.kg.md. Sau mỗi lần sửa, parse lại.
+const SHAPES = [["ellipse", "Elip"], ["box", "Chữ nhật"], ["circle", "Tròn"], ["square", "Vuông"], ["diamond", "Thoi"],
+  ["hexagon", "Lục giác"], ["triangle", "Tam giác"], ["star", "Sao"], ["dot", "Chấm"], ["database", "Trụ"], ["text", "Chỉ chữ"]];
+const ARROWS = [["to", "→ ở đích"], ["from", "← ở nguồn"], ["both", "↔ hai đầu"], ["none", "không có"]];
+const DASH = [["false", "liền"], ["true", "đứt"]];
+const FONTS = ["system-ui", "Segoe UI", "Arial", "Times New Roman", "Georgia", "Consolas"].map(f => [f, f]);
+let insClosed = new Set();
+try { insClosed = new Set(JSON.parse(localStorage.getItem("kgins") || "[]")); } catch (e) {}
+
+function selectLink(l) {
+  S.selected = null; S.selLink = {source:l.source, target:l.target, type:l.type};
+  markSelected(null); renderInspector(true);
+}
+function curLink() {
+  const k = S.selLink;
+  return k && S.graph && S.graph.links.find(l => l.source === k.source && l.target === k.target && l.type === k.type);
+}
+function insFocused() {
+  const a = document.activeElement;
+  return $("#inspector").contains(a) && a.matches("input,textarea,select");
+}
+
+// ---------- dựng HTML ----------
+const hex = (v, d) => /^#[0-9a-f]{6}$/i.test(v || "") ? v : d;
+const fmtVal = v => v === undefined || v === null ? "" : String(v);
+const sec = (key, title, body) =>
+  `<div class="ins-sec${insClosed.has(key) ? " closed" : ""}" data-sec="${key}"><h5>${title}</h5><div class="ins-in">${body}</div></div>`;
+const row = (label, ctl) => `<div class="ins-row"><span>${label}</span>${ctl}</div>`;
+const sel = (attr, list, cur, blank) => `<select ${attr}>${blank ? `<option value="">${blank}</option>` : ""}` +
+  list.map(([v, l]) => `<option value="${esc(v)}"${fmtVal(cur) === v ? " selected" : ""}>${esc(l)}</option>`).join("") + "</select>";
+const numIn = (attr, v, min, max, step) =>
+  `<input type="number" ${attr} min="${min}" max="${max}" step="${step || 1}" value="${v === undefined ? "" : esc(v)}" placeholder="mặc định">`;
+// màu có sẵn (tên màu CSS) ghi thẳng vào style.kg.md: html.color=red
+const NAMED = ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "brown", "gray", "black", "white",
+  "lightblue", "lightgreen", "lightyellow", "lightpink", "lightgray"];
+function colorHex(v) {             // tên màu / #rgb / rgb() → #rrggbb cho ô chọn màu
+  const c = document.createElement("canvas").getContext("2d");
+  c.fillStyle = "#000000"; c.fillStyle = String(v || "");
+  return /^#[0-9a-f]{6}$/i.test(c.fillStyle) ? c.fillStyle : null;
+}
+const colorIn = (attr, v, d) => {
+  const cur = v === undefined || v === null ? "" : String(v);
+  return `<div class="cc"><select ${attr} title="Màu có sẵn"><option value="">(mặc định)</option>` +
+    NAMED.map(n => `<option value="${n}"${cur === n ? " selected" : ""}>■ ${n}</option>`).join("") +
+    (cur && !NAMED.includes(cur) ? `<option value="${esc(cur)}" selected>${esc(cur)}</option>` : "") +
+    `</select><input type="color" ${attr} value="${colorHex(cur) || d}" title="Chọn màu bất kỳ"></div>`;
+};
+const title = id => { const n = S.byId[id]; return n ? (n.title || id) : id; };
+
+function valueList(n, k) {       // gợi ý giá trị cho một khóa meta
+  const sc = S.graph.graph.schema, spec = sc.keys[k];
+  let vals = [];
+  if (k === "type") vals = Object.keys(sc.types || {});
+  else if (k === "contain") vals = S.graph.nodes.filter(x => x.kind === "node" && x.id !== n.id).map(x => x.id);
+  else if (spec && spec.values) vals = spec.values;
+  else if (spec && spec.value === "bool") vals = ["true", "false"];
+  return vals.length ? `<datalist id="dlv-${esc(k)}">${vals.map(v => `<option value="${esc(v)}">`).join("")}</datalist>` : "";
+}
+function linkRows(n) {
+  const L = S.graph.links.filter(l => !l.tree && (l.source === n.id || l.target === n.id));
+  if (!L.length) return '<div class="ins-note">Chưa có link.</div>';
+  return '<div class="ins-links">' + L.map(l => {
+    const out = l.source === n.id, other = out ? l.target : l.source, auto = AUTO_LINKS.includes(l.type);
+    const spec = esc(JSON.stringify({source:l.source, target:l.target, type:l.type}));
+    return `<div class="lk"><span class="t" style="color:${esc(linkText(l.type))};cursor:pointer" data-sellink="${spec}" title="Chọn link này">${esc(l.type)}</span>` +
+      `${out ? "→" : "←"} <a data-sel="${esc(other)}" title="${esc(other)}">${esc(title(other))}</a>` +
+      (auto ? `<span class="auto" title="Parser tự sinh: sửa trong văn bản (${l.type === "contain" ? "meta contain" : "@tham chiếu"})">tự sinh</span>`
+            : (ST ? "" : `<button class="x" data-dellink="${spec}" title="Xóa link">×</button>`)) + "</div>";
+  }).join("") + "</div>";
+}
+function nodeFormat(n) {
+  const s = H(n);
+  return row("Hình", sel('data-fmt="shape"', SHAPES, s.shape, "(mặc định)")) +
+    row("Màu nền", colorIn('data-fmt="color"', s.color, "#ffffff")) +
+    row("Màu viền", colorIn('data-fmt="border-color"', s["border-color"], "#607d8b")) +
+    row("Màu chữ", colorIn('data-fmt="font-color"', s["font-color"], "#1f2328")) +
+    row("Viền dày", numIn('data-fmt="border"', s.border, 0, 10)) +
+    row("Nét viền", sel('data-fmt="dash"', DASH, s.dash, "(mặc định)")) +
+    row("Bo góc", numIn('data-fmt="radius"', s.radius, 0, 40)) +
+    row("Font", sel('data-fmt="font"', FONTS, s.font, "(mặc định)")) +
+    row("Cỡ chữ", numIn('data-fmt="font-size"', s["font-size"], 8, 48)) +
+    row("Kích thước", numIn('data-fmt="size"', s.size, 5, 300)) +
+    row("Độ đậm", numIn('data-fmt="opacity"', s.opacity, 0, 1, 0.1)) +
+    `<div class="ins-acts"><button class="btn" data-act="clearfmt">Xóa format riêng</button></div>` +
+    `<div class="ins-note">Ghi vào style.kg.md, luật <code>select="#${esc(n.id)}"</code>. Kích thước dùng cho vuông, chấm, sao…</div>`;
+}
+function nodePanel(n) {
+  const ext = n.kind === "external", node = n.kind === "node";
+  let h = `<div class="ins-in" style="padding-top:10px"><span class="ins-kind">${esc(n.kind)}</span><span class="ins-id">${node ? "@" : ""}${esc(n.id)}</span>` +
+    row("Tiêu đề", `<input type="text" data-act="title" value="${esc(n.title || "")}"${ext ? " disabled" : ""}>`) +
+    `<div class="ins-acts">${!ext && n.line ? `<button class="btn" data-act="goto">Tới dòng ${n.line}</button>` : ""}` +
+    (node && !ST ? '<button class="btn danger" data-act="delnode">Xóa node</button>' : "") + "</div>" +
+    (n.auto_id ? '<div class="ins-note">Section chưa có @id: ID sinh từ tiêu đề nên đổi theo tiêu đề.</div>' : "") +
+    (ext ? `<div class="ins-note">Node import từ module <b>${esc(n.module)}</b>: chỉ xem.</div>` : "") + "</div>";
+  if (node) {
+    const meta = Object.entries(n.meta || {});
+    h += sec("meta", "META",
+      '<div class="ins-meta">' + meta.map(([k, v]) =>
+        `<span class="k" style="color:${esc(keyColor(k))}" title="${esc(k)}">${esc(k)}</span>` +
+        `<input type="text" data-meta="${esc(k)}" value="${esc(fmtVal(v))}" list="dlv-${esc(k)}"><button class="x" data-delmeta="${esc(k)}" title="Xóa khóa">×</button>`
+      ).join("") +
+      '<input type="text" id="insNewKey" placeholder="khóa mới" list="dlKeys"><input type="text" id="insNewVal" placeholder="giá trị">' +
+      '<button class="btn" data-act="addmeta" title="Thêm khóa">+</button></div>' +
+      meta.map(([k]) => valueList(n, k)).join("") +
+      '<div class="ins-note">Giá trị viết như trong file: true/false, số, chữ; <code>contain</code> là danh sách ID node con.</div>');
+    h += sec("text", "NỘI DUNG",
+      row("content", "") + `<textarea data-field="content" rows="4">${esc(n.content || "")}</textarea>` +
+      row("ask", "") + `<textarea data-field="ask" rows="2" placeholder="lời dặn cho AI">${esc(n.ask || "")}</textarea>` +
+      `<label style="display:flex;gap:6px;align-items:center;margin-top:6px;color:var(--mute)"><input type="checkbox" data-act="show"${n.show === "none" ? " checked" : ""}> Ẩn khỏi sách (show: none)</label>`);
+  }
+  h += sec("links", "LINK", linkRows(n) + (ST || ext ? "" :
+    `<div class="ins-add"><input type="text" id="insLinkType" list="dlLinks" value="${esc(S.lastLinkType || $("#linkSel").value || "")}" placeholder="loại">` +
+    `<input type="text" id="insLinkTarget" list="dlNodes" placeholder="node đích"><button class="btn pri" data-act="addlink">Nối</button></div>` +
+    '<div class="ins-note">Hoặc dùng chế độ ⤳ Nối trên đồ thị: kéo từ node này sang node khác.</div>'));
+  h += sec("format", "FORMAT", nodeFormat(n));
+  return h;
+}
+function linkPanel(l) {
+  const s = H(l), auto = AUTO_LINKS.includes(l.type) || l.tree;
+  const spec = esc(JSON.stringify({source:l.source, target:l.target, type:l.type}));
+  let h = `<div class="ins-in" style="padding-top:10px"><span class="ins-kind">link</span>` +
+    `<span class="t" style="font:600 13px var(--mono);color:${esc(l.tree ? "#888" : linkText(l.type))}">${esc(l.type)}</span>` +
+    `<div class="ins-links" style="margin-top:6px"><div class="lk">từ <a data-sel="${esc(l.source)}">${esc(title(l.source))}</a></div>` +
+    `<div class="lk">tới <a data-sel="${esc(l.target)}">${esc(title(l.target))}</a></div></div>` +
+    `<div class="ins-acts">${l.line ? `<button class="btn" data-act="goto" data-line="${l.line}">Tới dòng ${l.line}</button>` : ""}` +
+    (!auto && !ST ? `<button class="btn danger" data-dellink="${spec}">Xóa link</button>` : "") + "</div>" +
+    (auto ? `<div class="ins-note">${l.tree ? "Cạnh chứa section → node: đổi bằng cách chuyển node sang section khác." :
+      l.type === "contain" ? "Sinh từ meta contain của node nguồn." : "Sinh từ @tham chiếu trong nội dung."}</div>` : "") + "</div>";
+  if (!auto && !ST)
+    h += sec("retype", "ĐỔI LOẠI LINK", `<div class="ins-add" style="grid-template-columns:1fr auto"><input type="text" id="insRetype" list="dlLinks" value="${esc(l.type)}">` +
+      '<button class="btn" data-act="retype">Đổi</button></div>');
+  h += sec("lformat", "FORMAT",
+    `<div class="ins-note" style="margin-top:0">Áp cho <b>mọi link loại ${esc(l.type)}</b>: luật <code>select="link=${esc(l.type)}"</code> trong style.kg.md.</div>` +
+    row("Màu", colorIn('data-lfmt="color"', s.color, colorHex(l.tree ? "#5a5a5a" : linkColor(l.type)) || "#9e9e9e")) +
+    row("Độ dày", numIn('data-lfmt="width"', s.width, 1, 12)) +
+    row("Nét", sel('data-lfmt="dash"', DASH, s.dash, "(mặc định)")) +
+    row("Mũi tên", sel('data-lfmt="arrows"', ARROWS, s.arrows, "(mặc định: ở đích)")) +
+    row("Độ đậm", numIn('data-lfmt="opacity"', s.opacity, 0, 1, 0.1)) +
+    '<div class="ins-acts"><button class="btn" data-act="clearlfmt">Xóa format loại này</button></div>');
+  return h;
+}
+
+function renderInspector(force) {
+  const el = $("#insBody");
+  if (!force && insFocused()) return;          // đang gõ trong Inspector: không vẽ đè
+  const n = S.selected && S.byId[S.selected], l = !n && curLink();
+  if (!S.graph || (!n && !l)) {
+    el.innerHTML = `<div class="ins-empty">Chọn một node hoặc link (trên đồ thị, Tree, Book, Outline, hoặc đặt con trỏ trong văn bản) để xem và sửa.<br><br>` +
+      (ST ? "" : "Tạo node: chế độ <b>＋ Node</b> trên đồ thị.<br>Nối node: chế độ <b>⤳ Nối</b>.") + "</div>";
+    return;
+  }
+  el.innerHTML = (ST ? '<div class="ins-note" style="margin:8px 12px;color:#e2c08d">Bản tĩnh (file .html): chỉ xem, sửa ở đây không được lưu. Muốn sửa: chạy <code>king serve</code>.</div>' : "") +
+    (n ? nodePanel(n) : linkPanel(l));
+  wireInspector(el, n, l);
+}
+
+// ---------- sự kiện → phép sửa ----------
+async function insOp(name, args) { const r = await op(name, args); renderInspector(true); return r; }
+function resolveRef(v) {            // id đầy đủ, tên ngắn của node import, hoặc giữ nguyên
+  v = v.trim();
+  if (S.byId[v]) return v;
+  const ext = S.graph.nodes.find(x => x.kind === "external" && x.id.endsWith("." + v));
+  return ext ? ext.id : v;
+}
+function fmtValue(el) {
+  let v = el.value;
+  if (v === "") return null;                                      // bỏ thuộc tính
+  if (el.type === "number") v = +v;
+  if (el.dataset.fmt === "dash" || el.dataset.lfmt === "dash") v = v === "true";
+  return v;
+}
+function wireInspector(el, n, l) {
+  el.querySelectorAll("[data-sec]>h5").forEach(h => h.onclick = () => {
+    const s = h.parentElement, k = s.dataset.sec;
+    s.classList.toggle("closed");
+    if (s.classList.contains("closed")) insClosed.add(k); else insClosed.delete(k);
+    try { localStorage.setItem("kgins", JSON.stringify([...insClosed])); } catch (e) {}
+  });
+  el.querySelectorAll("[data-sel]").forEach(a => a.onclick = () => focusNode(a.dataset.sel, true));
+  el.querySelectorAll("[data-sellink]").forEach(a => a.onclick = () => selectLink(JSON.parse(a.dataset.sellink)));
+  el.querySelectorAll("[data-dellink]").forEach(b => b.onclick = async () => {
+    const spec = JSON.parse(b.dataset.dellink);
+    if (l) S.selLink = null;
+    await insOp("delete_link", {links:[spec]});
+  });
+  const on = (q, ev, fn) => { const x = el.querySelector(q); if (x) x.addEventListener(ev, fn); };
+  on('[data-act="goto"]', "click", e => jumpTo(+(e.target.dataset.line || (n && n.line)), true));
+
+  if (n) {
+    on('[data-act="title"]', "change", e => { const t = e.target.value.trim(); if (t && t !== n.title) insOp("rename", {id:n.id, title:t}); });
+    on('[data-act="delnode"]', "click", async () => {
+      if (!confirm(`Xóa node ${n.id} khỏi ${S.name}?`)) return;
+      S.selected = null; await insOp("delete_node", {ids:[n.id]});
+    });
+    const setMeta = meta => insOp("set_meta", {id:n.id, meta});
+    el.querySelectorAll("[data-meta]").forEach(i => i.addEventListener("change", () => {
+      const meta = {...n.meta}, k = i.dataset.meta, v = i.value.trim();
+      if (v === "") delete meta[k]; else meta[k] = v;
+      setMeta(meta);
+    }));
+    el.querySelectorAll("[data-delmeta]").forEach(b => b.onclick = () => {
+      const meta = {...n.meta}; delete meta[b.dataset.delmeta]; setMeta(meta);
+    });
+    const addMeta = () => {
+      const k = $("#insNewKey").value.trim(), v = $("#insNewVal").value.trim();
+      if (!k) return status("Nhập tên khóa meta.", "err");
+      setMeta({...n.meta, [k]:v || "true"});
+    };
+    on('[data-act="addmeta"]', "click", addMeta);
+    on("#insNewVal", "keydown", e => { if (e.key === "Enter") addMeta(); });
+    on("#insNewKey", "input", e => {           // gợi ý giá trị theo khóa vừa gõ
+      const k = e.target.value.trim(), old = el.querySelector("#dlvNew");
+      if (old) old.remove();
+      const html = valueList(n, k);
+      if (html) { el.insertAdjacentHTML("beforeend", html.replace(`id="dlv-${esc(k)}"`, 'id="dlvNew"')); $("#insNewVal").setAttribute("list", "dlvNew"); }
+    });
+    el.querySelectorAll("[data-field]").forEach(t => t.addEventListener("change", () =>
+      insOp("set_field", {id:n.id, key:t.dataset.field, value:t.value})));
+    on('[data-act="show"]', "change", e => insOp("set_field", {id:n.id, key:"show", value:e.target.checked ? "none" : ""}));
+    const addLink = async () => {
+      const type = $("#insLinkType").value.trim(), target = resolveRef($("#insLinkTarget").value);
+      if (!type || !target) return status("Nhập loại link và node đích.", "err");
+      S.lastLinkType = type;
+      await insOp("add_link", {source:n.id, target, type});
+    };
+    on('[data-act="addlink"]', "click", addLink);
+    on("#insLinkTarget", "keydown", e => { if (e.key === "Enter") addLink(); });
+    el.querySelectorAll("[data-fmt]").forEach(i => i.addEventListener("change", () =>
+      insOp("set_style", {selectors:["#" + n.id], props:{[i.dataset.fmt]:fmtValue(i)}})));
+    on('[data-act="clearfmt"]', "click", () => insOp("set_style", {selectors:["#" + n.id], props:null}));
+  }
+  if (l) {
+    const selector = "link=" + l.type;
+    el.querySelectorAll("[data-lfmt]").forEach(i => i.addEventListener("change", () =>
+      insOp("set_style", {selectors:[selector], props:{[i.dataset.lfmt]:fmtValue(i)}})));
+    on('[data-act="clearlfmt"]', "click", () => insOp("set_style", {selectors:[selector], props:null}));
+    on('[data-act="retype"]', "click", async () => {
+      const t = $("#insRetype").value.trim();
+      if (!t || t === l.type) return;
+      const spec = {source:l.source, target:l.target, type:l.type};
+      if (!(await op("delete_link", {links:[spec]}))) return;
+      S.selLink = {source:l.source, target:l.target, type:t};
+      await insOp("add_link", {source:l.source, target:l.target, type:t});
+    });
+  }
+}
+</script>
+<script>
+// app.js - menu File / View / Format, 3 view (Graph, Tree, Book), đồng bộ với file trên đĩa, khởi động
+
+// ---------- menu kiểu VS Code ----------
+function closeMenus() { $$(".menu.open").forEach(m => m.classList.remove("open")); }
+$$(".menu").forEach(m => {
+  m.querySelector(".mbtn").onclick = e => {
+    e.stopPropagation();
+    const was = m.classList.contains("open"); closeMenus(); if (!was) m.classList.add("open");
+  };
+  m.onmouseenter = () => { if ($(".menu.open") && !m.classList.contains("open")) { closeMenus(); m.classList.add("open"); } };
+  m.querySelector(".drop").onclick = e => {
+    e.stopPropagation();
+    if (e.target.closest(".item")) closeMenus();         // mục bấm một lần thì đóng; ô nhập trong Format thì giữ
+  };
+});
+document.addEventListener("click", closeMenus);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenus(); });
+
+// ---------- 3 view ----------
+const VIEWS = {graph:"Graph", tree:"Tree", book:"Book", module:"Module"};
+function renderViews() {
+  if (S.view === "tree") renderTree();
+  else if (S.view === "book") renderBook();
+  else if (S.view === "module") renderModule();
+}
+function setView(v) {
+  if (!VIEWS[v]) v = "graph";
+  S.view = v;
+  $$(".view").forEach(el => el.classList.toggle("on", el.id === v + "View"));
+  $$("[data-view]").forEach(el => el.classList.toggle("on", el.dataset.view === v));
+  $("#sbView").textContent = "View: " + VIEWS[v];
+  try { localStorage.setItem("kgview", v); } catch (e) {}
+  if (!ST && S.name) history.replaceState(null, "", "?file=" + encodeURIComponent(S.name) + (v !== "graph" ? "&view=" + v : ""));
+  if (v === "graph") { net.redraw(); if (!S.graphShown && S.graph) net.fit(); S.graphShown = true; }
+  renderViews();
+  if (S.selected) markSelected(S.selected, true);
+}
+$$("[data-view]").forEach(el => el.addEventListener("click", () => setView(el.dataset.view)));
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && ["1", "2", "3", "4"].includes(e.key)) { e.preventDefault(); setView(["graph", "tree", "book", "module"][+e.key - 1]); }
+});
+
+// ---------- báo server trang còn mở; đóng trang thì server tự dừng ----------
+const CLIENT = Math.random().toString(36).slice(2) + Date.now().toString(36);
+function beat(path, keepalive) {
+  return fetch(path, {method:"POST", keepalive, headers:{"Content-Type":"application/json"},
+                      body:JSON.stringify({id:CLIENT})}).catch(() => {});
+}
+if (!ST) {
+  beat("/api/ping"); setInterval(() => beat("/api/ping"), 10000);
+  addEventListener("pagehide", () => {
+    if (S.dirty && S.name)      // còn sửa chưa lưu: gửi lưu trước khi đóng
+      fetch("/api/save", {method:"POST", keepalive:true, headers:{"Content-Type":"application/json"},
+                          body:JSON.stringify({name:S.name, text:S.text})}).catch(() => {});
+    beat("/api/bye", true);
+  });
+  addEventListener("pageshow", e => { if (e.persisted) beat("/api/ping"); });
+}
+
+// ---------- đồng bộ với file trên đĩa ----------
+setInterval(async () => {
+  if (ST || !S.name || document.hidden) return;
+  try {
+    const m = await api("/api/mtime?name=" + encodeURIComponent(S.name));
+    if (m.mtime > S.mtime + 1e-6) {
+      if (!S.dirty || confirm(S.name + " vừa được sửa ở nơi khác. Tải lại (bỏ thay đổi ở đây)?")) {
+        const f = await api("/api/file?name=" + encodeURIComponent(S.name));
+        S.mtime = f.mtime; setText(f.text); S.dirty = false; await reparse(); status("Đã tải lại " + S.name);
+      } else S.mtime = m.mtime;
+    }
+    if (m.side !== S.side) { S.side = m.side; await reparse(); }
+  } catch (e) {}
+}, 2000);
+
+// ---------- khởi động ----------
+// bấm lại "Thu gọn" thì về chế độ Chọn (bản tĩnh không có nút Chọn)
+$$("[data-mode]").forEach(b => b.onclick = () => setMode(b.dataset.mode === "fold" && S.mode === "fold" ? "select" : b.dataset.mode));
+$("#bSvg").onclick = () => { closeMenus(); if (S.view !== "graph") setView("graph"); exportSVG(); };
+$("#bSave").onclick = save; $("#bUndo").onclick = undo;
+$("#bFoldAll").onclick = () => foldAll(true); $("#bUnfoldAll").onclick = () => foldAll(false);
+$("#showTree").onchange = () => { if (S.graph) { edgesDS.clear(); edgesDS.add(visEdges()); } if (S.mode === "link") net.addEdgeMode(); };
+$("#showDefs").onchange = e => { S.showDefs = e.target.checked; if (S.graph) render(S.graph); };
+// ẩn / hiện nhãn node, section, link (Format › Nhãn); nhớ trong trình duyệt
+try { S.hideLab = JSON.parse(localStorage.getItem("kglabels") || "{}"); } catch (e) { S.hideLab = {}; }
+function applyLabels() {
+  $$("[data-lab]").forEach(c => { c.checked = !S.hideLab[c.dataset.lab]; });
+  try { localStorage.setItem("kglabels", JSON.stringify(S.hideLab)); } catch (e) {}
+  if (S.graph) render(S.graph);
+}
+$$("[data-lab]").forEach(c => c.onchange = () => { S.hideLab[c.dataset.lab] = !c.checked; applyLabels(); });
+$("#bLabAll").onclick = () => {
+  const hideAll = !["node", "section", "link"].every(k => S.hideLab[k]);
+  S.hideLab = {node:hideAll, section:hideAll, link:hideAll}; applyLabels();
+};
+$$("[data-lab]").forEach(c => { c.checked = !S.hideLab[c.dataset.lab]; });
+$("#bFit").onclick = () => net.fit({animation:{duration:300}});
+
+// ---------- thanh kéo co dãn + bật/tắt panel (nhớ trong trình duyệt) ----------
+const LAYOUT_KEY = "kglayout";
+function loadLayout() { try { return JSON.parse(localStorage.getItem(LAYOUT_KEY) || "{}"); } catch (e) { return {}; } }
+function saveLayout(patch) { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({...loadLayout(), ...patch})); } catch (e) {} }
+const PANEL_SPLIT = {explorer:"#splitE", inspector:"#splitI", left:"#split"};
+function setPanel(name, show) {
+  const el = $("#" + name), sp = $(PANEL_SPLIT[name]);
+  if (show === undefined) show = el.classList.contains("hidden-panel");
+  el.classList.toggle("hidden-panel", !show); sp.classList.toggle("hidden-panel", !show);
+  $$(`[data-panel="${name}"]`).forEach(b => b.classList.toggle("on", show));
+  saveLayout({["show_" + name]: show});
+  requestAnimationFrame(() => net.redraw());
+}
+$$(".split").forEach(sp => sp.onmousedown = e => {
+  e.preventDefault();
+  const el = $("#" + sp.dataset.target), left = sp.dataset.side === "left";
+  const x0 = e.clientX, w0 = el.getBoundingClientRect().width;
+  const mv = ev => {
+    const w = Math.max(160, Math.min(w0 + (left ? 1 : -1) * (ev.clientX - x0), innerWidth - 420));
+    el.style.width = w + "px";
+  };
+  const up = () => {
+    removeEventListener("mousemove", mv); removeEventListener("mouseup", up); sp.classList.remove("drag");
+    saveLayout({["w_" + sp.dataset.target]: el.style.width}); net.redraw();
+  };
+  sp.classList.add("drag"); addEventListener("mousemove", mv); addEventListener("mouseup", up);
+});
+$$("[data-panel]").forEach(b => b.addEventListener("click", () => setPanel(b.dataset.panel)));
+$$("#bWrap, #bWrap2").forEach(b => b.addEventListener("click", () => setWrap(!S.wrap)));
+// Alt+Z: ngắt dòng (macOS: Option+Z cho ký tự "Ω"). Mở trang trong VS Code thì VS Code giữ Alt+Z: dùng nút ↵ Wrap.
+document.addEventListener("keydown", e => {
+  if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyZ" || /^[zΩ]$/i.test(e.key))) {
+    e.preventDefault(); setWrap(!S.wrap); status(S.wrap ? "Ngắt dòng: bật (Alt+Z để tắt)" : "Ngắt dòng: tắt");
+  }
+}, true);
+{ let w = ""; try { w = localStorage.getItem("kgwrap"); } catch (e) {} if (w) setWrap(true); }
+document.addEventListener("keydown", e => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const k = e.key.toLowerCase();
+  if (k === "b" && e.altKey) { e.preventDefault(); setPanel("inspector"); }
+  else if (k === "b") { e.preventDefault(); setPanel("explorer"); }
+  else if (k === "e") { e.preventDefault(); setPanel("left"); }
+});
+{
+  const L = loadLayout();
+  for (const name of ["explorer", "inspector", "left"]) {
+    if (L["w_" + name]) $("#" + name).style.width = L["w_" + name];
+    setPanel(name, L["show_" + name] !== false);
+  }
+}
+const BOOT_URL = new URLSearchParams(location.search);   // đọc trước khi openFile() viết lại URL
+function pickFromUrl() {           // ?node=id mở sẵn node đó (link chia sẻ tới một node)
+  const id = BOOT_URL.get("node");
+  if (id && S.byId[id]) { focusNode(id, true); if (S.byId[id].line) jumpTo(S.byId[id].line); }
+}
+(async () => {
+  setMode("select");
+  let v = new URLSearchParams(location.search).get("view");
+  if (!v) { try { v = localStorage.getItem("kgview"); } catch (e) {} }
+  setView(v || "graph");
+  if (ST) {
+    document.body.classList.add("static"); src.readOnly = true;
+    S.name = ST.name; src.value = S.text = ST.text; $("#fname").textContent = ST.name;
+    $("#title").textContent = ST.name + " — bản tĩnh, chỉ xem"; $("#sbRoot").textContent = "Bản tĩnh";
+    $("#editLink").href = "http://127.0.0.1:8765/?file=" + encodeURIComponent(ST.name);
+    document.title = ST.name; render(ST.graph); renderExplorer(); pickFromUrl(); return;
+  }
+  try {
+    const s = await refreshState(), want = new URLSearchParams(location.search).get("file");
+    await openFile(s.files.includes(want) ? want : (s.files.find(f => !/^(schema|style)\./.test(f)) || s.files[0] || ""));
+    pickFromUrl();
+  } catch (e) { status("Không kết nối được server (king serve): " + e.message, "err"); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KING Markdown</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header id="menubar">
+  <span class="logo" title="KING Markdown: Knowledge is KING">K</span>
+
+  <div class="menu" id="mFile">
+    <button class="mbtn">File</button>
+    <div class="drop">
+      <button class="item edit" id="bFolder">Mở thư mục…</button>
+      <button class="item edit" id="bNew">File mới…</button>
+      <button class="item edit" id="bSave">Lưu<kbd>Ctrl+S</kbd></button>
+      <button class="item edit" id="bUndo">Hoàn tác thao tác đồ thị<kbd>Ctrl+Z</kbd></button>
+      <button class="item" id="bSvg">Xuất SVG của đồ thị</button>
+    </div>
+  </div>
+
+  <div class="menu" id="mView">
+    <button class="mbtn">View</button>
+    <div class="drop">
+      <button class="item" data-view="graph">Graph<kbd>Ctrl+1</kbd></button>
+      <button class="item" data-view="tree">Tree<kbd>Ctrl+2</kbd></button>
+      <button class="item" data-view="book">Book<kbd>Ctrl+3</kbd></button>
+      <button class="item" data-view="module">Module<kbd>Ctrl+4</kbd></button>
+      <div class="sep"></div>
+      <button class="item" data-panel="explorer">Explorer<kbd>Ctrl+B</kbd></button>
+      <button class="item" data-panel="inspector">Inspector<kbd>Ctrl+Alt+B</kbd></button>
+      <button class="item" data-panel="left">Khung văn bản<kbd>Ctrl+E</kbd></button>
+      <button class="item" id="bWrap">Ngắt dòng<kbd>Alt+Z</kbd></button>
+    </div>
+  </div>
+
+  <div class="menu" id="mFormat">
+    <button class="mbtn">Format</button>
+    <div class="drop wide">
+      <div class="label edit">Node / link đang chọn trên đồ thị (đủ thuộc tính hơn ở Inspector bên phải)</div>
+      <div class="row edit" id="fmt">
+        <select data-p="font" title="Font">
+          <option value="">font</option><option>system-ui</option><option>Arial</option><option>Times New Roman</option><option>Georgia</option><option>Consolas</option>
+        </select>
+        <input type="number" data-p="font-size" min="8" max="48" placeholder="cỡ" title="Cỡ chữ">
+        <select data-p="shape" title="Hình">
+          <option value="">hình</option><option value="ellipse">elip</option><option value="box">chữ nhật</option><option value="circle">tròn</option><option value="square">vuông</option>
+          <option value="diamond">thoi</option><option value="hexagon">lục giác</option><option value="triangle">tam giác</option><option value="star">sao</option><option value="dot">chấm</option><option value="database">trụ</option><option value="text">chỉ chữ</option>
+        </select>
+        <label title="Màu nền (với link: màu đường)">nền <input type="color" data-p="color" value="#e0f2f1"></label>
+        <label title="Màu viền (với link: màu đường)">viền <input type="color" data-p="border-color" value="#607d8b"></label>
+        <label title="Màu chữ">chữ <input type="color" data-p="font-color" value="#1f2328"></label>
+        <input type="number" data-p="border" min="0" max="10" placeholder="dày" title="Độ dày viền (với link: độ dày đường)">
+        <select data-p="dash" title="Kiểu nét"><option value="">nét</option><option value="false">liền</option><option value="true">đứt</option></select>
+        <button id="bClear" title="Bỏ định dạng riêng của node/loại link đang chọn">Xóa format</button>
+      </div>
+
+      <div class="sep edit"></div>
+      <div class="label edit">Chế độ trên đồ thị (cũng có trên thanh công cụ của Graph)</div>
+      <div class="row edit">
+        <button data-mode="select">Chọn</button>
+        <button data-mode="add">+ Node</button>
+        <button data-mode="link">Nối</button>
+        <button data-mode="move">Chuyển nhóm</button>
+      </div>
+
+      <div class="sep"></div>
+      <div class="label">Nhóm (part-of / contain)</div>
+      <div class="row">
+        <button data-mode="fold">Thu gọn</button>
+        <button id="bFoldAll" title="Thu gọn mọi node cha">Thu hết</button>
+        <button id="bUnfoldAll" title="Bung mọi node">Bung hết</button>
+        <label title="Hiện cạnh section → node"><input type="checkbox" id="showTree" checked> cạnh chứa</label>
+        <label title="Hiện trên đồ thị các node định nghĩa schema/style viết ngay trong file dữ liệu"><input type="checkbox" id="showDefs"> node schema/style</label>
+      </div>
+
+      <div class="sep"></div>
+      <div class="label">Nhãn trên đồ thị (Graph, Module)</div>
+      <div class="row">
+        <label title="Hiện tên node (dưới hình)"><input type="checkbox" data-lab="node" checked> nhãn node</label>
+        <label title="Hiện tên section"><input type="checkbox" data-lab="section" checked> nhãn section</label>
+        <label title="Hiện tên loại link trên đường nối"><input type="checkbox" data-lab="link" checked> nhãn link</label>
+        <button id="bLabAll" title="Ẩn / hiện mọi nhãn">Ẩn / hiện tất cả</button>
+      </div>
+
+      <div class="sep edit"></div>
+      <div class="label edit">Schema</div>
+      <div class="row edit">
+        <button data-schema="type" title="Thêm kiểu node vào schema.kg.md">+ Kiểu</button>
+        <button data-schema="key" title="Thêm khóa meta vào schema.kg.md">+ Meta</button>
+        <button data-schema="link" title="Thêm loại link vào schema.kg.md">+ Link</button>
+      </div>
+    </div>
+  </div>
+
+  <span class="static-only" id="toEdit">Bản chỉ xem. Muốn sửa: chạy <code>king serve</code> rồi mở <a id="editLink" href="http://127.0.0.1:8765/">editor</a>.</span>
+  <span id="title"></span>
+</header>
+
+<main>
+  <aside id="explorer" class="side">
+    <div class="side-head">EXPLORER
+      <span class="side-acts edit">
+        <button id="exNew" title="File mới">＋</button><button id="exFolder" title="Mở thư mục">📁</button><button id="exRefresh" title="Tải lại danh sách">⟳</button>
+      </span>
+    </div>
+    <div class="side-sec" id="exRoot"></div>
+    <div id="exFiles"></div>
+    <div class="side-sec">OUTLINE</div>
+    <div id="exOutline"></div>
+  </aside>
+  <div class="split" id="splitE" data-target="explorer" data-side="left"></div>
+
+  <section id="left">
+    <div class="tabs"><span id="fname" class="tab on"></span>
+      <button id="bWrap2" class="tab-btn" title="Ngắt dòng (Alt+Z)">↵ Wrap</button></div>
+    <div id="ed">
+      <pre id="gut"></pre>
+      <div id="code"><pre id="hl" aria-hidden="true"></pre><textarea id="src" spellcheck="false" wrap="off"></textarea></div>
+    </div>
+    <div class="panel-title">PROBLEMS <span id="nprob"></span></div>
+    <div id="log"></div>
+  </section>
+  <div class="split" id="split" data-target="left" data-side="left"></div>
+
+  <section id="right">
+    <div class="tabs" id="viewTabs">
+      <span class="tab" data-view="graph">Graph</span><span class="tab" data-view="tree">Tree</span><span class="tab" data-view="book">Book</span><span class="tab" data-view="module">Module</span>
+    </div>
+    <div id="views">
+      <div id="graphView" class="view">
+        <div id="g"></div>
+        <div id="toolbar">
+          <button data-mode="select" class="edit" title="Chọn, kéo node để sắp xếp (Esc)">⬚ Chọn</button>
+          <button data-mode="add" class="edit" title="Bấm nền: node cuối file · bấm section: node trong section (N)">＋ Node</button>
+          <button data-mode="link" class="edit" title="Kéo từ node nguồn sang node đích (L)">⤳ Nối</button>
+          <select id="linkSel" class="edit" title="Loại link khi nối"></select>
+          <button data-mode="move" class="edit" title="Kéo node thả lên một section để chuyển nhóm">⇲ Chuyển nhóm</button>
+          <button data-mode="fold" title="Bấm node cha để thu gọn / bung">▾ Thu gọn</button>
+          <button id="bFit" title="Vừa khung">⤢</button>
+        </div>
+        <div id="hint"></div>
+      </div>
+      <div id="treeView" class="view"></div>
+      <div id="bookView" class="view"></div>
+      <div id="moduleView" class="view"></div>
+    </div>
+  </section>
+
+  <div class="split" id="splitI" data-target="inspector" data-side="right"></div>
+  <aside id="inspector" class="side">
+    <div class="side-head">INSPECTOR</div>
+    <div id="insBody"></div>
+  </aside>
+</main>
+
+<footer id="statusbar">
+  <span id="sbRoot"></span>
+  <span id="sbProb"></span>
+  <span id="status"></span>
+  <span id="sbView"></span>
+</footer>
+
+<dialog id="dlg">
+  <b>Mở thư mục</b>
+  <input id="dpath" type="text" title="Gõ đường dẫn rồi Enter">
+  <div id="dlist"></div>
+  <menu><button id="dcancel">Hủy</button><button id="dok" class="on">Mở thư mục này</button></menu>
+</dialog>
+<datalist id="dlNodes"></datalist><datalist id="dlKeys"></datalist><datalist id="dlLinks"></datalist>
+<script src="js/editor.js"></script>
+<script src="js/graph.js"></script>
+<script src="js/explorer.js"></script>
+<script src="js/book.js"></script>
+<script src="js/module.js"></script>
+<script src="js/inspect.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
