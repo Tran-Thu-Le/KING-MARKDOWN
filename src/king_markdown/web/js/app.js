@@ -1,4 +1,4 @@
-// app.js - menu File / View / Format, 3 view (Graph, Tree, Book), đồng bộ với file trên đĩa, khởi động
+// app.js - menu File / View / Format, hai khung nhiều tab (Văn bản, Graph, Tree, Book, Module), đồng bộ với file trên đĩa, khởi động
 
 // ---------- menu kiểu VS Code ----------
 function closeMenus() { $$(".menu.open").forEach(m => m.classList.remove("open")); }
@@ -16,26 +16,139 @@ $$(".menu").forEach(m => {
 document.addEventListener("click", closeMenus);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenus(); });
 
-// ---------- 3 view ----------
+// ---------- hai khung, mỗi khung nhiều tab ----------
+// Panel: text (khung văn bản) và 4 view. Mỗi panel chỉ có một bản, nằm ở một khung (left / right) hoặc đang đóng.
+// Mỗi khung có một tab đang mở; hai khung có thể mở hai view khác nhau cùng lúc (vd. Tree bên trái, Graph bên phải).
 const VIEWS = {graph:"Graph", tree:"Tree", book:"Book", module:"Module"};
-function renderViews() {
-  if (S.view === "tree") renderTree();
-  else if (S.view === "book") renderBook();
-  else if (S.view === "module") renderModule();
+const PANELS = {text:"Văn bản (.kg.md)", ...VIEWS};
+const PANES = ["left", "right"];
+const PANE_KEY = "kgpanes";
+const tabOf = p => $(`.tab[data-panel="${p}"]`), bodyOf = p => $("#" + p + "View");
+const closedBox = document.createElement("div");                   // panel đang đóng: vẫn ở trong trang (code khác còn tìm #log, #fname…) nhưng ẩn
+closedBox.hidden = true; closedBox.id = "closedPanels"; document.body.appendChild(closedBox);
+const paneOf = p => { const t = tabOf(p).closest(".pane"); return t ? t.id : null; };
+const paneTabs = id => [...$("#" + id).querySelectorAll(".tab-list .tab")].map(t => t.dataset.panel);
+const activeOf = id => { const t = $("#" + id).querySelector(".tab-list .tab.on"); return t ? t.dataset.panel : null; };
+const shown = p => PANES.some(id => activeOf(id) === p);          // panel đang hiện ở một khung nào đó
+function savePanes() {
+  const L = {}; for (const id of PANES) L[id] = {tabs: paneTabs(id), on: activeOf(id)};
+  try { localStorage.setItem(PANE_KEY, JSON.stringify(L)); } catch (e) {}
 }
-function setView(v) {
-  if (!VIEWS[v]) v = "graph";
-  S.view = v;
-  $$(".view").forEach(el => el.classList.toggle("on", el.id === v + "View"));
-  $$("[data-view]").forEach(el => el.classList.toggle("on", el.dataset.view === v));
-  $("#sbView").textContent = "View: " + VIEWS[v];
-  try { localStorage.setItem("kgview", v); } catch (e) {}
-  if (!ST && S.name) history.replaceState(null, "", "?file=" + encodeURIComponent(S.name) + (v !== "graph" ? "&view=" + v : ""));
-  if (v === "graph") { net.redraw(); if (!S.graphShown && S.graph) net.fit(); S.graphShown = true; }
-  renderViews();
+function refreshPane(id) {
+  const pane = $("#" + id), on = activeOf(id);
+  pane.classList.toggle("empty", !on);
+  pane.classList.toggle("text-on", on === "text");
+  for (const t of pane.querySelectorAll(".tab-list .tab")) bodyOf(t.dataset.panel).classList.toggle("on", t.dataset.panel === on);
+}
+function renderViews() {
+  if (shown("tree")) renderTree();
+  if (shown("book")) renderBook();
+  if (shown("module")) renderModule();
+}
+function afterShow(p) {
+  if (p === "graph") requestAnimationFrame(() => { net.redraw(); if (!S.graphShown && S.graph) net.fit(); S.graphShown = true; });
+  if (p === "text") updateGutter();
+  if (VIEWS[p]) {
+    S.view = p; $("#sbView").textContent = "View: " + VIEWS[p];
+    $$(".item[data-view]").forEach(el => el.classList.toggle("on", shown(el.dataset.view)));
+    try { localStorage.setItem("kgview", p); } catch (e) {}
+    if (!ST && S.name) history.replaceState(null, "", "?file=" + encodeURIComponent(S.name) + (p !== "graph" ? "&view=" + p : ""));
+  }
+}
+function showTab(id, p) {
+  $("#" + id).querySelectorAll(".tab-list .tab").forEach(t => t.classList.toggle("on", t.dataset.panel === p));
+  refreshPane(id);
+}
+function activate(p) {                    // mở tab p trong khung đang chứa nó
+  const id = paneOf(p); if (!id) return;
+  showTab(id, p); savePanes();
+  afterShow(p); renderViews();
   if (S.selected) markSelected(S.selected, true);
 }
-$$("[data-view]").forEach(el => el.addEventListener("click", () => setView(el.dataset.view)));
+function detach(p) {                      // gỡ panel p khỏi khung đang chứa; khung đó mở tab bên cạnh
+  const id = paneOf(p); if (!id) return;
+  const wasOn = activeOf(id) === p, rest = paneTabs(id).filter(x => x !== p);
+  const t = tabOf(p), b = bodyOf(p);
+  t.classList.remove("on"); b.classList.remove("on");
+  closedBox.append(t, b);
+  if (wasOn && rest.length) showTab(id, rest[rest.length - 1]); else refreshPane(id);
+  const o = activeOf(id); if (o && wasOn) afterShow(o);
+}
+function placePanel(p, id, quiet) {            // đưa panel p vào khung id (chuyển từ khung kia nếu đang ở đó) và mở nó
+  if (paneOf(p) !== id) {
+    detach(p);
+    $("#" + id + " .tab-list").appendChild(tabOf(p));
+    $("#" + id + " .views").insertBefore(bodyOf(p), $("#" + id + " .pane-empty"));
+  }
+  if (quiet) refreshPane(id); else activate(p);
+}
+function closePanel(p) {
+  const id = paneOf(p); if (!id) return;
+  detach(p); savePanes(); renderViews();
+}
+$$(".item[data-view]").forEach(el => el.addEventListener("click", () => setView(el.dataset.view)));   // menu View
+function setView(v) {                     // Ctrl+1..4, ?view=…: mở view v; nếu đang đóng thì đặt vào khung phải
+  if (!VIEWS[v]) v = "graph";
+  if (paneOf(v)) activate(v); else placePanel(v, "right");
+}
+// menu ＋ của mỗi khung
+const addMenu = $("#addMenu");
+function openAddMenu(btn) {
+  const id = btn.closest(".pane").id;
+  addMenu.innerHTML = Object.entries(PANELS).map(([p, name]) => {
+    const where = paneOf(p);
+    const note = where === id ? "đang ở đây" : where ? "chuyển từ khung " + (where === "left" ? "trái" : "phải") : "";
+    return `<button data-add="${p}" ${where === id ? "disabled" : ""}>${name}<small>${note}</small></button>`;
+  }).join("");
+  const r = btn.getBoundingClientRect();
+  addMenu.hidden = false; addMenu.dataset.pane = id;
+  addMenu.style.top = r.bottom + 2 + "px";
+  addMenu.style.left = Math.max(4, Math.min(r.left, innerWidth - addMenu.offsetWidth - 4)) + "px";
+}
+$$(".tab-add").forEach(b => b.addEventListener("click", e => {
+  e.stopPropagation();
+  if (!addMenu.hidden && addMenu.dataset.pane === b.closest(".pane").id) addMenu.hidden = true; else openAddMenu(b);
+}));
+addMenu.addEventListener("click", e => {
+  e.stopPropagation();
+  const b = e.target.closest("[data-add]"); if (!b || b.disabled) return;
+  addMenu.hidden = true; placePanel(b.dataset.add, addMenu.dataset.pane);
+});
+document.addEventListener("click", () => { addMenu.hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") addMenu.hidden = true; });
+// bấm tab: mở; bấm ×: đóng; kéo tab thả lên thanh tab của khung kia: chuyển
+for (const p of Object.keys(PANELS)) {
+  const t = tabOf(p);
+  t.draggable = true;
+  t.addEventListener("click", e => { if (e.target.closest(".tab-x")) { e.stopPropagation(); closePanel(p); } else activate(p); });
+  t.addEventListener("dragstart", e => { e.dataTransfer.setData("text/kg-panel", p); e.dataTransfer.effectAllowed = "move"; });
+}
+for (const id of PANES) {
+  const bar = $("#" + id + " .tabs");
+  bar.addEventListener("dragover", e => { if (e.dataTransfer.types.includes("text/kg-panel")) { e.preventDefault(); bar.classList.add("drop-on"); } });
+  bar.addEventListener("dragleave", () => bar.classList.remove("drop-on"));
+  bar.addEventListener("drop", e => {
+    bar.classList.remove("drop-on");
+    const p = e.dataTransfer.getData("text/kg-panel"); if (!PANELS[p]) return;
+    e.preventDefault(); placePanel(p, id);
+  });
+}
+function restorePanes(view) {             // bố cục đã lưu; mặc định: Văn bản bên trái, 4 view bên phải
+  let L = null; try { L = JSON.parse(localStorage.getItem(PANE_KEY) || "null"); } catch (e) {}
+  if (!(L && PANES.every(id => L[id] && Array.isArray(L[id].tabs)))) {
+    let v = null; try { v = localStorage.getItem("kgview"); } catch (e) {}
+    L = {left: {tabs: ["text"], on: "text"}, right: {tabs: Object.keys(VIEWS), on: VIEWS[v] ? v : "graph"}};
+  }
+  const want = new Set(PANES.flatMap(id => L[id].tabs));
+  for (const p of Object.keys(PANELS)) if (!want.has(p)) detach(p);
+  for (const id of PANES) for (const p of L[id].tabs) if (PANELS[p]) placePanel(p, id, true);
+  for (const id of PANES) {
+    const tabs = paneTabs(id), on = tabs.includes(L[id].on) ? L[id].on : tabs[0];
+    showTab(id, on); if (on) afterShow(on);
+  }
+  if (view && VIEWS[view]) setView(view);   // ?view=… trong URL
+  renderViews();
+}
 document.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && ["1", "2", "3", "4"].includes(e.key)) { e.preventDefault(); setView(["graph", "tree", "book", "module"][+e.key - 1]); }
 });
@@ -75,11 +188,20 @@ setInterval(async () => {
 // ---------- khởi động ----------
 // bấm lại "Thu gọn" thì về chế độ Chọn (bản tĩnh không có nút Chọn)
 $$("[data-mode]").forEach(b => b.onclick = () => setMode(b.dataset.mode === "fold" && S.mode === "fold" ? "select" : b.dataset.mode));
-$("#bSvg").onclick = () => { closeMenus(); if (S.view !== "graph") setView("graph"); exportSVG(); };
-$("#bSave").onclick = save; $("#bUndo").onclick = undo;
+$("#bSvg").onclick = () => { closeMenus(); if (!shown("graph")) setView("graph"); exportSVG(); };
+$("#bSave").onclick = saveNow; $("#bUndo").onclick = undo;
 $("#bFoldAll").onclick = () => foldAll(true); $("#bUnfoldAll").onclick = () => foldAll(false);
 $("#showTree").onchange = () => { if (S.graph) { edgesDS.clear(); edgesDS.add(visEdges()); } if (S.mode === "link") net.addEdgeMode(); };
 $("#showDefs").onchange = e => { S.showDefs = e.target.checked; if (S.graph) render(S.graph); };
+function toggleShowHidden() {            // tạm hiện lại node / link có - hide: …
+  S.showHidden = !S.showHidden; $("#bShowHidden").classList.toggle("on", S.showHidden);
+  status(S.showHidden ? "Đang hiện cả node đã ẩn (hide). Ctrl+H để ẩn lại." : "Đã ẩn lại các node có hide.");
+  if (S.graph) render(S.graph);
+}
+$("#bShowHidden").onclick = toggleShowHidden;
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "h") { e.preventDefault(); toggleShowHidden(); }
+});
 // ẩn / hiện nhãn node, section, link (Format › Nhãn); nhớ trong trình duyệt
 try { S.hideLab = JSON.parse(localStorage.getItem("kglabels") || "{}"); } catch (e) { S.hideLab = {}; }
 function applyLabels() {
@@ -142,8 +264,9 @@ document.addEventListener("keydown", e => {
   const L = loadLayout();
   for (const name of ["explorer", "inspector", "left"]) {
     if (L["w_" + name]) $("#" + name).style.width = L["w_" + name];
-    setPanel(name, L["show_" + name] !== false);
+    setPanel(name, name === "inspector" ? false : L["show_" + name] !== false);   // 0.3: Inspector ẩn mặc định
   }
+  if (FROZEN) document.body.classList.add("frozen");
 }
 const BOOT_URL = new URLSearchParams(location.search);   // đọc trước khi openFile() viết lại URL
 function pickFromUrl() {           // ?node=id mở sẵn node đó (link chia sẻ tới một node)
@@ -152,9 +275,7 @@ function pickFromUrl() {           // ?node=id mở sẵn node đó (link chia s
 }
 (async () => {
   setMode("select");
-  let v = new URLSearchParams(location.search).get("view");
-  if (!v) { try { v = localStorage.getItem("kgview"); } catch (e) {} }
-  setView(v || "graph");
+  restorePanes(new URLSearchParams(location.search).get("view"));
   if (ST) {
     document.body.classList.add("static"); src.readOnly = true;
     S.name = ST.name; src.value = S.text = ST.text; $("#fname").textContent = ST.name;

@@ -1,29 +1,26 @@
 ---
-kg: 0.2
+kg: 0.3
 ---
 
-@hinh: Hình
-- meta: kind=type
+@node Hinh
+- label: Hình
 
-@specialize: Là trường hợp riêng của
-- meta: kind=link, dag=true, from=hinh, to=hinh
+@link specialize
+- label: Là trường hợp riêng của
+- dag: true
 
 Cho bài Hình tròn (hinh2.kg.md): cùng từ vựng với schema hệ thống.
 
-@concept: Khái niệm
-- meta: kind=type, allow="role, important"
+@node Concept
+- label: Khái niệm
 
-@group: Nhóm
-- meta: kind=type, allow="important"
+@node Group
+- label: Nhóm
 
-@role: Vai trò
-- meta: kind=key, values="Nạp | Xuất", required=true
+@link part-of
+- label: Là phần của
+- dag: true
 
-@important: Quan trọng
-- meta: kind=key, value=bool
-
-@part-of: Là phần của
-- meta: kind=link, dag=true, to=group
-
-@needs: Cần biết trước
-- meta: kind=link, dag=true
+@link needs
+- label: Cần biết trước
+- dag: true

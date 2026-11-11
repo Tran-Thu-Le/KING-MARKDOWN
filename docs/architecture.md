@@ -2,6 +2,13 @@
 
 Tài liệu này mô tả cách các thành phần của KING Markdown ghép với nhau. Cú pháp ngôn ngữ `.kg.md` và kế hoạch cải tiến nằm trong [documentation.kg.md](documentation.kg.md). Mã nguồn nằm trong `src/king_markdown/`.
 
+> **KING 0.3 (nhánh `v0.3`).**
+> - **Parser** chia hai bước: `parser.py` cắt block (`cut_blocks`), rồi `Parser.build` xử lý ngữ nghĩa và xuất JSON. Giá trị được đọc trong `values.py`.
+> - **Code cũ** cho cú pháp v0.2 nằm trong `legacy.py`. Nó đọc các file `kg: 0.2` (file style vẫn ở định dạng này) và phục vụ `ops.py`.
+> - **Đóng băng:** `ops.py` và Inspector. Mọi chỉnh sửa đi qua khung văn bản.
+>
+> Xem [dev/plan-v3/](../dev/plan-v3/plan-v3.md).
+
 ## 1. Nguyên tắc
 
 1. **Văn bản là nguồn duy nhất.** Mọi trạng thái nằm trong các file `.kg.md`. Editor không giữ dữ liệu riêng; thao tác trên đồ thị được đổi thành phép sửa văn bản. Ngoại lệ duy nhất là vị trí node trên màn hình, lưu trong trình duyệt.

@@ -11,12 +11,13 @@
   --bg:#1e1e1e; --side:#252526; --bar:#3c3c3c; --tab:#2d2d2d; --line:#3c3c3c; --hover:#2a2d2e; --sel:#264f78;
   --ink:#d4d4d4; --mute:#8b8b8b; --bright:#ffffff; --acc:#0e639c; --acc2:#007acc; --focus:#007fd4;
   --err:#f48771; --warn:#cca700; --mono:"Cascadia Code",Consolas,"Courier New",monospace;
-  /* bộ 4 màu của KING Markdown (khung văn bản + style hệ thống):
-     section xanh dương · node / module import vàng nhạt · loại link cam · meta hồng */
-  --k-sec:#4fa3ff; --k-node:#f5e3a1; --k-link:#f0a04b; --k-meta:#f48fb8;
-  --k-val:#c9915e; --k-text:#ffffff;        /* giá trị sau '=': nâu · nội dung thường: trắng */
+  /* bảng màu KING 0.3 (plan-v2c): bốn màu nổi — vàng: node · tím: keyword · xanh nhạt: key · xanh ngọc: type.
+     Link và phần còn lại trung tính. Dùng chung cho khung văn bản và 4 view. */
+  --k-node:#E8D48A; --k-link:#A5ABB6; --k-kw:#C586C0; --k-key:#9CDCFE; --k-type:#4EC9B0;
+  --k-val:#D4D4D4; --k-str:#CE9178; --k-com:#6A9955; --k-punct:#808080;
+  --k-sec:#FFFFFF; --k-text:#D4D4D4; --k-meta:var(--k-key);
   --c-head:var(--k-sec); --c-id:var(--k-node); --c-ref:var(--k-node);
-  --c-field:var(--ink); --c-com:#7f848e; --c-code:var(--ink); --c-ask:var(--ink);
+  --c-field:var(--ink); --c-com:#6A9955; --c-code:var(--ink); --c-ask:var(--ink);
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -141,21 +142,30 @@ main{flex:1;display:flex;min-height:0}
 #gut .h{color:#c6c6c6}
 #code{position:relative;flex:1;min-width:0}
 #hl,#src{position:absolute;inset:0;margin:0;padding:8px 8px 40px;font:inherit;white-space:pre;tab-size:2;border:0;overflow:auto}
-#hl{color:var(--ink);pointer-events:none;overflow:hidden;padding-bottom:52px;padding-right:20px}   /* +12px: bù thanh cuộn của textarea */
+/* lớp tô màu không cuộn: khối #hlIn được dịch (transform) theo scrollTop/scrollLeft của textarea,
+   nên không bị giới hạn cuộn khác textarea (trước đây lệch ~12px khi cuộn ngang hết cỡ) */
+#hl{color:var(--ink);pointer-events:none;overflow:hidden;padding:0}
+#hlIn{box-sizing:border-box;padding:8px 8px 40px;width:max-content;min-width:100%}
 #src{background:transparent;color:transparent;caret-color:#aeafad;resize:none;outline:0}
 #src::selection{background:#264f78b0;color:transparent}
-.t-head{color:var(--k-sec)}                        /* tiêu đề section */
-.t-id,.t-ref{color:var(--k-node)}                  /* @id (node và section), @tham chiếu, ID trong link, module import */
-.t-link{color:var(--k-link)}                       /* loại link (như tên hàm) */
-.t-meta{color:var(--k-meta)}                       /* tên trường (meta, content, link, ask, show) và khóa meta */
-.t-val{color:var(--k-val)}                         /* giá trị sau '=' và giá trị của show */
-.t-text,.t-text .t-bold{color:var(--k-text)}       /* nội dung thường: tiêu đề node, content, ask, [ ... ] */
+.t-head{color:var(--k-sec)}                             /* tiêu đề section (không in đậm: chữ phải cùng bề rộng với textarea) */
+.t-id,.t-ref{color:var(--k-node)}                  /* tên node (khai báo và tham chiếu) */
+.t-link{color:var(--k-link)}                       /* tên link, inverse */
+.t-kw{color:var(--k-kw)}                           /* @node, @link, link, from, to */
+.t-key,.t-meta{color:var(--k-key)}                 /* attribute key */
+.t-type{color:var(--k-type)}                       /* Concept, Group, Num, Str, … */
+.t-val{color:var(--k-val)}                         /* giá trị, ngoặc */
+.t-str{color:var(--k-str)}                         /* Str */
+.t-punct{color:var(--k-punct)}                     /* - : , */
+.t-text,.t-text .t-bold{color:var(--k-text)}       /* nội dung */
 .t-text .t-ref{color:var(--k-node)}
 .t-fm,.t-fence,.t-code{color:var(--ink)}
-.t-com,.t-text .t-com{color:var(--c-com);font-style:italic}
+.t-code{color:var(--k-str)}
+.t-com,.t-text .t-com{color:var(--k-com);font-style:italic}
 /* Alt+Z ngắt dòng: textarea và lớp tô màu phải ngắt giống hệt nhau */
 body.wrap #src,body.wrap #hl{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
 body.wrap #src{overflow-x:hidden}
+body.wrap #hlIn{min-width:0}                          /* bề rộng do JS đặt = vùng chữ của textarea */
 #hl .ln{min-height:20px}
 /* chọn màu: tên màu có sẵn + bảng màu */
 .cc{display:flex;gap:4px;align-items:center}.cc select{flex:1;min-width:0}   /* không đổi độ đậm: chữ phải cùng bề rộng với textarea */
@@ -169,9 +179,26 @@ body.wrap #src{overflow-x:hidden}
 #log .warn{color:var(--warn)}#log .warn::before{content:"⚠ "}
 
 /* ---------- 3 view ---------- */
-#views{flex:1;position:relative;min-height:0}
+.views{flex:1;position:relative;min-height:0}
 .view{position:absolute;inset:0;display:none;overflow:auto}
 .view.on{display:block}
+#textView{overflow:hidden;flex-direction:column}#textView.on{display:flex}
+.pane-empty{display:none;padding:24px;color:var(--mute);font-size:12px}
+.pane.empty .pane-empty{display:block}
+/* thanh tab của mỗi khung: tab, nút ＋, (Wrap khi tab Văn bản đang mở ở khung này) */
+.tab-list{display:flex;min-width:0;overflow:hidden}
+.tab .tab-x{font-style:normal;margin-left:8px;width:16px;height:16px;line-height:15px;text-align:center;border-radius:3px;color:var(--mute);visibility:hidden}
+.tab:hover .tab-x,.tab.on .tab-x{visibility:visible}
+.tab .tab-x:hover{background:#ffffff1f;color:var(--bright)}
+.tab-add{flex:none;margin:5px 4px;width:26px;background:none;border:1px solid transparent;border-radius:4px;color:var(--mute);cursor:pointer;font-size:14px;line-height:1}
+.tab-add:hover{background:#ffffff14;color:var(--ink)}
+.pane:not(.text-on) #bWrap2{display:none}
+.add-menu{position:fixed;z-index:30;min-width:200px;background:var(--side);border:1px solid #454545;border-radius:5px;padding:4px;box-shadow:0 4px 14px #0008}
+.add-menu button{display:flex;justify-content:space-between;gap:18px;width:100%;text-align:left;background:none;border:0;border-radius:4px;padding:4px 10px;cursor:pointer;color:var(--ink);font:inherit}
+.add-menu button:hover:not(:disabled){background:var(--acc);color:var(--bright)}
+.add-menu button:disabled{color:var(--mute);cursor:default}
+.add-menu small{color:var(--mute)}
+.tabs.drop-on{box-shadow:inset 0 -2px 0 var(--acc2)}
 #g{position:absolute;inset:0;background:var(--bg)}
 #hint{position:absolute;left:10px;bottom:8px;color:var(--mute);background:#252526e6;padding:2px 8px;border-radius:4px;pointer-events:none;font-size:12px}
 
@@ -183,7 +210,10 @@ body.wrap #src{overflow-x:hidden}
 .tr .tw{width:14px;text-align:center;color:var(--mute);flex:none}
 .tr .ic{flex:none;font-size:11px;font-weight:700;width:16px;text-align:center}
 .tr .ic.sec{color:var(--c-head)}.tr .ic.nod{color:var(--c-id)}.tr .ic.ext{color:var(--mute)}
-.tr .nm{overflow:hidden;text-overflow:ellipsis}
+/* tên được ưu tiên: khung hẹp (Outline, cây lồng sâu) thì chip kiểu / role co lại trước, tên chỉ cắt khi dài hơn cả dòng */
+.tr{overflow:hidden}
+.tr .nm{overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:100%}
+.tr .ty,.tr .ro{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tr .via{font-size:11px}
 .tr .meta{color:var(--mute);font-size:11px;overflow:hidden;text-overflow:ellipsis}
 /* bộ màu chung ở Tree / Outline: section xanh dương, node vàng nhạt, khóa meta hồng, giá trị nâu */
@@ -232,6 +262,10 @@ body.wrap #src{overflow-x:hidden}
 .book .chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
 .book .chip{font:12px var(--mono);border-radius:10px;padding:0 8px;background:#333;border:1px solid #444}
 .book .chip b{font-weight:400}
+.book .attrs .chip,.book .attrs .chip b,.book .attrs .chip .mv{color:var(--k-punct);background:none;border-color:#3a3a3a}
+.ty{font:10px var(--mono);color:var(--k-kw);margin-left:6px;border:1px solid #c586c055;border-radius:6px;padding:0 5px}
+.ro{font:10px var(--mono);color:var(--k-type);margin-left:4px;border:1px solid #4ec9b066;border-radius:6px;padding:0 5px}   /* role: output */
+.book h4 .ty{vertical-align:middle}
 .book a{color:#3794ff;text-decoration:none;cursor:pointer}.book a:hover{text-decoration:underline}
 .book code{font:13px var(--mono);background:#ffffff14;border-radius:3px;padding:0 4px;color:var(--c-code)}
 .book pre{background:#1e1e1e;border:1px solid var(--line);border-radius:4px;padding:8px 10px;overflow:auto;font:13px/1.45 var(--mono)}
@@ -250,7 +284,11 @@ body.wrap #src{overflow-x:hidden}
 body.static #statusbar{background:#68217a}
 
 /* ---------- bản tĩnh ---------- */
-.static .edit{display:none!important}
+.static .edit,.static #bSave{display:none!important}
+/* KING 0.3: Inspector chỉ đọc, ẩn công cụ sửa trên Graph */
+.frozen .edit{display:none!important}
+.frozen #inspector input,.frozen #inspector textarea,.frozen #inspector select,.frozen #inspector button.btn,.frozen #inspector .x{pointer-events:none;opacity:.6}
+.frozen #inspector::before{content:"Inspector tạm khóa (0.3): chỉ xem. Sửa trong khung văn bản.";display:block;font-size:11px;color:var(--warn);padding:6px 10px;border-bottom:1px solid var(--line)}
 .static-only{display:none}
 .static .static-only{display:inline;color:#e2c08d;font-size:12px;margin-left:10px}
 .static-only code{font:12px var(--mono);background:#ffffff14;padding:0 4px;border-radius:3px}
@@ -280,7 +318,7 @@ dialog button.on{background:var(--acc);color:#fff}
     <div class="drop">
       <button class="item edit" id="bFolder">Mở thư mục…</button>
       <button class="item edit" id="bNew">File mới…</button>
-      <button class="item edit" id="bSave">Lưu<kbd>Ctrl+S</kbd></button>
+      <button class="item" id="bSave">Lưu<kbd>Ctrl+S</kbd></button>
       <button class="item edit" id="bUndo">Hoàn tác thao tác đồ thị<kbd>Ctrl+Z</kbd></button>
       <button class="item" id="bSvg">Xuất SVG của đồ thị</button>
     </div>
@@ -298,6 +336,8 @@ dialog button.on{background:var(--acc);color:#fff}
       <button class="item" data-panel="inspector">Inspector<kbd>Ctrl+Alt+B</kbd></button>
       <button class="item" data-panel="left">Khung văn bản<kbd>Ctrl+E</kbd></button>
       <button class="item" id="bWrap">Ngắt dòng<kbd>Alt+Z</kbd></button>
+      <div class="sep"></div>
+      <button class="item" id="bShowHidden" title="Tạm hiện lại các node / link có - hide: …">Hiện cả node đã ẩn (hide)<kbd>Ctrl+H</kbd></button>
     </div>
   </div>
 
@@ -378,23 +418,31 @@ dialog button.on{background:var(--acc);color:#fff}
   </aside>
   <div class="split" id="splitE" data-target="explorer" data-side="left"></div>
 
-  <section id="left">
-    <div class="tabs"><span id="fname" class="tab on"></span>
+  <!-- hai khung giống nhau: mỗi panel (Văn bản, Graph, Tree, Book, Module) là một tab, nằm ở khung nào cũng được -->
+  <section id="left" class="pane">
+    <div class="tabs"><span class="tab-list">
+      <span class="tab" data-panel="text"><span id="fname"></span><i class="tab-x" title="Đóng">×</i></span>
+    </span><button class="tab-add" title="Thêm view vào khung này">＋</button>
       <button id="bWrap2" class="tab-btn" title="Ngắt dòng (Alt+Z)">↵ Wrap</button></div>
-    <div id="ed">
-      <pre id="gut"></pre>
-      <div id="code"><pre id="hl" aria-hidden="true"></pre><textarea id="src" spellcheck="false" wrap="off"></textarea></div>
+    <div class="views">
+      <div id="textView" class="view">
+        <div id="ed">
+          <pre id="gut"></pre>
+          <div id="code"><pre id="hl" aria-hidden="true"><div id="hlIn"></div></pre><textarea id="src" spellcheck="false" wrap="off"></textarea></div>
+        </div>
+        <div class="panel-title">PROBLEMS <span id="nprob"></span></div>
+        <div id="log"></div>
+      </div>
+      <div class="pane-empty">Khung trống. Bấm ＋ để thêm Văn bản, Graph, Tree, Book hoặc Module.</div>
     </div>
-    <div class="panel-title">PROBLEMS <span id="nprob"></span></div>
-    <div id="log"></div>
   </section>
   <div class="split" id="split" data-target="left" data-side="left"></div>
 
-  <section id="right">
-    <div class="tabs" id="viewTabs">
-      <span class="tab" data-view="graph">Graph</span><span class="tab" data-view="tree">Tree</span><span class="tab" data-view="book">Book</span><span class="tab" data-view="module">Module</span>
-    </div>
-    <div id="views">
+  <section id="right" class="pane">
+    <div class="tabs"><span class="tab-list">
+      <span class="tab" data-panel="graph">Graph<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="tree">Tree<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="book">Book<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="module">Module<i class="tab-x" title="Đóng">×</i></span>
+    </span><button class="tab-add" title="Thêm view vào khung này">＋</button></div>
+    <div class="views">
       <div id="graphView" class="view">
         <div id="g"></div>
         <div id="toolbar">
@@ -404,6 +452,8 @@ dialog button.on{background:var(--acc);color:#fff}
           <select id="linkSel" class="edit" title="Loại link khi nối"></select>
           <button data-mode="move" class="edit" title="Kéo node thả lên một section để chuyển nhóm">⇲ Chuyển nhóm</button>
           <button data-mode="fold" title="Bấm node cha để thu gọn / bung">▾ Thu gọn</button>
+          <select id="bLayout" title="Bố cục đồ thị: chọn để xếp lại (L: kiểu kế tiếp; Shift+L: xếp lại kiểu đang chọn)"><option value="tree">⊢ Thụt lề</option><option value="tidy">⊣ Cây cân</option><option value="radial">✳ Tỏa tròn</option><option value="force">✺ Lực</option></select>
+          <button id="bGrid" title="Lưới: node kéo thả sẽ hút về nút lưới gần nhất (G)">▦ Lưới</button>
           <button id="bFit" title="Vừa khung">⤢</button>
         </div>
         <div id="hint"></div>
@@ -411,8 +461,10 @@ dialog button.on{background:var(--acc);color:#fff}
       <div id="treeView" class="view"></div>
       <div id="bookView" class="view"></div>
       <div id="moduleView" class="view"></div>
+      <div class="pane-empty">Khung trống. Bấm ＋ để thêm Văn bản, Graph, Tree, Book hoặc Module.</div>
     </div>
   </section>
+  <div id="addMenu" class="add-menu" hidden></div>
 
   <div class="split" id="splitI" data-target="inspector" data-side="right"></div>
   <aside id="inspector" class="side">
@@ -437,7 +489,7 @@ dialog button.on{background:var(--acc);color:#fff}
 <datalist id="dlNodes"></datalist><datalist id="dlKeys"></datalist><datalist id="dlLinks"></datalist>
 <script>
 // editor.js - trạng thái chung, gọi API, khung văn bản (có tô màu), mở/lưu file
-const ST = {"name": "tu-giac.kg.md", "text": "---\nkg: 0.2\nuse: schema, style\n---\n\nCác hình tứ giác (Toán 8). Mũi tên specialize đi từ hình riêng tới hình chung.\n\n@tu-giac: Tứ giác\n- meta: type=hinh\n- content: Hình gồm bốn đoạn thẳng nối tiếp, không có hai đoạn nào cùng nằm trên một đường thẳng. Tổng bốn góc bằng 360°.\n\n@tu-giac-loi: Tứ giác lồi\n- meta: type=hinh\n- content: Tứ giác luôn nằm về một phía của đường thẳng chứa bất kỳ cạnh nào.\n- link: specialize(tu-giac)\n\n@hinh-thang: Hình thang\n- meta: type=hinh\n- content: Tứ giác lồi có hai cạnh đối song song.\n- link: specialize(tu-giac-loi)\n\n@hinh-thang-can: Hình thang cân\n- meta: type=hinh\n- content: Hình thang có hai góc kề một đáy bằng nhau.\n- link: specialize(hinh-thang)\n\n@hinh-binh-hanh: Hình bình hành\n- meta: type=hinh\n- content: Tứ giác có các cạnh đối song song.\n- link: specialize(hinh-thang)\n\n@hinh-chu-nhat: Hình chữ nhật\n- meta: type=hinh\n- content: Tứ giác có bốn góc vuông.\n- link: specialize(hinh-binh-hanh, hinh-thang-can)\n\n@hinh-thoi: Hình thoi\n- meta: type=hinh\n- content: Tứ giác có bốn cạnh bằng nhau.\n- link: specialize(hinh-binh-hanh)\n\n@hinh-vuong: Hình vuông\n- meta: type=hinh\n- content: Tứ giác có bốn góc vuông và bốn cạnh bằng nhau.\n- link: specialize(hinh-chu-nhat, hinh-thoi)\n", "graph": {"directed": true, "multigraph": true, "graph": {"file": "tu-giac.kg.md", "kg": "0.2", "use": ["schema.kg.md", "style.kg.md"], "fields": ["content", "meta", "link", "show", "ask"], "schema": {"types": {"hinh": {"title": "Hình", "file": "schema.kg.md", "line": 5, "allow": null}, "concept": {"title": "Khái niệm", "file": "schema.kg.md", "line": 13, "allow": ["role", "important"]}, "group": {"title": "Nhóm", "file": "schema.kg.md", "line": 16, "allow": ["important"]}}, "keys": {"role": {"title": "Vai trò", "file": "schema.kg.md", "line": 19, "value": null, "values": ["Nạp", "Xuất"], "required": true}, "important": {"title": "Quan trọng", "file": "schema.kg.md", "line": 22, "value": "bool", "values": null, "required": false}}, "links": {"specialize": {"title": "Là trường hợp riêng của", "file": "schema.kg.md", "line": 8, "dag": true, "from": "hinh", "to": "hinh"}, "part-of": {"title": "Là phần của", "file": "schema.kg.md", "line": 25, "dag": true, "from": null, "to": "group"}, "needs": {"title": "Cần biết trước", "file": "schema.kg.md", "line": 28, "dag": true, "from": null, "to": null}}}, "dag": ["specialize", "part-of", "needs", "contain"], "import_modules": [], "import_names": {}, "errors": [], "warnings": []}, "nodes": [{"id": "tu-giac", "line": 8, "meta": {"type": "hinh"}, "content": "Hình gồm bốn đoạn thẳng nối tiếp, không có hai đoạn nào cùng nằm trên một đường thẳng. Tổng bốn góc bằng 360°.", "external": false, "title": "Tứ giác", "kind": "node", "parent": null, "auto_id": false, "meta_line": 9, "style": {"html": {"shape": "box", "color": "lightgray", "border-color": "gray"}}}, {"id": "tu-giac-loi", "line": 12, "meta": {"type": "hinh"}, "content": "Tứ giác luôn nằm về một phía của đường thẳng chứa bất kỳ cạnh nào.", "external": false, "title": "Tứ giác lồi", "kind": "node", "parent": null, "auto_id": false, "meta_line": 13, "style": {"html": {"shape": "box", "color": "lightblue", "border-color": "blue"}}}, {"id": "hinh-thang", "line": 17, "meta": {"type": "hinh"}, "content": "Tứ giác lồi có hai cạnh đối song song.", "external": false, "title": "Hình thang", "kind": "node", "parent": null, "auto_id": false, "meta_line": 18, "style": {"html": {"shape": "box", "color": "lightblue", "border-color": "blue", "border": 2}}}, {"id": "hinh-thang-can", "line": 22, "meta": {"type": "hinh"}, "content": "Hình thang có hai góc kề một đáy bằng nhau.", "external": false, "title": "Hình thang cân", "kind": "node", "parent": null, "auto_id": false, "meta_line": 23, "style": {"html": {"shape": "box", "color": "#51f565", "border-color": "blue"}}}, {"id": "hinh-binh-hanh", "line": 27, "meta": {"type": "hinh"}, "content": "Tứ giác có các cạnh đối song song.", "external": false, "title": "Hình bình hành", "kind": "node", "parent": null, "auto_id": false, "meta_line": 28, "style": {"html": {"shape": "box", "color": "#f1a2a2", "border-color": "blue"}}}, {"id": "hinh-chu-nhat", "line": 32, "meta": {"type": "hinh"}, "content": "Tứ giác có bốn góc vuông.", "external": false, "title": "Hình chữ nhật", "kind": "node", "parent": null, "auto_id": false, "meta_line": 33, "style": {"html": {"shape": "box", "color": "lightblue", "border-color": "blue"}}}, {"id": "hinh-thoi", "line": 37, "meta": {"type": "hinh"}, "content": "Tứ giác có bốn cạnh bằng nhau.", "external": false, "title": "Hình thoi", "kind": "node", "parent": null, "auto_id": false, "meta_line": 38, "style": {"html": {"shape": "box", "color": "lightblue", "border-color": "blue"}}}, {"id": "hinh-vuong", "line": 42, "meta": {"type": "hinh"}, "content": "Tứ giác có bốn góc vuông và bốn cạnh bằng nhau.", "external": false, "title": "Hình vuông", "kind": "node", "parent": null, "auto_id": false, "meta_line": 43, "style": {"html": {"shape": "square", "color": "#f5f06b", "border-color": "orange", "border": 3, "font-color": "blue"}}}], "links": [{"source": "tu-giac-loi", "target": "tu-giac", "type": "specialize", "line": 15, "declared_at": "tu-giac-loi", "reversed": false, "key": "specialize:0", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-thang", "target": "tu-giac-loi", "type": "specialize", "line": 20, "declared_at": "hinh-thang", "reversed": false, "key": "specialize:1", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-thang-can", "target": "hinh-thang", "type": "specialize", "line": 25, "declared_at": "hinh-thang-can", "reversed": false, "key": "specialize:2", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-binh-hanh", "target": "hinh-thang", "type": "specialize", "line": 30, "declared_at": "hinh-binh-hanh", "reversed": false, "key": "specialize:3", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-chu-nhat", "target": "hinh-binh-hanh", "type": "specialize", "line": 35, "declared_at": "hinh-chu-nhat", "reversed": false, "key": "specialize:4", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-chu-nhat", "target": "hinh-thang-can", "type": "specialize", "line": 35, "declared_at": "hinh-chu-nhat", "reversed": false, "key": "specialize:5", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-thoi", "target": "hinh-binh-hanh", "type": "specialize", "line": 40, "declared_at": "hinh-thoi", "reversed": false, "key": "specialize:6", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-vuong", "target": "hinh-chu-nhat", "type": "specialize", "line": 45, "declared_at": "hinh-vuong", "reversed": false, "key": "specialize:7", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-vuong", "target": "hinh-thoi", "type": "specialize", "line": 45, "declared_at": "hinh-vuong", "reversed": false, "key": "specialize:8", "style": {"html": {"color": "green", "width": 2}}}]}};   // king html thay bằng dữ liệu → chế độ chỉ xem
+const ST = {"name": "tu-giac.kg.md", "text": "---\nkg: 0.3\nuse:\n- schema\n- style\n---\n\nCác hình tứ giác (Toán 8). Mũi tên specialize đi từ hình riêng tới hình chung.\n\n@node tu-giac\n- label: Tứ giác\n- type: Hinh\n\nHình gồm bốn đoạn thẳng nối tiếp, không có hai đoạn nào cùng nằm trên một đường thẳng. Tổng bốn góc bằng 360°.\n\n@node tu-giac-loi\n- label: Tứ giác lồi\n- type: Hinh\n- link specialize: (tu-giac)\n\nTứ giác luôn nằm về một phía của đường thẳng chứa bất kỳ cạnh nào.\n\n@node hinh-thang\n- label: Hình thang\n- type: Hinh\n- link specialize: (tu-giac-loi)\n\nTứ giác lồi có hai cạnh đối song song.\n\n@node hinh-thang-can\n- label: Hình thang cân\n- type: Hinh\n- link specialize: (hinh-thang)\n\nHình thang có hai góc kề một đáy bằng nhau.\n\n@node hinh-binh-hanh\n- label: Hình bình hành\n- type: Hinh\n- link specialize: (hinh-thang)\n\nTứ giác có các cạnh đối song song.\n\n@node hinh-chu-nhat\n- label: Hình chữ nhật\n- type: Hinh\n- link specialize: (hinh-binh-hanh, hinh-thang-can)\n\nTứ giác có bốn góc vuông.\n\n@node hinh-thoi\n- label: Hình thoi\n- type: Hinh\n- link specialize: (hinh-binh-hanh)\n\nTứ giác có bốn cạnh bằng nhau.\n\n@node hinh-vuong\n- label: Hình vuông\n- type: Hinh\n- link specialize: (hinh-chu-nhat, hinh-thoi)\n\nTứ giác có bốn góc vuông và bốn cạnh bằng nhau.\n", "graph": {"directed": true, "multigraph": true, "graph": {"file": "tu-giac.kg.md", "kg": "0.3", "use": ["schema.kg.md", "style.kg.md"], "fields": [], "schema": {"types": {"Hinh": {"title": "Hình", "line": 5, "file": "schema.kg.md"}, "Concept": {"title": "Khái niệm", "line": 14, "file": "schema.kg.md"}, "Group": {"title": "Nhóm", "line": 17, "file": "schema.kg.md"}}, "keys": {}, "links": {"specialize": {"title": "Là trường hợp riêng của", "line": 8, "dag": true, "file": "schema.kg.md"}, "part-of": {"title": "Là phần của", "line": 20, "dag": true, "file": "schema.kg.md"}, "needs": {"title": "Cần biết trước", "line": 24, "dag": true, "file": "schema.kg.md"}}}, "dag": ["specialize", "part-of", "needs"], "import_modules": [], "import_names": {}, "errors": [], "warnings": []}, "nodes": [{"id": "tu-giac", "kind": "node", "type": "Hinh", "label": "Tứ giác", "title": "Tứ giác", "content": "Hình gồm bốn đoạn thẳng nối tiếp, không có hai đoạn nào cùng nằm trên một đường thẳng. Tổng bốn góc bằng 360°.", "parent": null, "line": 10, "end": 15, "auto_id": false, "external": false, "meta": {"type": "Hinh"}, "style": {"html": {"shape": "box", "color": "lightgray", "border-color": "gray"}}}, {"id": "tu-giac-loi", "kind": "node", "type": "Hinh", "label": "Tứ giác lồi", "title": "Tứ giác lồi", "content": "Tứ giác luôn nằm về một phía của đường thẳng chứa bất kỳ cạnh nào.", "parent": null, "line": 16, "end": 22, "auto_id": false, "external": false, "meta": {"type": "Hinh"}, "style": {"html": {"shape": "box", "color": "lightblue", "border-color": "blue"}}}, {"id": "hinh-thang", "kind": "node", "type": "Hinh", "label": "Hình thang", "title": "Hình thang", "content": "Tứ giác lồi có hai cạnh đối song song.", "parent": null, "line": 23, "end": 29, "auto_id": false, "external": false, "meta": {"type": "Hinh"}, "style": {"html": {"shape": "box", "color": "lightblue", "border-color": "blue", "border": 2}}}, {"id": "hinh-thang-can", "kind": "node", "type": "Hinh", "label": "Hình thang cân", "title": "Hình thang cân", "content": "Hình thang có hai góc kề một đáy bằng nhau.", "parent": null, "line": 30, "end": 36, "auto_id": false, "external": false, "meta": {"type": "Hinh"}, "style": {"html": {"shape": "box", "color": "#51f565", "border-color": "blue"}}}, {"id": "hinh-binh-hanh", "kind": "node", "type": "Hinh", "label": "Hình bình hành", "title": "Hình bình hành", "content": "Tứ giác có các cạnh đối song song.", "parent": null, "line": 37, "end": 43, "auto_id": false, "external": false, "meta": {"type": "Hinh"}, "style": {"html": {"shape": "box", "color": "#f1a2a2", "border-color": "blue"}}}, {"id": "hinh-chu-nhat", "kind": "node", "type": "Hinh", "label": "Hình chữ nhật", "title": "Hình chữ nhật", "content": "Tứ giác có bốn góc vuông.", "parent": null, "line": 44, "end": 50, "auto_id": false, "external": false, "meta": {"type": "Hinh"}, "style": {"html": {"shape": "box", "color": "lightblue", "border-color": "blue"}}}, {"id": "hinh-thoi", "kind": "node", "type": "Hinh", "label": "Hình thoi", "title": "Hình thoi", "content": "Tứ giác có bốn cạnh bằng nhau.", "parent": null, "line": 51, "end": 57, "auto_id": false, "external": false, "meta": {"type": "Hinh"}, "style": {"html": {"shape": "box", "color": "lightblue", "border-color": "blue"}}}, {"id": "hinh-vuong", "kind": "node", "type": "Hinh", "label": "Hình vuông", "title": "Hình vuông", "content": "Tứ giác có bốn góc vuông và bốn cạnh bằng nhau.", "parent": null, "line": 58, "end": 64, "auto_id": false, "external": false, "meta": {"type": "Hinh"}, "style": {"html": {"shape": "square", "color": "#f5f06b", "border-color": "orange", "border": 3, "font-color": "blue"}}}], "links": [{"source": "tu-giac-loi", "target": "tu-giac", "type": "specialize", "line": 19, "declared_at": "tu-giac-loi", "reversed": false, "key": "specialize:0", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-thang", "target": "tu-giac-loi", "type": "specialize", "line": 26, "declared_at": "hinh-thang", "reversed": false, "key": "specialize:1", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-thang-can", "target": "hinh-thang", "type": "specialize", "line": 33, "declared_at": "hinh-thang-can", "reversed": false, "key": "specialize:2", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-binh-hanh", "target": "hinh-thang", "type": "specialize", "line": 40, "declared_at": "hinh-binh-hanh", "reversed": false, "key": "specialize:3", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-chu-nhat", "target": "hinh-binh-hanh", "type": "specialize", "line": 47, "declared_at": "hinh-chu-nhat", "reversed": false, "key": "specialize:4", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-chu-nhat", "target": "hinh-thang-can", "type": "specialize", "line": 47, "declared_at": "hinh-chu-nhat", "reversed": false, "key": "specialize:5", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-thoi", "target": "hinh-binh-hanh", "type": "specialize", "line": 54, "declared_at": "hinh-thoi", "reversed": false, "key": "specialize:6", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-vuong", "target": "hinh-chu-nhat", "type": "specialize", "line": 61, "declared_at": "hinh-vuong", "reversed": false, "key": "specialize:7", "style": {"html": {"color": "green", "width": 2}}}, {"source": "hinh-vuong", "target": "hinh-thoi", "type": "specialize", "line": 61, "declared_at": "hinh-vuong", "reversed": false, "key": "specialize:8", "style": {"html": {"color": "green", "width": 2}}}]}};   // king html thay bằng dữ liệu → chế độ chỉ xem
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = (v, d) => { const x = parseFloat(v); return isNaN(x) ? d : x; };
@@ -445,7 +497,7 @@ const H = x => (x.style && x.style.html) || {};
 const S = {root:"", name:"", text:"", dirty:false, mtime:0, side:0, graph:null, byId:{}, edgeMap:{},
            mode:"select", view:"graph", pending:{}, hl:0, bad:new Set(), undo:[],
            kids:{}, parents:{}, folded:new Set(), hidden:new Set(), foldKey:null};
-const src = $("#src"), gut = $("#gut"), hlEl = $("#hl");
+const src = $("#src"), gut = $("#gut"), hlEl = $("#hlIn");   // #hlIn: khối chữ tô màu bên trong <pre id="hl">
 
 // ---------- tiện ích ----------
 function status(msg, kind) {
@@ -475,8 +527,58 @@ function hashColor(s, salt) {
   return PALETTE[h % PALETTE.length];
 }
 // bộ màu chung cho khung văn bản và 4 view (khớp các biến --k-* trong app.css)
-const PAL = {sec:"#4fa3ff", node:"#f5e3a1", link:"#f0a04b", meta:"#f48fb8", val:"#c9915e", text:"#ffffff"};
-const keyColor = () => PAL.meta;            // khóa meta: hồng ở mọi nơi
+const PAL = {sec:"#FFFFFF", node:"#E8D48A", link:"#A5ABB6", meta:"#9CDCFE", key:"#9CDCFE", kw:"#C586C0", type:"#4EC9B0",
+             val:"#D4D4D4", str:"#CE9178", text:"#D4D4D4"};
+const keyColor = () => PAL.key;            // khóa meta: hồng ở mọi nơi
+
+// ---------- hình thức chuẩn của một node (dùng chung cho Graph, Module, xuất SVG) ----------
+// Mỗi node luôn có đủ 5 màu; style (html.*) ghi đè, thiếu thì lấy mặc định:
+//   fill   html.color         nền
+//   border html.border-color  viền
+//   text   html.font-color    chữ chính nằm TRÊN nền node (Module); mặc định: trắng trên nền tối, đen trên nền sáng
+//   label  html.label-color   nhãn nằm NGOÀI hình, trên nền trang (Graph)
+//   sub    html.sub-color     chữ phụ: kiểu node, "+n con"
+const _lc = document.createElement("canvas").getContext("2d");
+function isLight(c) {                      // màu sáng? (nhận cả tên màu CSS: lightblue, white…)
+  _lc.fillStyle = "#000"; _lc.fillStyle = String(c);
+  const v = _lc.fillStyle, m = v.match(/^#(..)(..)(..)$/) || v.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+  if (!m) return false;
+  if (m[4] !== undefined && +m[4] < 0.3) return false;      // gần trong suốt: chữ nằm trên nền trang tối
+  const [r, g, b] = (v[0] === "#" ? m.slice(1, 4).map(h => parseInt(h, 16)) : m.slice(1, 4).map(Number));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150;
+}
+// ---------- - hide: all | graph, module … ----------
+// Node / section có hide cho view v thì bị ẩn khỏi v cùng mọi con cháu (node trong section, con part-of / contain).
+// @link có hide: ẩn mọi link loại đó. S.showHidden (menu View) tạm hiện lại tất cả.
+const hides = (x, v) => !!(x && x.hide && (x.hide.includes("all") || x.hide.includes(v)));
+let _hideCache = {g:null, sets:{}};
+function hiddenIn(v) {                     // Set id node bị ẩn ở view v
+  const g = S.graph;
+  if (!g || S.showHidden) return new Set();
+  if (_hideCache.g !== g) _hideCache = {g, sets:{}};
+  if (_hideCache.sets[v]) return _hideCache.sets[v];
+  const kids = {}, add = (p, c) => { if (p && c && p !== c) (kids[p] = kids[p] || []).push(c); };
+  for (const n of g.nodes) add(n.parent, n.id);
+  for (const l of g.links) {
+    if (l.type === "part-of") add(l.target, l.source);
+    else if (l.type === "contain") add(l.source, l.target);
+  }
+  const out = new Set(), st = g.nodes.filter(n => hides(n, v)).map(n => n.id);
+  while (st.length) { const id = st.pop(); if (out.has(id)) continue; out.add(id); st.push(...(kids[id] || [])); }
+  return (_hideCache.sets[v] = out);
+}
+const linkHiddenIn = (l, v) => !S.showHidden && (hides(l, v) || hiddenIn(v).has(l.source) || hiddenIn(v).has(l.target));
+function nodeLook(n) {
+  const s = H(n), sec = n.kind === "section";
+  const fill = s.color || (sec ? "#3A3D41" : "#E8D48A");
+  return {
+    fill,
+    border: s["border-color"] || (sec ? "#A5ABB6" : "#C9B66E"),
+    text: s["font-color"] || (isLight(fill) ? "#1E1E1E" : "#FFFFFF"),
+    label: s["label-color"] || (sec ? PAL.sec : PAL.node),
+    sub: s["sub-color"] || PAL.kw,
+  };
+}
 const _cx = document.createElement("canvas").getContext("2d");
 function readable(c) {         // chữ trên nền tối: màu quá tối (blue, black, navy…) thì pha trắng cho dễ đọc
   _cx.fillStyle = "#000000"; _cx.fillStyle = String(c || "");
@@ -492,94 +594,125 @@ function linkColor(t) {        // style.kg.md (select="link=loại", html.color)
   const l = S.graph && S.graph.links.find(l => l.type === t && !l.tree && H(l).color);
   return l ? H(l).color : LINK_ORANGE;
 }
-const LINK_ORANGE = "#f0a04b";      // màu mặc định của link: cam (cùng bộ màu với khung văn bản và style hệ thống)
+const LINK_ORANGE = "#A5ABB6";      // màu mặc định của link: cam (cùng bộ màu với khung văn bản và style hệ thống)
 
-// ---------- tô màu văn bản .kg.md: chỉ 4 màu ----------
-// section: xanh dương · node / module import / ID được tham chiếu: vàng nhạt · loại link: cam · meta và khóa của nó: hồng.
-// Phần còn lại giữ màu chữ thường (comment làm mờ).
-const FIELDS = ["content", "meta", "link", "show", "ask"];
+// ---------- tô màu văn bản .kg.md 0.3 (bảng màu plan-v2c) ----------
+// vàng: tên node · tím: keyword (@node, @link, link, from, to) · xanh nhạt: attribute key · xanh ngọc: type
+// xám: tên link · Str cam nhạt · giá trị khác #D4D4D4 · comment xanh lá nghiêng · dấu - : , xám.
 const span = (cls, s, color) => `<span class="${cls}"${color ? ` style="color:${esc(color)}"` : ""}>${esc(s)}</span>`;
-function splitComment(line) {
-  const m = line.match(/(^|\s)\/\//);
-  return m ? [line.slice(0, m.index + m[1].length), line.slice(m.index + m[1].length)] : [line, ""];
+const bad = s => `<span style="color:var(--err);text-decoration:underline wavy">${esc(s)}</span>`;
+const DTYPES = ["Num", "Str", "Bool", "None", "List", "Dict", "Content"];
+function splitComment(line) {             // // là comment khi ở đầu dòng hoặc sau khoảng trắng, ngoài "..." và `...`
+  let q = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) { if (c === q) q = null; }
+    else if (c === '"' || c === "`") q = c;
+    else if (c === "/" && line[i + 1] === "/" && (i === 0 || /\s/.test(line[i - 1]))) return [line.slice(0, i), line.slice(i)];
+  }
+  return [line, ""];
 }
 function hlInline(s) {
   let out = "", last = 0;
-  const re = /(`[^`]*`)|(\*\*[^*]+\*\*)|(%%.*?%%)|((?:^|(?<=\s))@[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)?)/g;
+  const re = /(`[^`]*`)|(\*\*[^*]+\*\*)|((?:^|(?<=\s))@[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)?)/g;
   for (const m of s.matchAll(re)) {
     out += esc(s.slice(last, m.index));
-    out += span(m[1] ? "t-code" : m[2] ? "t-bold" : m[3] ? "t-com" : "t-ref", m[0]);
+    out += span(m[1] ? "t-code" : m[2] ? "t-bold" : "t-ref", m[0]);
     last = m.index + m[0].length;
   }
   return out + esc(s.slice(last));
 }
-const hlValue = v => span("t-val", v);          // giá trị sau dấu '=': nâu
-function hlMeta(v) {
-  const parts = []; let buf = "", q = null;
-  for (const c of v) {
-    if (q) { buf += c; if (c === q) q = null; }
-    else if (c === '"' || c === "'") { buf += c; q = c; }
-    else if (c === ",") { parts.push(buf); parts.push(","); buf = ""; }
-    else buf += c;
-  }
-  parts.push(buf);
-  return parts.map(p => {
-    if (p === ",") return ",";
-    const m = p.match(/^(\s*)([^=]*?)(\s*=\s*)([\s\S]*)$/);
-    if (!m) { const k = p.trim(); return k ? esc(p.slice(0, p.indexOf(k))) + span("t-meta", k) + esc(p.slice(p.indexOf(k) + k.length)) : esc(p); }
-    return esc(m[1]) + span("t-meta", m[2]) + esc(m[3]) + hlValue(m[4]);
-  }).join("");
-}
-function hlLinks(v) {
-  let out = "", last = 0;
-  for (const m of v.matchAll(/([a-z][a-z0-9-]*)(!?)\(([^)]*)\)/g)) {
-    out += esc(v.slice(last, m.index)) + span("t-link", m[1]) +
-      (m[2] ? span("t-link", "!") : "") + "(" + span("t-ref", m[3]) + ")";
-    last = m.index + m[0].length;
-  }
-  return out + esc(v.slice(last));
-}
-// nội dung thường: trắng (riêng @tham chiếu vàng, `code` giữ nguyên)
 const hlText = s => `<span class="t-text">${hlInline(s)}</span>`;
+// giá trị: mode "ref" (tên node), "link" (tên link), "type" (tên kiểu), "str" (chuỗi), "" (chung)
+function hlVal(v, mode) {
+  let out = "";
+  const tok = /("[^"]*"?)|(`[^`]*`?)|(\[[\s\S]*)|([(),\]])|([A-Za-z_][\w-]*\s*=(?!=))|(-?\d+(?:\.\d+)?(?![\w-]))|([^\s(),"`=\[\]]+(?:\s+[^\s(),"`=\[\]]+)*)|(\s+)|(.)/g;
+  for (const m of v.matchAll(tok)) {
+    const t = m[0];
+    if (m[1]) out += span("t-str", t);
+    else if (m[2]) out += span("t-code", t);
+    else if (m[3]) out += span("t-text", t);
+    else if (m[4]) out += span("t-val", t);
+    else if (m[5]) { const k = t.replace(/\s*=$/, ""); out += span("t-key", k) + esc(t.slice(k.length)); }
+    else if (m[6]) out += span("t-val", t);
+    else if (m[7]) {
+      if (mode === "ref") out += span("t-id", t);
+      else if (mode === "link") out += span("t-link", t);
+      else if (mode === "type" || DTYPES.includes(t)) out += span("t-type", t);
+      else if (/^(true|false|none)$/.test(t)) out += span("t-val", t);
+      else out += span("t-str", t);
+    } else out += esc(t);
+  }
+  return out;
+}
+function depth(v) {                       // số ngoặc ( [ còn mở
+  let d = 0, q = null;
+  for (const c of v) {
+    if (q) { if (c === q) q = null; }
+    else if (c === '"' || c === "`") q = c;
+    else if (c === "[" || c === "(") d++;
+    else if (c === "]" || c === ")") d--;
+  }
+  return d;
+}
 function highlight(text) {
   const L = text.split("\n"), out = [];
-  let fm = L[0] && L[0].trim() === "---" ? 1 : 0, fence = false, inNode = false, field = null, br = false;
+  let fm = L[0] && L[0].trim() === "---" ? 1 : 0, fence = false, block = null, phase = "body", open = 0;
   L.forEach((raw, i) => {
-    if (br) {                                   // nội dung [ ... ] nhiều dòng: chữ thường tới dấu ']'
-      br = !raw.trim().endsWith("]");
-      out.push(hlText(raw)); return;
+    if (open > 0) {                                   // giá trị [ … ] / ( … ) nhiều dòng
+      open += depth(raw);
+      out.push(span("t-text", raw)); return;
     }
     if (fm) {
-      if (i > 0 && raw.trim() === "---") fm = 0;
-      // frontmatter: tên module / node được import tô vàng nhạt như node
-      const m = raw.match(/^(\s*)([^:]+)(:)(.*)$/), imp = m && /^(import|from\s)/.test(m[2].trim());
-      out.push(raw.trim() === "---" ? span("t-fm", raw) : m ? esc(m[1]) + span("t-fm", m[2]) + m[3] + (imp ? span("t-ref", m[4]) : esc(m[4])) : esc(raw));
-      return;
+      if (raw.trim() === "---") { if (i > 0) fm = 0; out.push(span("t-punct", raw)); return; }
+      const [code, com] = splitComment(raw), tail = com ? span("t-com", com) : "";
+      let m;
+      if ((m = code.match(/^(\s*-\s+)([^:]+?)(?:(:)(.*))?$/))) {   // - king/schema.node: Concept, Group
+        const sel = /\.node\s*$/.test(m[2]) ? "type" : /\.link\s*$/.test(m[2]) ? "link" : "str";
+        out.push(span("t-punct", m[1]) + span("t-val", m[2]) + (m[3] ? span("t-punct", ":") + hlVal(m[4], sel) : "") + tail); return;
+      }
+      if ((m = code.match(/^(\s*)([A-Za-z][\w-]*)(\s*:)(.*)$/))) {
+        out.push(esc(m[1]) + span("t-key", m[2]) + span("t-punct", m[3]) + hlVal(m[4], m[2] === "import" ? "ref" : "") + tail); return;
+      }
+      out.push(esc(code) + tail); return;
     }
-    if (/^\s*(```|~~~)/.test(raw)) { fence = !fence; out.push(span("t-fence", raw)); return; }
+    if (/^\s*(```|~~~)/.test(raw)) { fence = !fence; phase = "body"; out.push(span("t-fence", raw)); return; }
     if (fence) { out.push(span("t-code", raw)); return; }
     const [code, com] = splitComment(raw), tail = com ? span("t-com", com) : "";
     let m;
     if ((m = code.match(/^(#{1,6}\s+)(.*?)(\s+@[a-z0-9][a-z0-9-]*)?(\s*)$/))) {
-      inNode = false; field = null;
-      // tiêu đề section xanh dương; @id của section vàng nhạt như mọi ID
+      block = "section"; phase = "attrs";
       out.push(span("t-head", m[1] + m[2]) + (m[3] ? span("t-id", m[3]) : "") + esc(m[4]) + tail); return;
     }
-    if ((m = code.match(/^(\s*)(@[a-z0-9][a-z0-9-]*)(\s*:\s*)?(.*)$/))) {
-      inNode = true; field = null;
-      out.push(esc(m[1]) + span("t-id", m[2]) + esc(m[3] || "") + span("t-text", m[4]) + tail); return;
+    if ((m = code.match(/^(@(?:node|link))(\s+)(\S+)(.*)$/))) {
+      block = m[1].slice(1); phase = "attrs";
+      const nm = m[3], cls = block === "link" ? "t-link" : /^[A-Z]/.test(nm) ? "t-type" : "t-id";
+      out.push(span("t-kw", m[1]) + esc(m[2]) + span(cls, nm) + (m[4].trim() ? bad(m[4]) : esc(m[4])) + tail); return;
     }
-    if (inNode && (m = code.match(/^(\s*[-*]\s+)([a-z][a-z0-9-]*)(\s*:\s*)(.*)$/))) {
-      // tên trường (meta, content, link, ask, show) hồng; trường lạ gạch đỏ
-      const f = m[2], ok = FIELDS.includes(f); field = ok ? f : null;
-      const v = m[4], text = f === "content" || f === "ask";
-      if (text && v.trim().startsWith("[") && !v.includes("]")) br = true;   // mở nội dung [ ... ] nhiều dòng
-      const val = f === "meta" ? hlMeta(v) : f === "link" ? hlLinks(v) : f === "show" ? hlValue(v) : hlText(v);
-      out.push(esc(m[1]) + `<span class="t-meta"${ok ? "" : ' style="color:var(--err);text-decoration:underline wavy"'}>${esc(f)}</span>` +
-        esc(m[3]) + val + tail); return;
+    if (/^@[a-z0-9][a-z0-9-]*\s*:/.test(code)) { out.push(bad(code) + tail); return; }   // cú pháp v0.2
+    if (phase === "attrs" && block) {
+      if (!raw.trim()) { phase = "body"; out.push(""); return; }
+      if (!code.trim()) { out.push(tail); return; }
+      if (raw.startsWith("- ")) {
+        let v = null;
+        if (block === "link" && (m = code.match(/^(-\s+)(from)(\s+)(.+?)(\s+)(to)(\s+)(.+)$/))) {
+          out.push(span("t-punct", m[1]) + span("t-kw", m[2]) + esc(m[3]) + hlVal(m[4], "ref") + esc(m[5]) +
+            span("t-kw", m[6]) + esc(m[7]) + hlVal(m[8], "ref") + tail); return;
+        }
+        if ((m = code.match(/^(-\s+)(link)(\s+)(\S+?)(\s*:)(.*)$/))) {
+          v = m[6];
+          out.push(span("t-punct", m[1]) + span("t-kw", m[2]) + esc(m[3]) + span("t-link", m[4]) + span("t-punct", m[5]) + hlVal(v, "ref") + tail);
+        } else if ((m = code.match(/^(-\s+)([A-Za-z_][\w-]*)(\s*:)(.*)$/))) {
+          const k = m[2], mode = k === "type" ? "type" : k === "inverse" ? "link" : k === "label" ? "str" : "";
+          v = m[4];
+          out.push(span("t-punct", m[1]) + span("t-key", k) + span("t-punct", m[3]) +
+            (k === "label" && !/^\s*"/.test(v) ? span("t-str", v) : hlVal(v, mode)) + tail);
+        } else if (block !== "section") { out.push(bad(code) + tail); return; }
+        if (v !== null) { open = Math.max(0, depth(v)); return; }
+      }
+      phase = "body";
     }
-    if (!code.trim()) { if (["link", "meta", "show"].includes(field)) field = null; out.push(esc(code) + tail); return; }
-    out.push((inNode && field === "link" ? hlLinks(code) : hlText(code)) + tail);
+    out.push(hlText(code) + tail);
   });
   return out.join("\n") + "\n ";
 }
@@ -589,14 +722,23 @@ function paint() {
   requestAnimationFrame(() => {
     hlPending = false;
     const html = highlight(S.text);
+    // khi ngắt dòng: khối tô màu rộng đúng bằng vùng chữ của textarea (trừ thanh cuộn) để ngắt dòng giống hệt
+    hlEl.style.width = S.wrap ? src.clientWidth + "px" : "";
+    const pre = hlEl.parentElement;                  // không cho chữ tô màu lộ ra dưới thanh cuộn của textarea
+    pre.style.right = (src.offsetWidth - src.clientWidth) + "px"; pre.style.bottom = (src.offsetHeight - src.clientHeight) + "px";
     if (S.wrap) {        // mỗi dòng một khối để đo chiều cao sau khi ngắt, rồi kéo lề số dòng cho khớp
       hlEl.innerHTML = html.replace(/\n $/, "").split("\n").map(l => `<div class="ln">${l || " "}</div>`).join("");
       gut.innerHTML = gutterHTML([...hlEl.children].map(d => d.offsetHeight));
     } else hlEl.innerHTML = html;
     syncScroll();
+    if (S.wrap) requestAnimationFrame(() => {        // thanh cuộn dọc vừa hiện / ẩn → bề rộng ngắt dòng đổi: vẽ lại
+      if (hlEl.style.width !== src.clientWidth + "px") paint();
+    });
   });
 }
-function syncScroll() { hlEl.scrollTop = src.scrollTop; hlEl.scrollLeft = src.scrollLeft; gut.scrollTop = src.scrollTop; }
+function syncScroll() {     // dịch khối tô màu thay vì cuộn: không bị giới hạn cuộn khác textarea nên chữ luôn trùng con trỏ
+  hlEl.style.transform = `translate(${-src.scrollLeft}px, ${-src.scrollTop}px)`; gut.scrollTop = src.scrollTop;
+}
 
 // ---------- khung trái ----------
 function gutterHTML(heights) {     // heights: chiều cao từng dòng khi ngắt dòng (Alt+Z)
@@ -616,7 +758,9 @@ function updateGutter() {
 }
 function setText(t, keepUndo) {
   if (!keepUndo && t !== S.text) { S.undo.push(S.text); if (S.undo.length > 50) S.undo.shift(); }
-  const st = src.scrollTop; src.value = t; src.scrollTop = st;
+  const st = src.scrollTop, sl = src.scrollLeft, a = src.selectionStart, b = src.selectionEnd;
+  src.value = t; src.setSelectionRange(Math.min(a, t.length), Math.min(b, t.length));   // giữ chỗ con trỏ (không nhảy về cuối)
+  src.scrollTop = st; src.scrollLeft = sl;
   if (t !== S.text) S.dirty = true;
   S.text = t; updateGutter();
 }
@@ -626,7 +770,7 @@ function jumpTo(line, focus) {   // focus=true: chuyển con trỏ vào khung v�
   if (focus) src.focus({preventScroll:true});
   src.setSelectionRange(off, off + (L[line - 1] || "").length);
   const row = S.wrap && hlEl.children[line - 1];
-  src.scrollTop = Math.max(0, row ? row.offsetTop - 60 : (line - 4) * 20); syncScroll();
+  src.scrollTop = Math.max(0, row ? row.getBoundingClientRect().top - hlEl.getBoundingClientRect().top - 60 : (line - 4) * 20); syncScroll();
   S.hl = line; updateGutter();
 }
 function nodeAtLine(ln) {
@@ -667,6 +811,7 @@ function toggleComment() {                           // Ctrl+/: thêm / bỏ "//
 }
 src.addEventListener("keydown", e => {
   const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  if (mod && !e.altKey && (k === "s" || e.code === "KeyS")) { e.preventDefault(); e.stopPropagation(); saveNow(); return; }
   if (e.key === "Tab") { e.preventDefault(); if (!src.readOnly) document.execCommand("insertText", false, "  "); return; }
   if (mod && (k === "/" || e.code === "Slash")) { e.preventDefault(); if (!src.readOnly) toggleComment(); return; }
   if (mod && (k === "c" || k === "x") && src.selectionStart === src.selectionEnd) {
@@ -728,17 +873,34 @@ async function reparse() {
   try { const g = await api("/api/parse", {name:S.name, text:S.text}); if (my === seq) render(g); }
   catch (e) { status(e.message, "err"); }
 }
-async function save() {
-  if (ST || !S.name || !S.dirty) return;
-  try { const r = await api("/api/save", {name:S.name, text:S.text}); S.mtime = r.mtime; S.dirty = false; status("Đã lưu " + S.name); }
+async function save(force) {
+  if (ST || !S.name || (!S.dirty && !force)) return;
+  const text = S.text;
+  try {
+    const r = await api("/api/save", {name:S.name, text});
+    S.mtime = r.mtime;
+    if (S.text === text) S.dirty = false;            // gõ thêm trong lúc đang lưu: vẫn còn là "chưa lưu"
+    $("#fname").classList.toggle("dirty", S.dirty);
+    status("Đã lưu " + S.name);
+  }
   catch (e) { status("Lưu lỗi: " + e.message, "err"); }
+}
+async function saveNow() {                           // Ctrl+S: lưu ngay, không chờ hẹn giờ tự lưu
+  if (ST) { status("Trang tĩnh (chỉ xem): không lưu được. Mở bằng king serve để sửa."); return; }
+  if (!S.name) { status("Chưa mở file."); return; }
+  clearTimeout(tmr);
+  await save(true); await reparse();
 }
 async function undo() {
   if (!S.undo.length) return status("Không còn gì để hoàn tác.");
   setText(S.undo.pop(), true); S.dirty = true; await reparse(); await save(); status("Đã hoàn tác.");
 }
+// KING 0.3: Inspector và các thao tác sửa trên view tạm khóa (dev/plan-working/README.md mục 2).
+// Mọi chỉnh sửa đi qua khung văn bản; op() không gửi gì.
+const FROZEN = true;
 async function op(name, args, before) {
   if (ST || !S.name) return;
+  if (FROZEN) { status("KING 0.3: sửa trên view / Inspector đang tạm khóa — hãy sửa trong khung văn bản.", "warn"); return; }
   try {
     const r = await api("/api/op", {name:S.name, text:S.text, op:name, args});
     if (before) before(r);
@@ -769,7 +931,6 @@ function tip(n) {
 }
 const LABEL_OUTSIDE = new Set(["dot", "star", "triangle", "diamond", "hexagon", "text"]), LABEL_OUT_COLOR = "#d4d4d4";
 // màu nhãn mặc định theo bộ màu chung: section xanh dương, node vàng nhạt (khi xuất SVG nền trắng thì đổi sang chữ tối)
-const labelColor = n => n.kind === "section" ? PAL.sec : PAL.node;
 const svgText = c => [LABEL_OUT_COLOR, PAL.sec, PAL.node].includes(c) ? "#1f2328" : c;
 
 // ---------- thu gọn / bung: con part-of cha, hoặc cha có meta contain=con ----------
@@ -800,6 +961,7 @@ function buildFold(g) {
     });
   }
   if (!S.showDefs) S.defHide.forEach(id => S.hidden.add(id));
+  hiddenIn("graph").forEach(id => S.hidden.add(id));          // - hide: graph / all (cả con cháu)
 }
 function countBelow(id) {
   const seen = new Set(), st = [...(S.kids[id] || [])];
@@ -860,27 +1022,33 @@ function renderer(m) {
       ctx.globalAlpha = m.opacity;
       ctx.font = `${m.fontSize}px ${m.font}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
       ctx.lineWidth = 3; ctx.strokeStyle = "#1e1e1e"; ctx.fillStyle = m.fontColor; ctx.lineJoin = "round";
-      wrapLabel(ctx, m.label, 150).forEach((t, i) => {
+      const rows = wrapLabel(ctx, m.label, 150);
+      rows.forEach((t, i) => {
         const ty = y + m.h / 2 + 4 + i * (m.fontSize + 2);
         ctx.strokeText(t, x, ty); ctx.fillText(t, x, ty);
       });
+      if (m.type) {                    // kiểu node: chữ phụ nhỏ dưới tên (mặc định tím)
+        ctx.font = `${m.fontSize - 3}px ${m.font}`; ctx.fillStyle = m.subColor;
+        const ty = y + m.h / 2 + 5 + rows.length * (m.fontSize + 2);
+        ctx.strokeText(m.type, x, ty); ctx.fillText(m.type, x, ty);
+      }
     },
     nodeDimensions:{width:m.w, height:m.h},
   });
 }
 function visNode(n) {
   const s = H(n), err = n.kind !== "external" && S.bad.has(n.line), sec = n.kind === "section";
-  const bg = s.color || (sec ? "#dbeafe" : "#fff7cc"), bd = err ? "#b00020" : (s["border-color"] || (sec ? "#3b82f6" : "#c9a227"));
+  const look = nodeLook(n), bg = look.fill, bd = err ? "#b00020" : look.border;
   const bw = num(s.border, 1.5), shape = s.shape || (sec ? "box" : "ellipse");
   const fold = !S.kids[n.id] ? "" : S.folded.has(n.id) ? ` ▸ +${countBelow(n.id)}` : " ▾";
   const hide = (S.hideLab || {})[sec ? "section" : "node"];
   const label = hide ? "" : (n.title || n.id) + (n.ask ? " ✎" : "") + fold;
-  const font = {face:s.font || "system-ui", size:num(s["font-size"], 13), color:s["font-color"] || labelColor(n)};
+  const font = {face:s.font || "system-ui", size:num(s["font-size"], 13), color:look.label};   // nhãn Graph nằm ngoài hình
   const base = {id:n.id, title:tip(n), hidden:S.hidden.has(n.id), opacity:num(s.opacity, 1)};
   if (CUSTOM_SHAPES.has(shape)) {
     const m = {shape, ...shapeBox(shape, num(s.size, sec ? 13 : 14)), radius:num(s.radius, shape === "box" ? 6 : 0),
                bg, bd, bw:err ? 3 : bw, dash:s.dash === true, opacity:num(s.opacity, 1),
-               label, font:font.face, fontSize:font.size, fontColor:font.color};
+               label, font:font.face, fontSize:font.size, fontColor:font.color, subColor:look.sub, type:hide ? "" : n.type || ""};
     return {...base, shape:"custom", ctxRenderer:renderer(m), label, kg:m};
   }
   return {...base, label, shape, size:num(s.size, 14), font,
@@ -892,7 +1060,7 @@ function visEdges() {
   S.edgeMap = {}; const show = $("#showTree").checked, out = [];
   S.graph.links.forEach((l, i) => {
     if (l.tree && !show) return;
-    if (S.hidden.has(l.source) || S.hidden.has(l.target)) return;
+    if (S.hidden.has(l.source) || S.hidden.has(l.target) || linkHiddenIn(l, "graph")) return;
     S.edgeMap[i] = l; const s = H(l);
     const arrows = s.arrows === "none" ? "" : s.arrows === "both" ? "to, from" : (s.arrows || "to");
     out.push({id:i, from:l.source, to:l.target, arrows,
@@ -902,7 +1070,63 @@ function visEdges() {
   });
   return out;
 }
+// ---------- bố cục cây trái → phải trên lưới (mặc định); "Lực" = physics như cũ ----------
+const COL = 6;                                // mỗi cấp cách nhau COL ô lưới; mỗi hàng 2 ô
+const layoutKey = () => "kglayout:" + (S.root || "static") + "|" + S.name;
+const getLayout = () => { try { return localStorage.getItem(layoutKey()) || "tree"; } catch (e) { return "tree"; } };
+function treeParent(g) {     // mỗi node một cha: part-of > contain > section chứa nó > parent
+  const by = Object.fromEntries(g.nodes.map(n => [n.id, n])), par = {}, rank = {};
+  const put = (c, p, r) => { if (by[c] && by[p] && c !== p && !(rank[c] <= r)) { par[c] = p; rank[c] = r; } };
+  for (const l of g.links) {
+    if (l.type === "part-of") put(l.source, l.target, 0);
+    else if (l.type === "contain") put(l.target, l.source, 1);
+    else if (l.tree || l.type === "contains") put(l.target, l.source, 2);
+  }
+  for (const n of g.nodes) if (n.parent) put(n.id, n.parent, 3);
+  for (const id of Object.keys(par)) {        // chặn vòng: đi lên tới khi gặp lại chính mình thì cắt
+    const seen = new Set([id]); let p = par[id];
+    while (p !== undefined) { if (seen.has(p)) { delete par[id]; break; } seen.add(p); p = par[p]; }
+  }
+  return par;
+}
+// Bố cục: tree = cây thụt lề (cha ngang hàng con đầu), tidy = cây cân (cha ở giữa các con, kiểu D3 tree),
+// radial = tỏa tròn từ gốc, force = physics. Ba bố cục cây đều làm tròn toạ độ về lưới.
+const LAYOUTS = {tree:"⊢ Thụt lề", tidy:"⊣ Cây cân", radial:"✳ Tỏa tròn", force:"✺ Lực"};
+const LAYOUT_ORDER = ["tree", "tidy", "radial", "force"];
+function treeLayout(g, skip = new Set(), mode = "tree") {   // {id: {x, y}}; node trong skip (đang ẩn) không chiếm chỗ
+  const par = treeParent(g), kids = {}, order = n => n.line || 0;
+  const nodes = [...g.nodes].filter(n => !skip.has(n.id)).sort((a, b) => order(a) - order(b));
+  for (const n of nodes) if (par[n.id]) (kids[par[n.id]] = kids[par[n.id]] || []).push(n.id);
+  const slot = {}, depth = {}; let leaf = 0, maxD = 0;          // slot: vị trí theo thứ tự lá (số thực)
+  const walk = (id, d) => {
+    depth[id] = d; maxD = Math.max(maxD, d);
+    const ks = kids[id] || [];
+    if (!ks.length) { slot[id] = leaf++; return; }
+    ks.forEach(k => walk(k, d + 1));
+    slot[id] = mode === "tree" ? slot[ks[0]] : (slot[ks[0]] + slot[ks[ks.length - 1]]) / 2;
+  };
+  nodes.filter(n => !par[n.id] || skip.has(par[n.id])).forEach(n => walk(n.id, 0));
+  const snap = v => Math.round(v / GRID) * GRID, pos = {};
+  for (const id in slot) {
+    if (mode === "radial") {               // vòng thứ d có bán kính d·COL ô; chu vi đủ cho mỗi lá ~2 ô
+      const R = Math.max(COL * GRID, leaf * 2 * GRID / (2 * Math.PI) / Math.max(maxD, 1));
+      const r = depth[id] * R, t = 2 * Math.PI * (slot[id] + .5) / Math.max(leaf, 1);
+      pos[id] = {x: snap(r * Math.cos(t)), y: snap(r * Math.sin(t))};
+    } else pos[id] = {x: depth[id] * COL * GRID, y: snap(slot[id] * 2 * GRID)};
+  }
+  return pos;
+}
+const isTree = m => m !== "force";
+function setLayout(mode) {
+  try { localStorage.setItem(layoutKey(), mode); } catch (e) {}
+  $("#bLayout").value = mode;
+}
+function relayout() {        // bỏ mọi vị trí đã lưu của file, xếp lại theo chế độ hiện tại
+  try { localStorage.removeItem(posKey()); } catch (e) {}
+  nodesDS.clear(); render(S.graph);
+}
 function render(g) {
+  $("#bLayout").value = LAYOUTS[getLayout()] ? getLayout() : "tree";
   S.graph = g; S.byId = Object.fromEntries(g.nodes.map(n => [n.id, n]));
   S.bad = new Set(g.graph.errors.filter(e => !e.file).map(e => e.line));
   if (S.foldKey !== foldKey()) { S.foldKey = foldKey(); S.folded = loadFold(); }
@@ -926,15 +1150,46 @@ function render(g) {
     }
     return v;
   });
+  // mở lại file mà có node mới (chưa có vị trí lưu): ghim mọi node đã có vị trí, chỉ node mới được mô phỏng xếp chỗ;
+  // node mới bắt đầu cạnh section / node cha nếu cha đã có vị trí
+  const placed = items.filter(v => v.x !== undefined), pinned = fresh && missing && placed.length ? placed.map(v => v.id) : [];
+  if (pinned.length) {
+    const at = Object.fromEntries(placed.map(v => [v.id, v]));
+    for (const v of items) {
+      if (v.x !== undefined) { v.fixed = {x:true, y:true}; continue; }
+      const n = S.byId[v.id], par = at[n.parent] || at[[...(S.parents[n.id] || [])].find(p => at[p])];
+      if (par) { v.x = par.x + (Math.random() - .5) * 160; v.y = par.y + 70 + Math.random() * 40; }
+    }
+  }
   S.pending = {};
   nodesDS.remove([...old].filter(id => !S.byId[id]));
   nodesDS.update(items);
   edgesDS.clear(); edgesDS.add(visEdges());
-  if (fresh && missing) {
+  if (fresh && missing && isTree(getLayout())) {
+    // node chưa có vị trí lưu: xếp theo cây; nếu ô đã có node ghim thì dời xuống ô trống gần nhất
+    const T = treeLayout(g, new Set(items.filter(v => v.hidden).map(v => v.id)), getLayout()), cell = p => Math.round(p.x / GRID) + "," + Math.round(p.y / GRID);
+    const used = new Set(items.filter(v => v.x !== undefined).map(cell));
+    const add = [];
+    for (const v of items) {
+      if (pinned.includes(v.id) || !T[v.id]) continue;
+      const p = {...T[v.id]};
+      while (used.has(cell(p))) p.y += 2 * GRID;
+      used.add(cell(p)); add.push({id:v.id, x:p.x, y:p.y});
+    }
+    nodesDS.update(add);
+    if (pinned.length) nodesDS.update(pinned.map(id => ({id, fixed:false})));
+    savePos(); net.fit();
+  } else if (fresh && missing) {
     net.setOptions({physics:{enabled:true}});
-    net.once("stabilizationIterationsDone", () => { net.setOptions({physics:{enabled:false}}); savePos(); net.fit(); });
+    net.once("stabilizationIterationsDone", () => {
+      net.setOptions({physics:{enabled:false}});
+      if (pinned.length) nodesDS.update(pinned.map(id => ({id, fixed:false})));    // bỏ ghim: vẫn kéo tay được
+      if (S.grid) snapNodes(items.filter(v => !pinned.includes(v.id)).map(v => v.id), true);   // node mới vào lưới luôn
+      savePos(); net.fit();
+    });
     net.stabilize(300);
   } else if (fresh) net.fit();
+  else if (items.some(v => !old.has(v.id))) savePos();     // node mới thêm khi đang sửa: lưu vị trí ngay
   fillLinkSel(g); showLog(g); updateGutter(); renderViews();
   fillLists(g); renderExplorer(); renderInspector();
   if (S.mode === "link") net.addEdgeMode();
@@ -1020,10 +1275,45 @@ net.on("select", p => {
   if (p.nodes.length) focusNode(p.nodes[0], false);
   else if (p.edges.length && S.edgeMap[p.edges[0]]) selectLink(S.edgeMap[p.edges[0]]);
 });
+// ---------- lưới: vẽ dưới đồ thị; node thả xuống hút về nút lưới gần nhất ----------
+const GRID = 40;                            // khoảng cách lưới (đơn vị toạ độ đồ thị); mỗi 5 ô một đường đậm
+S.grid = (() => { try { return localStorage.getItem("kggrid") !== "0"; } catch (e) { return true; } })();
+function setGrid(on) {
+  S.grid = on; $("#bGrid").classList.toggle("on", on);
+  try { localStorage.setItem("kggrid", on ? "1" : "0"); } catch (e) {}
+  net.redraw();                              // bật lưới không xếp lại node cũ; chỉ node được kéo thả mới hút vào lưới
+}
+function snapNodes(ids, quiet) {           // đặt node vào nút lưới gần nhất
+  const pos = net.getPositions(ids);
+  for (const id of ids) {
+    const p = pos[id]; if (!p) continue;
+    const x = Math.round(p.x / GRID) * GRID, y = Math.round(p.y / GRID) * GRID;
+    if (x !== p.x || y !== p.y) net.moveNode(id, x, y);
+  }
+  savePos();
+  if (!quiet) net.redraw();
+}
+net.on("beforeDrawing", ctx => {
+  if (!S.grid) return;
+  const sc = net.getScale(); if (sc * GRID < 6) return;               // thu nhỏ quá: lưới dày đặc, bỏ
+  const box = $("#g"), a = net.DOMtoCanvas({x:0, y:0}), b = net.DOMtoCanvas({x:box.clientWidth, y:box.clientHeight});
+  const x0 = Math.floor(a.x / GRID) * GRID, y0 = Math.floor(a.y / GRID) * GRID;
+  ctx.save(); ctx.lineWidth = 1 / sc;
+  for (const major of [false, true]) {
+    ctx.beginPath(); ctx.strokeStyle = major ? "#ffffff1c" : "#ffffff0b";
+    for (let x = x0; x <= b.x; x += GRID) if ((Math.round(x / GRID) % 5 === 0) === major) { ctx.moveTo(x, a.y); ctx.lineTo(x, b.y); }
+    for (let y = y0; y <= b.y; y += GRID) if ((Math.round(y / GRID) % 5 === 0) === major) { ctx.moveTo(a.x, y); ctx.lineTo(b.x, y); }
+    ctx.stroke();
+  }
+  ctx.restore();
+});
+$("#bGrid").onclick = () => setGrid(!S.grid);
+$("#bGrid").classList.toggle("on", S.grid);
+
 const inBox = (b, c) => b && c.x >= b.left && c.x <= b.right && c.y >= b.top && c.y <= b.bottom;
 net.on("dragEnd", async p => {
   if (!p.nodes.length) return;
-  savePos();
+  if (S.grid) snapNodes(p.nodes); else savePos();
   if (S.mode !== "move" || ST) return;
   const c = p.pointer.canvas;
   const tgt = S.graph.nodes.find(n => n.kind === "section" && !p.nodes.includes(n.id) && inBox(net.getBoundingBox(n.id), c));
@@ -1040,7 +1330,7 @@ async function onAddEdge(d) {
 document.addEventListener("keydown", async e => {
   const typing = ["TEXTAREA", "INPUT", "SELECT"].includes(document.activeElement.tagName);
   const k = e.key.toLowerCase();
-  if ((e.ctrlKey || e.metaKey) && k === "s") { e.preventDefault(); await save(); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === "s" || e.code === "KeyS")) { e.preventDefault(); await saveNow(); return; }
   if (typing || ST || $("#dlg").open) return;
   if ((e.ctrlKey || e.metaKey) && k === "z") { e.preventDefault(); await undo(); return; }
   if (e.key !== "Delete" && e.key !== "Backspace") return;
@@ -1226,6 +1516,29 @@ function exportSVG() {
   a.download = (S.name || "graph").replace(/\.kg\.md$/, "") + ".svg"; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000); status("Đã xuất " + a.download);
 }
+// Chọn bố cục ở ô sổ xuống, hoặc L: kiểu kế tiếp; Shift+L: xếp lại kiểu đang chọn (bỏ vị trí kéo tay)
+function applyLayout(mode) {
+  const cur = LAYOUTS[getLayout()] ? getLayout() : "tree";
+  if (!S.graph || !confirm(`Xếp lại toàn bộ đồ thị theo bố cục ${LAYOUTS[mode]}? Vị trí kéo tay của file này sẽ mất.`)) {
+    $("#bLayout").value = cur; return;
+  }
+  setLayout(mode); relayout();
+  status("Bố cục: " + LAYOUTS[mode]);
+}
+function toggleLayout(again) {
+  const cur = LAYOUTS[getLayout()] ? getLayout() : "tree";
+  applyLayout(again ? cur : LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(cur) + 1) % LAYOUT_ORDER.length]);
+}
+$("#bLayout").onchange = e => applyLayout(e.target.value);
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.key.toLowerCase() !== "l" || !onGraph() || !shown("graph")) return;
+  e.preventDefault(); toggleLayout(e.shiftKey);
+});
+// G: bật / tắt lưới (khi đang ở đồ thị, không gõ chữ)
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.key.toLowerCase() !== "g" || !onGraph() || !shown("graph")) return;
+  e.preventDefault(); setGrid(!S.grid); status(S.grid ? "Lưới: bật (node thả xuống hút về nút lưới)" : "Lưới: tắt");
+});
 </script>
 <script>
 // explorer.js - chọn thư mục, tạo file; View Tree (cây section → node, node con part-of / contain dưới node cha)
@@ -1292,26 +1605,33 @@ function treeChildren() {
   }
   return {kids, roots};
 }
-function treeRow(n, depth, has, via) {
+const isOutput = r => /^(output|xuất|xuat)$/i.test(String(r || "").trim());   // role: output (hoặc Xuất của v0.2)
+function treeRow(n, depth, has, via, dim) {
   const ic = n.kind === "section" ? ["sec", "#"] : n.kind === "external" ? ["ext", "↗"] : ["nod", "@"];
-  // khóa meta hồng, giá trị nâu (cùng bộ màu với khung văn bản)
-  const meta = Object.entries(n.meta || {}).filter(([k]) => k !== "contain")
-    .map(([k, v]) => `<span class="mk">${esc(k)}</span>=<span class="mv">${esc(v)}</span>`).join(" ");
-  return `<div class="tr${n.show === "none" || n.def ? " hide" : ""}" data-id="${esc(n.id)}" style="padding-left:${8 + depth * 14}px" title="${esc(n.id)}${n.def ? " (" + n.def + ")" : ""}">` +
+  // chỉ hiện label + kiểu node + role khi là output; các attribute khác (và role input / scaffold…) ẩn,
+  // xem khi rê chuột, ở Book hoặc khung văn bản
+  const meta = Object.entries(n.meta || {}).filter(([k]) => !["contain", "type", "ask", "show", "label"].includes(k))
+    .map(([k, v]) => `${k}: ${v}`).join("\n");
+  const role = n.meta && n.meta.role, out = isOutput(role);
+  return `<div class="tr${n.show === "none" || n.def || dim ? " hide" : ""}" data-id="${esc(n.id)}" style="padding-left:${8 + depth * 14}px" title="${esc(n.id)}${n.def ? " (" + n.def + ")" : ""}${via ? " · " + via : ""}${meta ? "\n" + esc(meta) : ""}">` +
     `<span class="tw">${has ? (treeClosed.has(n.id) ? "▸" : "▾") : ""}</span>` +
     `<span class="ic ${ic[0]}">${ic[1]}</span><span class="nm ${ic[0]}">${esc(n.title || n.id)}</span>` +
-    (via ? `<span class="via" style="color:${esc(linkText(via))}">${via}</span>` : "") +
-    (n.ask ? '<span class="ask">✎</span>' : "") + (meta ? `<span class="meta">${meta}</span>` : "") + "</div>";
+    (n.type ? `<span class="ty">${esc(n.type)}</span>` : "") +
+    (out ? `<span class="ro">${esc(role)}</span>` : "") +
+    (n.ask ? '<span class="ask">✎</span>' : "") + "</div>";
 }
 function renderTree(el) {           // vẽ vào View Tree, hoặc vào Outline của Explorer
   el = el || $("#treeView");
   if (!S.graph) { el.innerHTML = '<div class="tr"><span class="nm" style="color:var(--mute)">(chưa có dữ liệu)</span></div>'; return; }
   const {kids, roots} = treeChildren(), out = [];
+  // - hide: tree / all: View Tree bỏ hẳn; Outline vẫn hiện (mờ) để còn tìm và sửa
+  const hid = hiddenIn("tree"), isView = el.id === "treeView";
   const walk = (items, depth, path) => {
     for (const {n, via} of items) {
       if (path.has(n.id)) continue;                      // phòng vòng lặp
-      const ch = kids[n.id] || [];
-      out.push(treeRow(n, depth, ch.length > 0, via));
+      if (isView && hid.has(n.id)) continue;
+      const ch = (kids[n.id] || []).filter(c => !(isView && hid.has(c.n.id)));
+      out.push(treeRow(n, depth, ch.length > 0, via, hid.has(n.id)));
       if (ch.length && !treeClosed.has(n.id)) walk(ch, depth + 1, new Set([...path, n.id]));
     }
   };
@@ -1321,7 +1641,7 @@ function renderTree(el) {           // vẽ vào View Tree, hoặc vào Outline 
     const id = r.dataset.id, n = S.byId[id];
     if (e.target.classList.contains("tw") && e.target.textContent) {
       if (treeClosed.has(id)) treeClosed.delete(id); else treeClosed.add(id);
-      renderTree($("#exOutline")); if (S.view === "tree") renderTree();
+      renderTree($("#exOutline")); if (shown("tree")) renderTree();
       return;
     }
     if (n && n.kind !== "external") jumpTo(n.line);
@@ -1422,22 +1742,24 @@ function renderBook() {
   let hidden = 0;
   for (const n of items) {
     if (S.defHide && S.defHide.has(n.id)) continue;          // schema/style trong file: không phải nội dung sách
-    if (n.show === "none") { hidden++; continue; }
+    if (n.show === "none" || hiddenIn("book").has(n.id)) { hidden++; continue; }
     if (n.kind === "section") {
       const h = Math.min(Math.max(n.level || 1, 1), 6);
       out.push(`<h${h} data-id="${esc(n.id)}" data-line="${n.line}">${mdInline(n.title || n.id)}</h${h}>`);
+      if (n.content) out.push(`<div data-id="${esc(n.id)}" data-line="${n.line}" class="sec-text">${mdBlock(n.content)}</div>`);   // văn bản dưới heading
       continue;
     }
-    const meta = Object.entries(n.meta || {}).map(([k, v]) =>
-      `<span class="chip"><b style="color:${esc(keyColor(k))}">${esc(k)}</b>=<span class="mv">${esc(v)}</span></span>`).join("");
+    // attribute: chữ xám nhỏ (bảng màu 0.3); kiểu node: nhãn tím; ask nằm trên nội dung
+    const meta = Object.entries(n.meta || {}).filter(([k]) => !["type", "ask", "show", "hide", "label"].includes(k)).map(([k, v]) =>
+      `<span class="chip"><b>${esc(k)}</b>: <span class="mv">${esc(v)}</span></span>`).join("");
     out.push(`<article data-id="${esc(n.id)}" data-line="${n.line}">` +
-      `<h4>${mdInline(n.title || n.id)}<small>@${esc(n.id)}</small></h4>` +
-      (meta ? `<div class="chips">${meta}</div>` : "") +
-      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(chưa có nội dung)</p>')) +
+      `<h4>${mdInline(n.title || n.id)}${n.type ? `<span class="ty">${esc(n.type)}</span>` : ""}<small>@${esc(n.id)}</small></h4>` +
+      (meta ? `<div class="chips attrs">${meta}</div>` : "") +
       (n.ask ? `<div class="ask">✎ ${mdInline(n.ask)}</div>` : "") +
+      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(chưa có nội dung)</p>')) +
       bookLinks(n) + "</article>");
   }
-  if (hidden) out.push(`<p class="note">${hidden} mục có <code>show: none</code> không hiện trong sách.</p>`);
+  if (hidden) out.push(`<p class="note">${hidden} mục có <code>show: none</code> hoặc <code>hide</code> không hiện trong sách (View › Hiện cả node đã ẩn).</p>`);
   el.innerHTML = `<div class="book">${out.join("")}</div>`;
   el.querySelectorAll("[data-go]").forEach(a => a.onclick = e => {
     e.stopPropagation(); const id = a.dataset.go;
@@ -1502,7 +1824,7 @@ function wrapText(t, max) {
   return lines.slice(0, 4);
 }
 const PAD = 18, GAP = 48, HEAD = 32;      // GAP rộng để thấy được link giữa các node đứng cạnh nhau
-const modVisible = n => S.showDefs || !(S.defHide && S.defHide.has(n.id));
+const modVisible = n => (S.showDefs || !(S.defHide && S.defHide.has(n.id))) && !hiddenIn("module").has(n.id);
 function flow(items, maxW) {          // xếp thành hàng, mỗi hàng căn giữa; trả kích thước khối
   const rows = []; let row = [], rw = 0;
   for (const it of items) {
@@ -1582,7 +1904,7 @@ function renderModule() {
   const nest = new Set(["part-of", "contain", ...modLinks]), marks = {};
   let defs = "", edges = "";
   for (const l of S.graph.links) {
-    if (l.tree || nest.has(l.type)) continue;
+    if (l.tree || nest.has(l.type) || linkHiddenIn(l, "module")) continue;
     const a = at[l.source], b = at[l.target];
     if (!a || !b || a === b || inside(a, b) || inside(b, a)) continue;   // link tới nhóm đang chứa nó: đã thấy qua việc lồng
     const s = H(l), color = s.color || linkColor(l.type);
@@ -1598,21 +1920,23 @@ function renderModule() {
       ((S.hideLab || {}).link ? "" : `<text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2}" class="mlabel">${esc(l.type)}</text>`) + "</g>";
   }
   const gsvg = groups.map(b => {
-    const s = H(b.n), sec = b.n.kind === "section", stroke = s["border-color"] || (sec ? "#6b7280" : "#7f95ab");
-    const fill = s.color || (sec ? "none" : "#7f95ab"), has = b.count > 0;
+    // hộp nhóm: nền nhạt (16%) nên tên nhóm nằm trên nền trang → dùng màu nhãn; số con dùng chữ phụ
+    const s = H(b.n), sec = b.n.kind === "section", look = nodeLook(b.n), stroke = look.border;
+    const fill = sec ? "none" : look.fill, has = b.count > 0;
     return `<g class="mod mgroup" data-id="${esc(b.n.id)}">` +
       // section: hình chữ nhật góc vuông; nhóm (node có node con): hình chữ nhật bo góc
       `<rect class="shape" x="${b.ax}" y="${b.ay}" width="${b.w}" height="${b.h}" rx="${num(s.radius, sec ? 0 : 14)}" fill="${esc(fill)}" fill-opacity="${sec ? 0 : 0.16}"` +
       ` stroke="${esc(stroke)}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="6,4"' : ""}/>` +
       (has ? `<text class="mtw" x="${b.ax + 14}" y="${b.ay + 21}">${b.closed ? "▸" : "▾"}</text>` : "") +
-      (sec && (S.hideLab || {}).section ? "" : `<text class="mgt${sec ? " sec" : ""}" x="${b.ax + (has ? 30 : 14)}" y="${b.ay + 21}">${esc(b.n.title || b.n.id)}</text>`) +
-      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}">+${b.count} con · nhấp đúp để mở</text>` : "") + "</g>";
+      (sec && (S.hideLab || {}).section ? "" : `<text class="mgt${sec ? " sec" : ""}" x="${b.ax + (has ? 30 : 14)}" y="${b.ay + 21}" style="fill:${esc(look.label)}">${esc(b.n.title || b.n.id)}</text>`) +
+      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}" style="fill:${esc(look.sub)}">+${b.count} con · nhấp đúp để mở</text>` : "") + "</g>";
   }).join("");
   const lsvg = leaves.map(b => {
-    const s = H(b.n), cx = b.ax + b.r, cy = b.ay + b.r, lh = 16, y0 = cy - (b.lines.length - 1) * lh / 2;
-    return `<g class="mod mleaf" data-id="${esc(b.n.id)}"><circle class="shape" cx="${cx}" cy="${cy}" r="${b.r}" fill="${esc(s.color || "#dfe9f3")}"` +
-      ` stroke="${esc(s["border-color"] || "#607d8b")}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="5,4"' : ""}/>` +
-      ((S.hideLab || {}).node ? "" : b.lines.map((t, i) => `<text x="${cx}" y="${y0 + i * lh}" fill="${esc(s["font-color"] || "#1f2328")}">${esc(t)}</text>`).join("")) +
+    // lá: chữ nằm trên nền node → dùng màu chữ chính (tự đổi trắng / đen theo nền nếu style không ghi)
+    const s = H(b.n), look = nodeLook(b.n), cx = b.ax + b.r, cy = b.ay + b.r, lh = 16, y0 = cy - (b.lines.length - 1) * lh / 2;
+    return `<g class="mod mleaf" data-id="${esc(b.n.id)}"><circle class="shape" cx="${cx}" cy="${cy}" r="${b.r}" fill="${esc(look.fill)}"` +
+      ` stroke="${esc(look.border)}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="5,4"' : ""}/>` +
+      ((S.hideLab || {}).node ? "" : b.lines.map((t, i) => `<text x="${cx}" y="${y0 + i * lh}" fill="${esc(look.text)}">${esc(t)}</text>`).join("")) +
       (b.n.ask ? `<text x="${cx + b.r * 0.72}" y="${cy - b.r * 0.72}" class="mask">✎</text>` : "") + "</g>";
   }).join("");
 
@@ -1924,7 +2248,7 @@ function wireInspector(el, n, l) {
 }
 </script>
 <script>
-// app.js - menu File / View / Format, 3 view (Graph, Tree, Book), đồng bộ với file trên đĩa, khởi động
+// app.js - menu File / View / Format, hai khung nhiều tab (Văn bản, Graph, Tree, Book, Module), đồng bộ với file trên đĩa, khởi động
 
 // ---------- menu kiểu VS Code ----------
 function closeMenus() { $$(".menu.open").forEach(m => m.classList.remove("open")); }
@@ -1942,26 +2266,139 @@ $$(".menu").forEach(m => {
 document.addEventListener("click", closeMenus);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenus(); });
 
-// ---------- 3 view ----------
+// ---------- hai khung, mỗi khung nhiều tab ----------
+// Panel: text (khung văn bản) và 4 view. Mỗi panel chỉ có một bản, nằm ở một khung (left / right) hoặc đang đóng.
+// Mỗi khung có một tab đang mở; hai khung có thể mở hai view khác nhau cùng lúc (vd. Tree bên trái, Graph bên phải).
 const VIEWS = {graph:"Graph", tree:"Tree", book:"Book", module:"Module"};
-function renderViews() {
-  if (S.view === "tree") renderTree();
-  else if (S.view === "book") renderBook();
-  else if (S.view === "module") renderModule();
+const PANELS = {text:"Văn bản (.kg.md)", ...VIEWS};
+const PANES = ["left", "right"];
+const PANE_KEY = "kgpanes";
+const tabOf = p => $(`.tab[data-panel="${p}"]`), bodyOf = p => $("#" + p + "View");
+const closedBox = document.createElement("div");                   // panel đang đóng: vẫn ở trong trang (code khác còn tìm #log, #fname…) nhưng ẩn
+closedBox.hidden = true; closedBox.id = "closedPanels"; document.body.appendChild(closedBox);
+const paneOf = p => { const t = tabOf(p).closest(".pane"); return t ? t.id : null; };
+const paneTabs = id => [...$("#" + id).querySelectorAll(".tab-list .tab")].map(t => t.dataset.panel);
+const activeOf = id => { const t = $("#" + id).querySelector(".tab-list .tab.on"); return t ? t.dataset.panel : null; };
+const shown = p => PANES.some(id => activeOf(id) === p);          // panel đang hiện ở một khung nào đó
+function savePanes() {
+  const L = {}; for (const id of PANES) L[id] = {tabs: paneTabs(id), on: activeOf(id)};
+  try { localStorage.setItem(PANE_KEY, JSON.stringify(L)); } catch (e) {}
 }
-function setView(v) {
-  if (!VIEWS[v]) v = "graph";
-  S.view = v;
-  $$(".view").forEach(el => el.classList.toggle("on", el.id === v + "View"));
-  $$("[data-view]").forEach(el => el.classList.toggle("on", el.dataset.view === v));
-  $("#sbView").textContent = "View: " + VIEWS[v];
-  try { localStorage.setItem("kgview", v); } catch (e) {}
-  if (!ST && S.name) history.replaceState(null, "", "?file=" + encodeURIComponent(S.name) + (v !== "graph" ? "&view=" + v : ""));
-  if (v === "graph") { net.redraw(); if (!S.graphShown && S.graph) net.fit(); S.graphShown = true; }
-  renderViews();
+function refreshPane(id) {
+  const pane = $("#" + id), on = activeOf(id);
+  pane.classList.toggle("empty", !on);
+  pane.classList.toggle("text-on", on === "text");
+  for (const t of pane.querySelectorAll(".tab-list .tab")) bodyOf(t.dataset.panel).classList.toggle("on", t.dataset.panel === on);
+}
+function renderViews() {
+  if (shown("tree")) renderTree();
+  if (shown("book")) renderBook();
+  if (shown("module")) renderModule();
+}
+function afterShow(p) {
+  if (p === "graph") requestAnimationFrame(() => { net.redraw(); if (!S.graphShown && S.graph) net.fit(); S.graphShown = true; });
+  if (p === "text") updateGutter();
+  if (VIEWS[p]) {
+    S.view = p; $("#sbView").textContent = "View: " + VIEWS[p];
+    $$(".item[data-view]").forEach(el => el.classList.toggle("on", shown(el.dataset.view)));
+    try { localStorage.setItem("kgview", p); } catch (e) {}
+    if (!ST && S.name) history.replaceState(null, "", "?file=" + encodeURIComponent(S.name) + (p !== "graph" ? "&view=" + p : ""));
+  }
+}
+function showTab(id, p) {
+  $("#" + id).querySelectorAll(".tab-list .tab").forEach(t => t.classList.toggle("on", t.dataset.panel === p));
+  refreshPane(id);
+}
+function activate(p) {                    // mở tab p trong khung đang chứa nó
+  const id = paneOf(p); if (!id) return;
+  showTab(id, p); savePanes();
+  afterShow(p); renderViews();
   if (S.selected) markSelected(S.selected, true);
 }
-$$("[data-view]").forEach(el => el.addEventListener("click", () => setView(el.dataset.view)));
+function detach(p) {                      // gỡ panel p khỏi khung đang chứa; khung đó mở tab bên cạnh
+  const id = paneOf(p); if (!id) return;
+  const wasOn = activeOf(id) === p, rest = paneTabs(id).filter(x => x !== p);
+  const t = tabOf(p), b = bodyOf(p);
+  t.classList.remove("on"); b.classList.remove("on");
+  closedBox.append(t, b);
+  if (wasOn && rest.length) showTab(id, rest[rest.length - 1]); else refreshPane(id);
+  const o = activeOf(id); if (o && wasOn) afterShow(o);
+}
+function placePanel(p, id, quiet) {            // đưa panel p vào khung id (chuyển từ khung kia nếu đang ở đó) và mở nó
+  if (paneOf(p) !== id) {
+    detach(p);
+    $("#" + id + " .tab-list").appendChild(tabOf(p));
+    $("#" + id + " .views").insertBefore(bodyOf(p), $("#" + id + " .pane-empty"));
+  }
+  if (quiet) refreshPane(id); else activate(p);
+}
+function closePanel(p) {
+  const id = paneOf(p); if (!id) return;
+  detach(p); savePanes(); renderViews();
+}
+$$(".item[data-view]").forEach(el => el.addEventListener("click", () => setView(el.dataset.view)));   // menu View
+function setView(v) {                     // Ctrl+1..4, ?view=…: mở view v; nếu đang đóng thì đặt vào khung phải
+  if (!VIEWS[v]) v = "graph";
+  if (paneOf(v)) activate(v); else placePanel(v, "right");
+}
+// menu ＋ của mỗi khung
+const addMenu = $("#addMenu");
+function openAddMenu(btn) {
+  const id = btn.closest(".pane").id;
+  addMenu.innerHTML = Object.entries(PANELS).map(([p, name]) => {
+    const where = paneOf(p);
+    const note = where === id ? "đang ở đây" : where ? "chuyển từ khung " + (where === "left" ? "trái" : "phải") : "";
+    return `<button data-add="${p}" ${where === id ? "disabled" : ""}>${name}<small>${note}</small></button>`;
+  }).join("");
+  const r = btn.getBoundingClientRect();
+  addMenu.hidden = false; addMenu.dataset.pane = id;
+  addMenu.style.top = r.bottom + 2 + "px";
+  addMenu.style.left = Math.max(4, Math.min(r.left, innerWidth - addMenu.offsetWidth - 4)) + "px";
+}
+$$(".tab-add").forEach(b => b.addEventListener("click", e => {
+  e.stopPropagation();
+  if (!addMenu.hidden && addMenu.dataset.pane === b.closest(".pane").id) addMenu.hidden = true; else openAddMenu(b);
+}));
+addMenu.addEventListener("click", e => {
+  e.stopPropagation();
+  const b = e.target.closest("[data-add]"); if (!b || b.disabled) return;
+  addMenu.hidden = true; placePanel(b.dataset.add, addMenu.dataset.pane);
+});
+document.addEventListener("click", () => { addMenu.hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") addMenu.hidden = true; });
+// bấm tab: mở; bấm ×: đóng; kéo tab thả lên thanh tab của khung kia: chuyển
+for (const p of Object.keys(PANELS)) {
+  const t = tabOf(p);
+  t.draggable = true;
+  t.addEventListener("click", e => { if (e.target.closest(".tab-x")) { e.stopPropagation(); closePanel(p); } else activate(p); });
+  t.addEventListener("dragstart", e => { e.dataTransfer.setData("text/kg-panel", p); e.dataTransfer.effectAllowed = "move"; });
+}
+for (const id of PANES) {
+  const bar = $("#" + id + " .tabs");
+  bar.addEventListener("dragover", e => { if (e.dataTransfer.types.includes("text/kg-panel")) { e.preventDefault(); bar.classList.add("drop-on"); } });
+  bar.addEventListener("dragleave", () => bar.classList.remove("drop-on"));
+  bar.addEventListener("drop", e => {
+    bar.classList.remove("drop-on");
+    const p = e.dataTransfer.getData("text/kg-panel"); if (!PANELS[p]) return;
+    e.preventDefault(); placePanel(p, id);
+  });
+}
+function restorePanes(view) {             // bố cục đã lưu; mặc định: Văn bản bên trái, 4 view bên phải
+  let L = null; try { L = JSON.parse(localStorage.getItem(PANE_KEY) || "null"); } catch (e) {}
+  if (!(L && PANES.every(id => L[id] && Array.isArray(L[id].tabs)))) {
+    let v = null; try { v = localStorage.getItem("kgview"); } catch (e) {}
+    L = {left: {tabs: ["text"], on: "text"}, right: {tabs: Object.keys(VIEWS), on: VIEWS[v] ? v : "graph"}};
+  }
+  const want = new Set(PANES.flatMap(id => L[id].tabs));
+  for (const p of Object.keys(PANELS)) if (!want.has(p)) detach(p);
+  for (const id of PANES) for (const p of L[id].tabs) if (PANELS[p]) placePanel(p, id, true);
+  for (const id of PANES) {
+    const tabs = paneTabs(id), on = tabs.includes(L[id].on) ? L[id].on : tabs[0];
+    showTab(id, on); if (on) afterShow(on);
+  }
+  if (view && VIEWS[view]) setView(view);   // ?view=… trong URL
+  renderViews();
+}
 document.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && ["1", "2", "3", "4"].includes(e.key)) { e.preventDefault(); setView(["graph", "tree", "book", "module"][+e.key - 1]); }
 });
@@ -2001,11 +2438,20 @@ setInterval(async () => {
 // ---------- khởi động ----------
 // bấm lại "Thu gọn" thì về chế độ Chọn (bản tĩnh không có nút Chọn)
 $$("[data-mode]").forEach(b => b.onclick = () => setMode(b.dataset.mode === "fold" && S.mode === "fold" ? "select" : b.dataset.mode));
-$("#bSvg").onclick = () => { closeMenus(); if (S.view !== "graph") setView("graph"); exportSVG(); };
-$("#bSave").onclick = save; $("#bUndo").onclick = undo;
+$("#bSvg").onclick = () => { closeMenus(); if (!shown("graph")) setView("graph"); exportSVG(); };
+$("#bSave").onclick = saveNow; $("#bUndo").onclick = undo;
 $("#bFoldAll").onclick = () => foldAll(true); $("#bUnfoldAll").onclick = () => foldAll(false);
 $("#showTree").onchange = () => { if (S.graph) { edgesDS.clear(); edgesDS.add(visEdges()); } if (S.mode === "link") net.addEdgeMode(); };
 $("#showDefs").onchange = e => { S.showDefs = e.target.checked; if (S.graph) render(S.graph); };
+function toggleShowHidden() {            // tạm hiện lại node / link có - hide: …
+  S.showHidden = !S.showHidden; $("#bShowHidden").classList.toggle("on", S.showHidden);
+  status(S.showHidden ? "Đang hiện cả node đã ẩn (hide). Ctrl+H để ẩn lại." : "Đã ẩn lại các node có hide.");
+  if (S.graph) render(S.graph);
+}
+$("#bShowHidden").onclick = toggleShowHidden;
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "h") { e.preventDefault(); toggleShowHidden(); }
+});
 // ẩn / hiện nhãn node, section, link (Format › Nhãn); nhớ trong trình duyệt
 try { S.hideLab = JSON.parse(localStorage.getItem("kglabels") || "{}"); } catch (e) { S.hideLab = {}; }
 function applyLabels() {
@@ -2068,8 +2514,9 @@ document.addEventListener("keydown", e => {
   const L = loadLayout();
   for (const name of ["explorer", "inspector", "left"]) {
     if (L["w_" + name]) $("#" + name).style.width = L["w_" + name];
-    setPanel(name, L["show_" + name] !== false);
+    setPanel(name, name === "inspector" ? false : L["show_" + name] !== false);   // 0.3: Inspector ẩn mặc định
   }
+  if (FROZEN) document.body.classList.add("frozen");
 }
 const BOOT_URL = new URLSearchParams(location.search);   // đọc trước khi openFile() viết lại URL
 function pickFromUrl() {           // ?node=id mở sẵn node đó (link chia sẻ tới một node)
@@ -2078,9 +2525,7 @@ function pickFromUrl() {           // ?node=id mở sẵn node đó (link chia s
 }
 (async () => {
   setMode("select");
-  let v = new URLSearchParams(location.search).get("view");
-  if (!v) { try { v = localStorage.getItem("kgview"); } catch (e) {} }
-  setView(v || "graph");
+  restorePanes(new URLSearchParams(location.search).get("view"));
   if (ST) {
     document.body.classList.add("static"); src.readOnly = true;
     S.name = ST.name; src.value = S.text = ST.text; $("#fname").textContent = ST.name;

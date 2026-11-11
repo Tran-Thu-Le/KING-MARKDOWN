@@ -1,3 +1,4 @@
+# Ops (sửa ngược file .kg.md) viết cho cú pháp v0.2 - ĐÓNG BĂNG ở 0.3 (dev/plan-v3/plan-v3.md).
 import os
 import shutil
 import sys
@@ -8,7 +9,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
 from king_markdown.ops import OPS, Doc  # noqa: E402
-from king_markdown.parser import Parser, read  # noqa: E402
+from king_markdown.legacy import Parser, read  # noqa: E402
 
 TEXT = """---
 kg: 0.2
@@ -80,6 +81,7 @@ class OpsTest(unittest.TestCase):
         out, _, _ = self.run_op("rename", id="toan", title="Toán học")
         self.assertIn("# Toán học @toan", out)
 
+    @unittest.skip("đóng băng ở 0.3: ops v0.2, schema hệ thống đã sang 0.3")
     def test_schema_add_creates_file_and_use(self):
         out, _, g = self.run_op("schema_add", kind="link", id="lien-quan", title="Liên quan")
         self.assertIn("use: schema", out)
@@ -172,6 +174,7 @@ class OpsTest(unittest.TestCase):
         self.assertIn('# Style\n\n@s-hinh\n- meta: select="type=hinh", html.color=red\n\n@s-a\n- meta: select="#a", html.shape=box', out)
         self.assertFalse(os.path.exists(os.path.join(self.dir, "style.kg.md")))
 
+    @unittest.skip("đóng băng ở 0.3: ops v0.2, schema hệ thống đã sang 0.3")
     def test_system_schema_style(self):
         """use: king/schema, king/style đọc bộ mẫu hệ thống; sửa format không ghi vào bộ mẫu mà vào style.kg.md của thư mục."""
         from king_markdown.parser import system_file

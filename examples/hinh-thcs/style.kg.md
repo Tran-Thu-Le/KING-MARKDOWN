@@ -7,7 +7,7 @@ Màu viết bằng tên có sẵn: red, orange, yellow, green, teal, blue, purpl
 # Node
 
 @hinh: Mọi hình
-- meta: select="type=hinh", html.shape=box, html.color=lightblue, html.border-color=blue
+- meta: select="type=Hinh", html.shape=box, html.color=lightblue, html.border-color=blue
 
 @goc: Tứ giác (gốc)
 - meta: select="#tu-giac", html.color=lightgray, html.border-color=gray
@@ -27,10 +27,10 @@ Màu viết bằng tên có sẵn: red, orange, yellow, green, teal, blue, purpl
 - meta: select="kind=section", html.shape=box, html.radius=0, html.color=white, html.border-color=green, html.dash=true
 
 @concept: Khái niệm
-- meta: select="type=concept", html.shape=ellipse, html.color=lightgreen, html.border-color=green
+- meta: select="type=Concept", html.shape=ellipse, html.color=lightgreen, html.border-color=green
 
 @group: Nhóm
-- meta: select="type=group", html.shape=box, html.radius=4, html.color=lightyellow, html.border-color=orange
+- meta: select="type=Group", html.shape=box, html.radius=4, html.color=lightyellow, html.border-color=orange
 
 @quan-trong: Quan trọng
 - meta: select="important=true", html.border=3, html.font-size=16

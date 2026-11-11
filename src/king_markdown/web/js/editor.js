@@ -7,7 +7,7 @@ const H = x => (x.style && x.style.html) || {};
 const S = {root:"", name:"", text:"", dirty:false, mtime:0, side:0, graph:null, byId:{}, edgeMap:{},
            mode:"select", view:"graph", pending:{}, hl:0, bad:new Set(), undo:[],
            kids:{}, parents:{}, folded:new Set(), hidden:new Set(), foldKey:null};
-const src = $("#src"), gut = $("#gut"), hlEl = $("#hl");
+const src = $("#src"), gut = $("#gut"), hlEl = $("#hlIn");   // #hlIn: khối chữ tô màu bên trong <pre id="hl">
 
 // ---------- tiện ích ----------
 function status(msg, kind) {
@@ -37,8 +37,58 @@ function hashColor(s, salt) {
   return PALETTE[h % PALETTE.length];
 }
 // bộ màu chung cho khung văn bản và 4 view (khớp các biến --k-* trong app.css)
-const PAL = {sec:"#4fa3ff", node:"#f5e3a1", link:"#f0a04b", meta:"#f48fb8", val:"#c9915e", text:"#ffffff"};
-const keyColor = () => PAL.meta;            // khóa meta: hồng ở mọi nơi
+const PAL = {sec:"#FFFFFF", node:"#E8D48A", link:"#A5ABB6", meta:"#9CDCFE", key:"#9CDCFE", kw:"#C586C0", type:"#4EC9B0",
+             val:"#D4D4D4", str:"#CE9178", text:"#D4D4D4"};
+const keyColor = () => PAL.key;            // khóa meta: hồng ở mọi nơi
+
+// ---------- hình thức chuẩn của một node (dùng chung cho Graph, Module, xuất SVG) ----------
+// Mỗi node luôn có đủ 5 màu; style (html.*) ghi đè, thiếu thì lấy mặc định:
+//   fill   html.color         nền
+//   border html.border-color  viền
+//   text   html.font-color    chữ chính nằm TRÊN nền node (Module); mặc định: trắng trên nền tối, đen trên nền sáng
+//   label  html.label-color   nhãn nằm NGOÀI hình, trên nền trang (Graph)
+//   sub    html.sub-color     chữ phụ: kiểu node, "+n con"
+const _lc = document.createElement("canvas").getContext("2d");
+function isLight(c) {                      // màu sáng? (nhận cả tên màu CSS: lightblue, white…)
+  _lc.fillStyle = "#000"; _lc.fillStyle = String(c);
+  const v = _lc.fillStyle, m = v.match(/^#(..)(..)(..)$/) || v.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+  if (!m) return false;
+  if (m[4] !== undefined && +m[4] < 0.3) return false;      // gần trong suốt: chữ nằm trên nền trang tối
+  const [r, g, b] = (v[0] === "#" ? m.slice(1, 4).map(h => parseInt(h, 16)) : m.slice(1, 4).map(Number));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150;
+}
+// ---------- - hide: all | graph, module … ----------
+// Node / section có hide cho view v thì bị ẩn khỏi v cùng mọi con cháu (node trong section, con part-of / contain).
+// @link có hide: ẩn mọi link loại đó. S.showHidden (menu View) tạm hiện lại tất cả.
+const hides = (x, v) => !!(x && x.hide && (x.hide.includes("all") || x.hide.includes(v)));
+let _hideCache = {g:null, sets:{}};
+function hiddenIn(v) {                     // Set id node bị ẩn ở view v
+  const g = S.graph;
+  if (!g || S.showHidden) return new Set();
+  if (_hideCache.g !== g) _hideCache = {g, sets:{}};
+  if (_hideCache.sets[v]) return _hideCache.sets[v];
+  const kids = {}, add = (p, c) => { if (p && c && p !== c) (kids[p] = kids[p] || []).push(c); };
+  for (const n of g.nodes) add(n.parent, n.id);
+  for (const l of g.links) {
+    if (l.type === "part-of") add(l.target, l.source);
+    else if (l.type === "contain") add(l.source, l.target);
+  }
+  const out = new Set(), st = g.nodes.filter(n => hides(n, v)).map(n => n.id);
+  while (st.length) { const id = st.pop(); if (out.has(id)) continue; out.add(id); st.push(...(kids[id] || [])); }
+  return (_hideCache.sets[v] = out);
+}
+const linkHiddenIn = (l, v) => !S.showHidden && (hides(l, v) || hiddenIn(v).has(l.source) || hiddenIn(v).has(l.target));
+function nodeLook(n) {
+  const s = H(n), sec = n.kind === "section";
+  const fill = s.color || (sec ? "#3A3D41" : "#E8D48A");
+  return {
+    fill,
+    border: s["border-color"] || (sec ? "#A5ABB6" : "#C9B66E"),
+    text: s["font-color"] || (isLight(fill) ? "#1E1E1E" : "#FFFFFF"),
+    label: s["label-color"] || (sec ? PAL.sec : PAL.node),
+    sub: s["sub-color"] || PAL.kw,
+  };
+}
 const _cx = document.createElement("canvas").getContext("2d");
 function readable(c) {         // chữ trên nền tối: màu quá tối (blue, black, navy…) thì pha trắng cho dễ đọc
   _cx.fillStyle = "#000000"; _cx.fillStyle = String(c || "");
@@ -54,94 +104,125 @@ function linkColor(t) {        // style.kg.md (select="link=loại", html.color)
   const l = S.graph && S.graph.links.find(l => l.type === t && !l.tree && H(l).color);
   return l ? H(l).color : LINK_ORANGE;
 }
-const LINK_ORANGE = "#f0a04b";      // màu mặc định của link: cam (cùng bộ màu với khung văn bản và style hệ thống)
+const LINK_ORANGE = "#A5ABB6";      // màu mặc định của link: cam (cùng bộ màu với khung văn bản và style hệ thống)
 
-// ---------- tô màu văn bản .kg.md: chỉ 4 màu ----------
-// section: xanh dương · node / module import / ID được tham chiếu: vàng nhạt · loại link: cam · meta và khóa của nó: hồng.
-// Phần còn lại giữ màu chữ thường (comment làm mờ).
-const FIELDS = ["content", "meta", "link", "show", "ask"];
+// ---------- tô màu văn bản .kg.md 0.3 (bảng màu plan-v2c) ----------
+// vàng: tên node · tím: keyword (@node, @link, link, from, to) · xanh nhạt: attribute key · xanh ngọc: type
+// xám: tên link · Str cam nhạt · giá trị khác #D4D4D4 · comment xanh lá nghiêng · dấu - : , xám.
 const span = (cls, s, color) => `<span class="${cls}"${color ? ` style="color:${esc(color)}"` : ""}>${esc(s)}</span>`;
-function splitComment(line) {
-  const m = line.match(/(^|\s)\/\//);
-  return m ? [line.slice(0, m.index + m[1].length), line.slice(m.index + m[1].length)] : [line, ""];
+const bad = s => `<span style="color:var(--err);text-decoration:underline wavy">${esc(s)}</span>`;
+const DTYPES = ["Num", "Str", "Bool", "None", "List", "Dict", "Content"];
+function splitComment(line) {             // // là comment khi ở đầu dòng hoặc sau khoảng trắng, ngoài "..." và `...`
+  let q = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) { if (c === q) q = null; }
+    else if (c === '"' || c === "`") q = c;
+    else if (c === "/" && line[i + 1] === "/" && (i === 0 || /\s/.test(line[i - 1]))) return [line.slice(0, i), line.slice(i)];
+  }
+  return [line, ""];
 }
 function hlInline(s) {
   let out = "", last = 0;
-  const re = /(`[^`]*`)|(\*\*[^*]+\*\*)|(%%.*?%%)|((?:^|(?<=\s))@[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)?)/g;
+  const re = /(`[^`]*`)|(\*\*[^*]+\*\*)|((?:^|(?<=\s))@[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)?)/g;
   for (const m of s.matchAll(re)) {
     out += esc(s.slice(last, m.index));
-    out += span(m[1] ? "t-code" : m[2] ? "t-bold" : m[3] ? "t-com" : "t-ref", m[0]);
+    out += span(m[1] ? "t-code" : m[2] ? "t-bold" : "t-ref", m[0]);
     last = m.index + m[0].length;
   }
   return out + esc(s.slice(last));
 }
-const hlValue = v => span("t-val", v);          // giá trị sau dấu '=': nâu
-function hlMeta(v) {
-  const parts = []; let buf = "", q = null;
-  for (const c of v) {
-    if (q) { buf += c; if (c === q) q = null; }
-    else if (c === '"' || c === "'") { buf += c; q = c; }
-    else if (c === ",") { parts.push(buf); parts.push(","); buf = ""; }
-    else buf += c;
-  }
-  parts.push(buf);
-  return parts.map(p => {
-    if (p === ",") return ",";
-    const m = p.match(/^(\s*)([^=]*?)(\s*=\s*)([\s\S]*)$/);
-    if (!m) { const k = p.trim(); return k ? esc(p.slice(0, p.indexOf(k))) + span("t-meta", k) + esc(p.slice(p.indexOf(k) + k.length)) : esc(p); }
-    return esc(m[1]) + span("t-meta", m[2]) + esc(m[3]) + hlValue(m[4]);
-  }).join("");
-}
-function hlLinks(v) {
-  let out = "", last = 0;
-  for (const m of v.matchAll(/([a-z][a-z0-9-]*)(!?)\(([^)]*)\)/g)) {
-    out += esc(v.slice(last, m.index)) + span("t-link", m[1]) +
-      (m[2] ? span("t-link", "!") : "") + "(" + span("t-ref", m[3]) + ")";
-    last = m.index + m[0].length;
-  }
-  return out + esc(v.slice(last));
-}
-// nội dung thường: trắng (riêng @tham chiếu vàng, `code` giữ nguyên)
 const hlText = s => `<span class="t-text">${hlInline(s)}</span>`;
+// giá trị: mode "ref" (tên node), "link" (tên link), "type" (tên kiểu), "str" (chuỗi), "" (chung)
+function hlVal(v, mode) {
+  let out = "";
+  const tok = /("[^"]*"?)|(`[^`]*`?)|(\[[\s\S]*)|([(),\]])|([A-Za-z_][\w-]*\s*=(?!=))|(-?\d+(?:\.\d+)?(?![\w-]))|([^\s(),"`=\[\]]+(?:\s+[^\s(),"`=\[\]]+)*)|(\s+)|(.)/g;
+  for (const m of v.matchAll(tok)) {
+    const t = m[0];
+    if (m[1]) out += span("t-str", t);
+    else if (m[2]) out += span("t-code", t);
+    else if (m[3]) out += span("t-text", t);
+    else if (m[4]) out += span("t-val", t);
+    else if (m[5]) { const k = t.replace(/\s*=$/, ""); out += span("t-key", k) + esc(t.slice(k.length)); }
+    else if (m[6]) out += span("t-val", t);
+    else if (m[7]) {
+      if (mode === "ref") out += span("t-id", t);
+      else if (mode === "link") out += span("t-link", t);
+      else if (mode === "type" || DTYPES.includes(t)) out += span("t-type", t);
+      else if (/^(true|false|none)$/.test(t)) out += span("t-val", t);
+      else out += span("t-str", t);
+    } else out += esc(t);
+  }
+  return out;
+}
+function depth(v) {                       // số ngoặc ( [ còn mở
+  let d = 0, q = null;
+  for (const c of v) {
+    if (q) { if (c === q) q = null; }
+    else if (c === '"' || c === "`") q = c;
+    else if (c === "[" || c === "(") d++;
+    else if (c === "]" || c === ")") d--;
+  }
+  return d;
+}
 function highlight(text) {
   const L = text.split("\n"), out = [];
-  let fm = L[0] && L[0].trim() === "---" ? 1 : 0, fence = false, inNode = false, field = null, br = false;
+  let fm = L[0] && L[0].trim() === "---" ? 1 : 0, fence = false, block = null, phase = "body", open = 0;
   L.forEach((raw, i) => {
-    if (br) {                                   // nội dung [ ... ] nhiều dòng: chữ thường tới dấu ']'
-      br = !raw.trim().endsWith("]");
-      out.push(hlText(raw)); return;
+    if (open > 0) {                                   // giá trị [ … ] / ( … ) nhiều dòng
+      open += depth(raw);
+      out.push(span("t-text", raw)); return;
     }
     if (fm) {
-      if (i > 0 && raw.trim() === "---") fm = 0;
-      // frontmatter: tên module / node được import tô vàng nhạt như node
-      const m = raw.match(/^(\s*)([^:]+)(:)(.*)$/), imp = m && /^(import|from\s)/.test(m[2].trim());
-      out.push(raw.trim() === "---" ? span("t-fm", raw) : m ? esc(m[1]) + span("t-fm", m[2]) + m[3] + (imp ? span("t-ref", m[4]) : esc(m[4])) : esc(raw));
-      return;
+      if (raw.trim() === "---") { if (i > 0) fm = 0; out.push(span("t-punct", raw)); return; }
+      const [code, com] = splitComment(raw), tail = com ? span("t-com", com) : "";
+      let m;
+      if ((m = code.match(/^(\s*-\s+)([^:]+?)(?:(:)(.*))?$/))) {   // - king/schema.node: Concept, Group
+        const sel = /\.node\s*$/.test(m[2]) ? "type" : /\.link\s*$/.test(m[2]) ? "link" : "str";
+        out.push(span("t-punct", m[1]) + span("t-val", m[2]) + (m[3] ? span("t-punct", ":") + hlVal(m[4], sel) : "") + tail); return;
+      }
+      if ((m = code.match(/^(\s*)([A-Za-z][\w-]*)(\s*:)(.*)$/))) {
+        out.push(esc(m[1]) + span("t-key", m[2]) + span("t-punct", m[3]) + hlVal(m[4], m[2] === "import" ? "ref" : "") + tail); return;
+      }
+      out.push(esc(code) + tail); return;
     }
-    if (/^\s*(```|~~~)/.test(raw)) { fence = !fence; out.push(span("t-fence", raw)); return; }
+    if (/^\s*(```|~~~)/.test(raw)) { fence = !fence; phase = "body"; out.push(span("t-fence", raw)); return; }
     if (fence) { out.push(span("t-code", raw)); return; }
     const [code, com] = splitComment(raw), tail = com ? span("t-com", com) : "";
     let m;
     if ((m = code.match(/^(#{1,6}\s+)(.*?)(\s+@[a-z0-9][a-z0-9-]*)?(\s*)$/))) {
-      inNode = false; field = null;
-      // tiêu đề section xanh dương; @id của section vàng nhạt như mọi ID
+      block = "section"; phase = "attrs";
       out.push(span("t-head", m[1] + m[2]) + (m[3] ? span("t-id", m[3]) : "") + esc(m[4]) + tail); return;
     }
-    if ((m = code.match(/^(\s*)(@[a-z0-9][a-z0-9-]*)(\s*:\s*)?(.*)$/))) {
-      inNode = true; field = null;
-      out.push(esc(m[1]) + span("t-id", m[2]) + esc(m[3] || "") + span("t-text", m[4]) + tail); return;
+    if ((m = code.match(/^(@(?:node|link))(\s+)(\S+)(.*)$/))) {
+      block = m[1].slice(1); phase = "attrs";
+      const nm = m[3], cls = block === "link" ? "t-link" : /^[A-Z]/.test(nm) ? "t-type" : "t-id";
+      out.push(span("t-kw", m[1]) + esc(m[2]) + span(cls, nm) + (m[4].trim() ? bad(m[4]) : esc(m[4])) + tail); return;
     }
-    if (inNode && (m = code.match(/^(\s*[-*]\s+)([a-z][a-z0-9-]*)(\s*:\s*)(.*)$/))) {
-      // tên trường (meta, content, link, ask, show) hồng; trường lạ gạch đỏ
-      const f = m[2], ok = FIELDS.includes(f); field = ok ? f : null;
-      const v = m[4], text = f === "content" || f === "ask";
-      if (text && v.trim().startsWith("[") && !v.includes("]")) br = true;   // mở nội dung [ ... ] nhiều dòng
-      const val = f === "meta" ? hlMeta(v) : f === "link" ? hlLinks(v) : f === "show" ? hlValue(v) : hlText(v);
-      out.push(esc(m[1]) + `<span class="t-meta"${ok ? "" : ' style="color:var(--err);text-decoration:underline wavy"'}>${esc(f)}</span>` +
-        esc(m[3]) + val + tail); return;
+    if (/^@[a-z0-9][a-z0-9-]*\s*:/.test(code)) { out.push(bad(code) + tail); return; }   // cú pháp v0.2
+    if (phase === "attrs" && block) {
+      if (!raw.trim()) { phase = "body"; out.push(""); return; }
+      if (!code.trim()) { out.push(tail); return; }
+      if (raw.startsWith("- ")) {
+        let v = null;
+        if (block === "link" && (m = code.match(/^(-\s+)(from)(\s+)(.+?)(\s+)(to)(\s+)(.+)$/))) {
+          out.push(span("t-punct", m[1]) + span("t-kw", m[2]) + esc(m[3]) + hlVal(m[4], "ref") + esc(m[5]) +
+            span("t-kw", m[6]) + esc(m[7]) + hlVal(m[8], "ref") + tail); return;
+        }
+        if ((m = code.match(/^(-\s+)(link)(\s+)(\S+?)(\s*:)(.*)$/))) {
+          v = m[6];
+          out.push(span("t-punct", m[1]) + span("t-kw", m[2]) + esc(m[3]) + span("t-link", m[4]) + span("t-punct", m[5]) + hlVal(v, "ref") + tail);
+        } else if ((m = code.match(/^(-\s+)([A-Za-z_][\w-]*)(\s*:)(.*)$/))) {
+          const k = m[2], mode = k === "type" ? "type" : k === "inverse" ? "link" : k === "label" ? "str" : "";
+          v = m[4];
+          out.push(span("t-punct", m[1]) + span("t-key", k) + span("t-punct", m[3]) +
+            (k === "label" && !/^\s*"/.test(v) ? span("t-str", v) : hlVal(v, mode)) + tail);
+        } else if (block !== "section") { out.push(bad(code) + tail); return; }
+        if (v !== null) { open = Math.max(0, depth(v)); return; }
+      }
+      phase = "body";
     }
-    if (!code.trim()) { if (["link", "meta", "show"].includes(field)) field = null; out.push(esc(code) + tail); return; }
-    out.push((inNode && field === "link" ? hlLinks(code) : hlText(code)) + tail);
+    out.push(hlText(code) + tail);
   });
   return out.join("\n") + "\n ";
 }
@@ -151,14 +232,23 @@ function paint() {
   requestAnimationFrame(() => {
     hlPending = false;
     const html = highlight(S.text);
+    // khi ngắt dòng: khối tô màu rộng đúng bằng vùng chữ của textarea (trừ thanh cuộn) để ngắt dòng giống hệt
+    hlEl.style.width = S.wrap ? src.clientWidth + "px" : "";
+    const pre = hlEl.parentElement;                  // không cho chữ tô màu lộ ra dưới thanh cuộn của textarea
+    pre.style.right = (src.offsetWidth - src.clientWidth) + "px"; pre.style.bottom = (src.offsetHeight - src.clientHeight) + "px";
     if (S.wrap) {        // mỗi dòng một khối để đo chiều cao sau khi ngắt, rồi kéo lề số dòng cho khớp
       hlEl.innerHTML = html.replace(/\n $/, "").split("\n").map(l => `<div class="ln">${l || " "}</div>`).join("");
       gut.innerHTML = gutterHTML([...hlEl.children].map(d => d.offsetHeight));
     } else hlEl.innerHTML = html;
     syncScroll();
+    if (S.wrap) requestAnimationFrame(() => {        // thanh cuộn dọc vừa hiện / ẩn → bề rộng ngắt dòng đổi: vẽ lại
+      if (hlEl.style.width !== src.clientWidth + "px") paint();
+    });
   });
 }
-function syncScroll() { hlEl.scrollTop = src.scrollTop; hlEl.scrollLeft = src.scrollLeft; gut.scrollTop = src.scrollTop; }
+function syncScroll() {     // dịch khối tô màu thay vì cuộn: không bị giới hạn cuộn khác textarea nên chữ luôn trùng con trỏ
+  hlEl.style.transform = `translate(${-src.scrollLeft}px, ${-src.scrollTop}px)`; gut.scrollTop = src.scrollTop;
+}
 
 // ---------- khung trái ----------
 function gutterHTML(heights) {     // heights: chiều cao từng dòng khi ngắt dòng (Alt+Z)
@@ -178,7 +268,9 @@ function updateGutter() {
 }
 function setText(t, keepUndo) {
   if (!keepUndo && t !== S.text) { S.undo.push(S.text); if (S.undo.length > 50) S.undo.shift(); }
-  const st = src.scrollTop; src.value = t; src.scrollTop = st;
+  const st = src.scrollTop, sl = src.scrollLeft, a = src.selectionStart, b = src.selectionEnd;
+  src.value = t; src.setSelectionRange(Math.min(a, t.length), Math.min(b, t.length));   // giữ chỗ con trỏ (không nhảy về cuối)
+  src.scrollTop = st; src.scrollLeft = sl;
   if (t !== S.text) S.dirty = true;
   S.text = t; updateGutter();
 }
@@ -188,7 +280,7 @@ function jumpTo(line, focus) {   // focus=true: chuyển con trỏ vào khung v�
   if (focus) src.focus({preventScroll:true});
   src.setSelectionRange(off, off + (L[line - 1] || "").length);
   const row = S.wrap && hlEl.children[line - 1];
-  src.scrollTop = Math.max(0, row ? row.offsetTop - 60 : (line - 4) * 20); syncScroll();
+  src.scrollTop = Math.max(0, row ? row.getBoundingClientRect().top - hlEl.getBoundingClientRect().top - 60 : (line - 4) * 20); syncScroll();
   S.hl = line; updateGutter();
 }
 function nodeAtLine(ln) {
@@ -229,6 +321,7 @@ function toggleComment() {                           // Ctrl+/: thêm / bỏ "//
 }
 src.addEventListener("keydown", e => {
   const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  if (mod && !e.altKey && (k === "s" || e.code === "KeyS")) { e.preventDefault(); e.stopPropagation(); saveNow(); return; }
   if (e.key === "Tab") { e.preventDefault(); if (!src.readOnly) document.execCommand("insertText", false, "  "); return; }
   if (mod && (k === "/" || e.code === "Slash")) { e.preventDefault(); if (!src.readOnly) toggleComment(); return; }
   if (mod && (k === "c" || k === "x") && src.selectionStart === src.selectionEnd) {
@@ -290,17 +383,34 @@ async function reparse() {
   try { const g = await api("/api/parse", {name:S.name, text:S.text}); if (my === seq) render(g); }
   catch (e) { status(e.message, "err"); }
 }
-async function save() {
-  if (ST || !S.name || !S.dirty) return;
-  try { const r = await api("/api/save", {name:S.name, text:S.text}); S.mtime = r.mtime; S.dirty = false; status("Đã lưu " + S.name); }
+async function save(force) {
+  if (ST || !S.name || (!S.dirty && !force)) return;
+  const text = S.text;
+  try {
+    const r = await api("/api/save", {name:S.name, text});
+    S.mtime = r.mtime;
+    if (S.text === text) S.dirty = false;            // gõ thêm trong lúc đang lưu: vẫn còn là "chưa lưu"
+    $("#fname").classList.toggle("dirty", S.dirty);
+    status("Đã lưu " + S.name);
+  }
   catch (e) { status("Lưu lỗi: " + e.message, "err"); }
+}
+async function saveNow() {                           // Ctrl+S: lưu ngay, không chờ hẹn giờ tự lưu
+  if (ST) { status("Trang tĩnh (chỉ xem): không lưu được. Mở bằng king serve để sửa."); return; }
+  if (!S.name) { status("Chưa mở file."); return; }
+  clearTimeout(tmr);
+  await save(true); await reparse();
 }
 async function undo() {
   if (!S.undo.length) return status("Không còn gì để hoàn tác.");
   setText(S.undo.pop(), true); S.dirty = true; await reparse(); await save(); status("Đã hoàn tác.");
 }
+// KING 0.3: Inspector và các thao tác sửa trên view tạm khóa (dev/plan-working/README.md mục 2).
+// Mọi chỉnh sửa đi qua khung văn bản; op() không gửi gì.
+const FROZEN = true;
 async function op(name, args, before) {
   if (ST || !S.name) return;
+  if (FROZEN) { status("KING 0.3: sửa trên view / Inspector đang tạm khóa — hãy sửa trong khung văn bản.", "warn"); return; }
   try {
     const r = await api("/api/op", {name:S.name, text:S.text, op:name, args});
     if (before) before(r);

@@ -16,7 +16,7 @@
     <div class="drop">
       <button class="item edit" id="bFolder">Mở thư mục…</button>
       <button class="item edit" id="bNew">File mới…</button>
-      <button class="item edit" id="bSave">Lưu<kbd>Ctrl+S</kbd></button>
+      <button class="item" id="bSave">Lưu<kbd>Ctrl+S</kbd></button>
       <button class="item edit" id="bUndo">Hoàn tác thao tác đồ thị<kbd>Ctrl+Z</kbd></button>
       <button class="item" id="bSvg">Xuất SVG của đồ thị</button>
     </div>
@@ -34,6 +34,8 @@
       <button class="item" data-panel="inspector">Inspector<kbd>Ctrl+Alt+B</kbd></button>
       <button class="item" data-panel="left">Khung văn bản<kbd>Ctrl+E</kbd></button>
       <button class="item" id="bWrap">Ngắt dòng<kbd>Alt+Z</kbd></button>
+      <div class="sep"></div>
+      <button class="item" id="bShowHidden" title="Tạm hiện lại các node / link có - hide: …">Hiện cả node đã ẩn (hide)<kbd>Ctrl+H</kbd></button>
     </div>
   </div>
 
@@ -114,23 +116,31 @@
   </aside>
   <div class="split" id="splitE" data-target="explorer" data-side="left"></div>
 
-  <section id="left">
-    <div class="tabs"><span id="fname" class="tab on"></span>
+  <!-- hai khung giống nhau: mỗi panel (Văn bản, Graph, Tree, Book, Module) là một tab, nằm ở khung nào cũng được -->
+  <section id="left" class="pane">
+    <div class="tabs"><span class="tab-list">
+      <span class="tab" data-panel="text"><span id="fname"></span><i class="tab-x" title="Đóng">×</i></span>
+    </span><button class="tab-add" title="Thêm view vào khung này">＋</button>
       <button id="bWrap2" class="tab-btn" title="Ngắt dòng (Alt+Z)">↵ Wrap</button></div>
-    <div id="ed">
-      <pre id="gut"></pre>
-      <div id="code"><pre id="hl" aria-hidden="true"></pre><textarea id="src" spellcheck="false" wrap="off"></textarea></div>
+    <div class="views">
+      <div id="textView" class="view">
+        <div id="ed">
+          <pre id="gut"></pre>
+          <div id="code"><pre id="hl" aria-hidden="true"><div id="hlIn"></div></pre><textarea id="src" spellcheck="false" wrap="off"></textarea></div>
+        </div>
+        <div class="panel-title">PROBLEMS <span id="nprob"></span></div>
+        <div id="log"></div>
+      </div>
+      <div class="pane-empty">Khung trống. Bấm ＋ để thêm Văn bản, Graph, Tree, Book hoặc Module.</div>
     </div>
-    <div class="panel-title">PROBLEMS <span id="nprob"></span></div>
-    <div id="log"></div>
   </section>
   <div class="split" id="split" data-target="left" data-side="left"></div>
 
-  <section id="right">
-    <div class="tabs" id="viewTabs">
-      <span class="tab" data-view="graph">Graph</span><span class="tab" data-view="tree">Tree</span><span class="tab" data-view="book">Book</span><span class="tab" data-view="module">Module</span>
-    </div>
-    <div id="views">
+  <section id="right" class="pane">
+    <div class="tabs"><span class="tab-list">
+      <span class="tab" data-panel="graph">Graph<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="tree">Tree<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="book">Book<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="module">Module<i class="tab-x" title="Đóng">×</i></span>
+    </span><button class="tab-add" title="Thêm view vào khung này">＋</button></div>
+    <div class="views">
       <div id="graphView" class="view">
         <div id="g"></div>
         <div id="toolbar">
@@ -140,6 +150,8 @@
           <select id="linkSel" class="edit" title="Loại link khi nối"></select>
           <button data-mode="move" class="edit" title="Kéo node thả lên một section để chuyển nhóm">⇲ Chuyển nhóm</button>
           <button data-mode="fold" title="Bấm node cha để thu gọn / bung">▾ Thu gọn</button>
+          <select id="bLayout" title="Bố cục đồ thị: chọn để xếp lại (L: kiểu kế tiếp; Shift+L: xếp lại kiểu đang chọn)"><option value="tree">⊢ Thụt lề</option><option value="tidy">⊣ Cây cân</option><option value="radial">✳ Tỏa tròn</option><option value="force">✺ Lực</option></select>
+          <button id="bGrid" title="Lưới: node kéo thả sẽ hút về nút lưới gần nhất (G)">▦ Lưới</button>
           <button id="bFit" title="Vừa khung">⤢</button>
         </div>
         <div id="hint"></div>
@@ -147,8 +159,10 @@
       <div id="treeView" class="view"></div>
       <div id="bookView" class="view"></div>
       <div id="moduleView" class="view"></div>
+      <div class="pane-empty">Khung trống. Bấm ＋ để thêm Văn bản, Graph, Tree, Book hoặc Module.</div>
     </div>
   </section>
+  <div id="addMenu" class="add-menu" hidden></div>
 
   <div class="split" id="splitI" data-target="inspector" data-side="right"></div>
   <aside id="inspector" class="side">

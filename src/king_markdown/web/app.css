@@ -3,12 +3,13 @@
   --bg:#1e1e1e; --side:#252526; --bar:#3c3c3c; --tab:#2d2d2d; --line:#3c3c3c; --hover:#2a2d2e; --sel:#264f78;
   --ink:#d4d4d4; --mute:#8b8b8b; --bright:#ffffff; --acc:#0e639c; --acc2:#007acc; --focus:#007fd4;
   --err:#f48771; --warn:#cca700; --mono:"Cascadia Code",Consolas,"Courier New",monospace;
-  /* bộ 4 màu của KING Markdown (khung văn bản + style hệ thống):
-     section xanh dương · node / module import vàng nhạt · loại link cam · meta hồng */
-  --k-sec:#4fa3ff; --k-node:#f5e3a1; --k-link:#f0a04b; --k-meta:#f48fb8;
-  --k-val:#c9915e; --k-text:#ffffff;        /* giá trị sau '=': nâu · nội dung thường: trắng */
+  /* bảng màu KING 0.3 (plan-v2c): bốn màu nổi — vàng: node · tím: keyword · xanh nhạt: key · xanh ngọc: type.
+     Link và phần còn lại trung tính. Dùng chung cho khung văn bản và 4 view. */
+  --k-node:#E8D48A; --k-link:#A5ABB6; --k-kw:#C586C0; --k-key:#9CDCFE; --k-type:#4EC9B0;
+  --k-val:#D4D4D4; --k-str:#CE9178; --k-com:#6A9955; --k-punct:#808080;
+  --k-sec:#FFFFFF; --k-text:#D4D4D4; --k-meta:var(--k-key);
   --c-head:var(--k-sec); --c-id:var(--k-node); --c-ref:var(--k-node);
-  --c-field:var(--ink); --c-com:#7f848e; --c-code:var(--ink); --c-ask:var(--ink);
+  --c-field:var(--ink); --c-com:#6A9955; --c-code:var(--ink); --c-ask:var(--ink);
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -133,21 +134,30 @@ main{flex:1;display:flex;min-height:0}
 #gut .h{color:#c6c6c6}
 #code{position:relative;flex:1;min-width:0}
 #hl,#src{position:absolute;inset:0;margin:0;padding:8px 8px 40px;font:inherit;white-space:pre;tab-size:2;border:0;overflow:auto}
-#hl{color:var(--ink);pointer-events:none;overflow:hidden;padding-bottom:52px;padding-right:20px}   /* +12px: bù thanh cuộn của textarea */
+/* lớp tô màu không cuộn: khối #hlIn được dịch (transform) theo scrollTop/scrollLeft của textarea,
+   nên không bị giới hạn cuộn khác textarea (trước đây lệch ~12px khi cuộn ngang hết cỡ) */
+#hl{color:var(--ink);pointer-events:none;overflow:hidden;padding:0}
+#hlIn{box-sizing:border-box;padding:8px 8px 40px;width:max-content;min-width:100%}
 #src{background:transparent;color:transparent;caret-color:#aeafad;resize:none;outline:0}
 #src::selection{background:#264f78b0;color:transparent}
-.t-head{color:var(--k-sec)}                        /* tiêu đề section */
-.t-id,.t-ref{color:var(--k-node)}                  /* @id (node và section), @tham chiếu, ID trong link, module import */
-.t-link{color:var(--k-link)}                       /* loại link (như tên hàm) */
-.t-meta{color:var(--k-meta)}                       /* tên trường (meta, content, link, ask, show) và khóa meta */
-.t-val{color:var(--k-val)}                         /* giá trị sau '=' và giá trị của show */
-.t-text,.t-text .t-bold{color:var(--k-text)}       /* nội dung thường: tiêu đề node, content, ask, [ ... ] */
+.t-head{color:var(--k-sec)}                             /* tiêu đề section (không in đậm: chữ phải cùng bề rộng với textarea) */
+.t-id,.t-ref{color:var(--k-node)}                  /* tên node (khai báo và tham chiếu) */
+.t-link{color:var(--k-link)}                       /* tên link, inverse */
+.t-kw{color:var(--k-kw)}                           /* @node, @link, link, from, to */
+.t-key,.t-meta{color:var(--k-key)}                 /* attribute key */
+.t-type{color:var(--k-type)}                       /* Concept, Group, Num, Str, … */
+.t-val{color:var(--k-val)}                         /* giá trị, ngoặc */
+.t-str{color:var(--k-str)}                         /* Str */
+.t-punct{color:var(--k-punct)}                     /* - : , */
+.t-text,.t-text .t-bold{color:var(--k-text)}       /* nội dung */
 .t-text .t-ref{color:var(--k-node)}
 .t-fm,.t-fence,.t-code{color:var(--ink)}
-.t-com,.t-text .t-com{color:var(--c-com);font-style:italic}
+.t-code{color:var(--k-str)}
+.t-com,.t-text .t-com{color:var(--k-com);font-style:italic}
 /* Alt+Z ngắt dòng: textarea và lớp tô màu phải ngắt giống hệt nhau */
 body.wrap #src,body.wrap #hl{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
 body.wrap #src{overflow-x:hidden}
+body.wrap #hlIn{min-width:0}                          /* bề rộng do JS đặt = vùng chữ của textarea */
 #hl .ln{min-height:20px}
 /* chọn màu: tên màu có sẵn + bảng màu */
 .cc{display:flex;gap:4px;align-items:center}.cc select{flex:1;min-width:0}   /* không đổi độ đậm: chữ phải cùng bề rộng với textarea */
@@ -161,9 +171,26 @@ body.wrap #src{overflow-x:hidden}
 #log .warn{color:var(--warn)}#log .warn::before{content:"⚠ "}
 
 /* ---------- 3 view ---------- */
-#views{flex:1;position:relative;min-height:0}
+.views{flex:1;position:relative;min-height:0}
 .view{position:absolute;inset:0;display:none;overflow:auto}
 .view.on{display:block}
+#textView{overflow:hidden;flex-direction:column}#textView.on{display:flex}
+.pane-empty{display:none;padding:24px;color:var(--mute);font-size:12px}
+.pane.empty .pane-empty{display:block}
+/* thanh tab của mỗi khung: tab, nút ＋, (Wrap khi tab Văn bản đang mở ở khung này) */
+.tab-list{display:flex;min-width:0;overflow:hidden}
+.tab .tab-x{font-style:normal;margin-left:8px;width:16px;height:16px;line-height:15px;text-align:center;border-radius:3px;color:var(--mute);visibility:hidden}
+.tab:hover .tab-x,.tab.on .tab-x{visibility:visible}
+.tab .tab-x:hover{background:#ffffff1f;color:var(--bright)}
+.tab-add{flex:none;margin:5px 4px;width:26px;background:none;border:1px solid transparent;border-radius:4px;color:var(--mute);cursor:pointer;font-size:14px;line-height:1}
+.tab-add:hover{background:#ffffff14;color:var(--ink)}
+.pane:not(.text-on) #bWrap2{display:none}
+.add-menu{position:fixed;z-index:30;min-width:200px;background:var(--side);border:1px solid #454545;border-radius:5px;padding:4px;box-shadow:0 4px 14px #0008}
+.add-menu button{display:flex;justify-content:space-between;gap:18px;width:100%;text-align:left;background:none;border:0;border-radius:4px;padding:4px 10px;cursor:pointer;color:var(--ink);font:inherit}
+.add-menu button:hover:not(:disabled){background:var(--acc);color:var(--bright)}
+.add-menu button:disabled{color:var(--mute);cursor:default}
+.add-menu small{color:var(--mute)}
+.tabs.drop-on{box-shadow:inset 0 -2px 0 var(--acc2)}
 #g{position:absolute;inset:0;background:var(--bg)}
 #hint{position:absolute;left:10px;bottom:8px;color:var(--mute);background:#252526e6;padding:2px 8px;border-radius:4px;pointer-events:none;font-size:12px}
 
@@ -175,7 +202,10 @@ body.wrap #src{overflow-x:hidden}
 .tr .tw{width:14px;text-align:center;color:var(--mute);flex:none}
 .tr .ic{flex:none;font-size:11px;font-weight:700;width:16px;text-align:center}
 .tr .ic.sec{color:var(--c-head)}.tr .ic.nod{color:var(--c-id)}.tr .ic.ext{color:var(--mute)}
-.tr .nm{overflow:hidden;text-overflow:ellipsis}
+/* tên được ưu tiên: khung hẹp (Outline, cây lồng sâu) thì chip kiểu / role co lại trước, tên chỉ cắt khi dài hơn cả dòng */
+.tr{overflow:hidden}
+.tr .nm{overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:100%}
+.tr .ty,.tr .ro{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tr .via{font-size:11px}
 .tr .meta{color:var(--mute);font-size:11px;overflow:hidden;text-overflow:ellipsis}
 /* bộ màu chung ở Tree / Outline: section xanh dương, node vàng nhạt, khóa meta hồng, giá trị nâu */
@@ -224,6 +254,10 @@ body.wrap #src{overflow-x:hidden}
 .book .chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
 .book .chip{font:12px var(--mono);border-radius:10px;padding:0 8px;background:#333;border:1px solid #444}
 .book .chip b{font-weight:400}
+.book .attrs .chip,.book .attrs .chip b,.book .attrs .chip .mv{color:var(--k-punct);background:none;border-color:#3a3a3a}
+.ty{font:10px var(--mono);color:var(--k-kw);margin-left:6px;border:1px solid #c586c055;border-radius:6px;padding:0 5px}
+.ro{font:10px var(--mono);color:var(--k-type);margin-left:4px;border:1px solid #4ec9b066;border-radius:6px;padding:0 5px}   /* role: output */
+.book h4 .ty{vertical-align:middle}
 .book a{color:#3794ff;text-decoration:none;cursor:pointer}.book a:hover{text-decoration:underline}
 .book code{font:13px var(--mono);background:#ffffff14;border-radius:3px;padding:0 4px;color:var(--c-code)}
 .book pre{background:#1e1e1e;border:1px solid var(--line);border-radius:4px;padding:8px 10px;overflow:auto;font:13px/1.45 var(--mono)}
@@ -242,7 +276,11 @@ body.wrap #src{overflow-x:hidden}
 body.static #statusbar{background:#68217a}
 
 /* ---------- bản tĩnh ---------- */
-.static .edit{display:none!important}
+.static .edit,.static #bSave{display:none!important}
+/* KING 0.3: Inspector chỉ đọc, ẩn công cụ sửa trên Graph */
+.frozen .edit{display:none!important}
+.frozen #inspector input,.frozen #inspector textarea,.frozen #inspector select,.frozen #inspector button.btn,.frozen #inspector .x{pointer-events:none;opacity:.6}
+.frozen #inspector::before{content:"Inspector tạm khóa (0.3): chỉ xem. Sửa trong khung văn bản.";display:block;font-size:11px;color:var(--warn);padding:6px 10px;border-bottom:1px solid var(--line)}
 .static-only{display:none}
 .static .static-only{display:inline;color:#e2c08d;font-size:12px;margin-left:10px}
 .static-only code{font:12px var(--mono);background:#ffffff14;padding:0 4px;border-radius:3px}
