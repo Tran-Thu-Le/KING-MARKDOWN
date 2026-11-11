@@ -1,36 +1,46 @@
 ---
-kg: 0.2
+kg: 0.3
 ---
 
-# Kiểu node
+Schema hệ thống. Import: use: - king/schema.node: Concept, Group  /  - king/schema.link: needs, part-of
+Node type viết hoa chữ đầu; link type viết thường, gạch nối.
 
-@concept: Khái niệm
-- meta: kind=type, allow="role, important"
+# Node types
 
-@group: Nhóm
-- meta: kind=type, allow="important"
+@node Concept
+- label: Khái niệm
 
-@module: Module
-- meta: kind=type
+Một khái niệm, định nghĩa hay định lý.
 
-@dien-tich
-- meta: kind=type
+@node Group
+- label: Nhóm node
 
-# Khóa meta
+Gom các node cùng chủ đề; vẽ thành hình chữ nhật bo góc.
 
-@role: Vai trò
-- meta: kind=key, values="Nạp | Xuất | Cầu | Phụ", required=true
+@node Module
+- label: Module
 
-@important: Quan trọng
-- meta: kind=key, value=bool
+@node Example
+- label: Ví dụ
 
-# Loại link
+Ví dụ minh họa, bài mẫu, đoạn code chạy thử.
 
-@export: Xuất ra node chứa
-- meta: kind=link
+@node Warning
+- label: Lưu ý
 
-@needs: Cần biết trước
-- meta: kind=link, dag=true
+Lỗi hay gặp, điều cần tránh.
 
-@part-of: Là phần của
-- meta: kind=link, dag=true, to=group
+# Link types
+
+@link needs
+- label: Cần biết trước
+- inverse: needed-by
+- dag: true
+
+@link part-of
+- label: Là phần của
+- inverse: parts
+- dag: true
+
+@link export
+- label: Xuất ra node chứa

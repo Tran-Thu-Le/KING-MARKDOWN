@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 
-from .parser import (BUILTIN_LINKS, ID, RE_FENCE, RE_FIELD, RE_HEADING, RE_LINK, RE_NODE, SYSTEM_PREFIX,
+from .legacy import (BUILTIN_LINKS, ID, RE_FENCE, RE_FIELD, RE_HEADING, RE_LINK, RE_NODE, SYSTEM_PREFIX,
                      Parser, as_text, bracket_lines, format_meta, parse_value, read, slug, split_list,
                      strip_comment, system_file, use_path)
 HEADS = {"type": "Kiểu node", "key": "Khóa meta", "link": "Loại link"}

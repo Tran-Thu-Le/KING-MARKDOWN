@@ -1,0 +1,84 @@
+{
+    // ---------- KING Markdown (.kg.md): tô màu giống khung văn bản của KING web app ----------
+    // Cần extension "Highlight" (fabiospampinato.vscode-highlight). Chỉ áp cho file *.kg.md.
+    // Bảng màu KING 0.3: node #E8D48A · link #A5ABB6 · keyword #C586C0 · key #9CDCFE · type #4EC9B0
+    //                    Str #CE9178 · comment #6A9955 nghiêng · dấu - : , #808080 · heading #FFFFFF
+    "highlight.regexFlags": "gm",
+    "highlight.regexes": {
+        // # Tiêu đề @ten-section
+        "^(#{1,6} .*?)([ \\t]@[a-z0-9][a-z0-9-]*)?[ \\t]*$": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#FFFFFF", "fontWeight": "bold" }, { "color": "#E8D48A" }]
+        },
+        // @node ten-node
+        "^(@node)([ \\t]+)([a-z0-9][a-z0-9-]*)[ \\t]*$": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#C586C0" }, {}, { "color": "#E8D48A" }]
+        },
+        // @node Kieu (khai báo node type)
+        "^(@node)([ \\t]+)([A-Z][A-Za-z0-9-]*)[ \\t]*$": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#C586C0" }, {}, { "color": "#4EC9B0" }]
+        },
+        // @link ten-link
+        "^(@link)([ \\t]+)(\\S+)[ \\t]*$": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#C586C0" }, {}, { "color": "#A5ABB6" }]
+        },
+        // - link ten-link: (a, b)
+        "^(- )(link)( +)([a-z0-9][a-z0-9-]*)(:)([^\\n]*?)(?=\\s//|$)": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#808080" }, { "color": "#C586C0" }, {}, { "color": "#A5ABB6" }, { "color": "#808080" }, { "color": "#E8D48A" }]
+        },
+        // - from a to (b, c)   (trong @link)
+        "^(- )(from)( .*? )(to)( [^\\n]*?)(?=\\s//|$)": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#808080" }, { "color": "#C586C0" }, { "color": "#E8D48A" }, { "color": "#C586C0" }, { "color": "#E8D48A" }]
+        },
+        // - type: Kieu
+        "^(- )(type)(:)( *[A-Z][A-Za-z0-9-]*)": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#808080" }, { "color": "#9CDCFE" }, { "color": "#808080" }, { "color": "#4EC9B0" }]
+        },
+        // - inverse: ten-link
+        "^(- )(inverse)(:)( *[a-z0-9][a-z0-9-]*)": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#808080" }, { "color": "#9CDCFE" }, { "color": "#808080" }, { "color": "#A5ABB6" }]
+        },
+        // - label: chữ   (Str)
+        "^(- )(label)(:)([^\\n]*?)(?=\\s//|$)": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#808080" }, { "color": "#9CDCFE" }, { "color": "#808080" }, { "color": "#CE9178" }]
+        },
+        // - key: value   (attribute khác)
+        "^(- )(?!link |from |type:|inverse:|label:)([A-Za-z_][\\w-]*)(:)": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#808080" }, { "color": "#9CDCFE" }, { "color": "#808080" }]
+        },
+        // frontmatter: kg:, use:, import:
+        "^(kg|use|import)(:)": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#9CDCFE" }, { "color": "#808080" }]
+        },
+        // Node type / data type trong giá trị: Concept, Group, Num, Str …
+        "(?<=[:(,] *)(Concept|Group|Module|Example|Warning|Num|Str|Bool|None|List|Dict|Content)\\b": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#4EC9B0" }]
+        },
+        // "chuỗi" và `code`
+        "\"[^\"\\n]*\"|`[^`\\n]*`": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#CE9178" }]
+        },
+        // @ten tham chiếu trong nội dung
+        "(?<=^|\\s)@(?!node\\b|link\\b)[a-z0-9][a-z0-9-]*": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#E8D48A" }]
+        },
+        // // comment (đầu dòng hoặc sau khoảng trắng)
+        "(?:^|(?<=\\s))//[^\\n]*": {
+            "filterFileRegex": ".*\\.kg\\.md$",
+            "decorations": [{ "color": "#6A9955", "fontStyle": "italic" }]
+        }
+    }
+}

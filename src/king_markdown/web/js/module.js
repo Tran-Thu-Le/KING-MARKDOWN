@@ -48,7 +48,7 @@ function wrapText(t, max) {
   return lines.slice(0, 4);
 }
 const PAD = 18, GAP = 48, HEAD = 32;      // GAP rộng để thấy được link giữa các node đứng cạnh nhau
-const modVisible = n => S.showDefs || !(S.defHide && S.defHide.has(n.id));
+const modVisible = n => (S.showDefs || !(S.defHide && S.defHide.has(n.id))) && !hiddenIn("module").has(n.id);
 function flow(items, maxW) {          // xếp thành hàng, mỗi hàng căn giữa; trả kích thước khối
   const rows = []; let row = [], rw = 0;
   for (const it of items) {
@@ -128,7 +128,7 @@ function renderModule() {
   const nest = new Set(["part-of", "contain", ...modLinks]), marks = {};
   let defs = "", edges = "";
   for (const l of S.graph.links) {
-    if (l.tree || nest.has(l.type)) continue;
+    if (l.tree || nest.has(l.type) || linkHiddenIn(l, "module")) continue;
     const a = at[l.source], b = at[l.target];
     if (!a || !b || a === b || inside(a, b) || inside(b, a)) continue;   // link tới nhóm đang chứa nó: đã thấy qua việc lồng
     const s = H(l), color = s.color || linkColor(l.type);
@@ -144,21 +144,23 @@ function renderModule() {
       ((S.hideLab || {}).link ? "" : `<text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2}" class="mlabel">${esc(l.type)}</text>`) + "</g>";
   }
   const gsvg = groups.map(b => {
-    const s = H(b.n), sec = b.n.kind === "section", stroke = s["border-color"] || (sec ? "#6b7280" : "#7f95ab");
-    const fill = s.color || (sec ? "none" : "#7f95ab"), has = b.count > 0;
+    // hộp nhóm: nền nhạt (16%) nên tên nhóm nằm trên nền trang → dùng màu nhãn; số con dùng chữ phụ
+    const s = H(b.n), sec = b.n.kind === "section", look = nodeLook(b.n), stroke = look.border;
+    const fill = sec ? "none" : look.fill, has = b.count > 0;
     return `<g class="mod mgroup" data-id="${esc(b.n.id)}">` +
       // section: hình chữ nhật góc vuông; nhóm (node có node con): hình chữ nhật bo góc
       `<rect class="shape" x="${b.ax}" y="${b.ay}" width="${b.w}" height="${b.h}" rx="${num(s.radius, sec ? 0 : 14)}" fill="${esc(fill)}" fill-opacity="${sec ? 0 : 0.16}"` +
       ` stroke="${esc(stroke)}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="6,4"' : ""}/>` +
       (has ? `<text class="mtw" x="${b.ax + 14}" y="${b.ay + 21}">${b.closed ? "▸" : "▾"}</text>` : "") +
-      (sec && (S.hideLab || {}).section ? "" : `<text class="mgt${sec ? " sec" : ""}" x="${b.ax + (has ? 30 : 14)}" y="${b.ay + 21}">${esc(b.n.title || b.n.id)}</text>`) +
-      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}">+${b.count} con · nhấp đúp để mở</text>` : "") + "</g>";
+      (sec && (S.hideLab || {}).section ? "" : `<text class="mgt${sec ? " sec" : ""}" x="${b.ax + (has ? 30 : 14)}" y="${b.ay + 21}" style="fill:${esc(look.label)}">${esc(b.n.title || b.n.id)}</text>`) +
+      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}" style="fill:${esc(look.sub)}">+${b.count} con · nhấp đúp để mở</text>` : "") + "</g>";
   }).join("");
   const lsvg = leaves.map(b => {
-    const s = H(b.n), cx = b.ax + b.r, cy = b.ay + b.r, lh = 16, y0 = cy - (b.lines.length - 1) * lh / 2;
-    return `<g class="mod mleaf" data-id="${esc(b.n.id)}"><circle class="shape" cx="${cx}" cy="${cy}" r="${b.r}" fill="${esc(s.color || "#dfe9f3")}"` +
-      ` stroke="${esc(s["border-color"] || "#607d8b")}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="5,4"' : ""}/>` +
-      ((S.hideLab || {}).node ? "" : b.lines.map((t, i) => `<text x="${cx}" y="${y0 + i * lh}" fill="${esc(s["font-color"] || "#1f2328")}">${esc(t)}</text>`).join("")) +
+    // lá: chữ nằm trên nền node → dùng màu chữ chính (tự đổi trắng / đen theo nền nếu style không ghi)
+    const s = H(b.n), look = nodeLook(b.n), cx = b.ax + b.r, cy = b.ay + b.r, lh = 16, y0 = cy - (b.lines.length - 1) * lh / 2;
+    return `<g class="mod mleaf" data-id="${esc(b.n.id)}"><circle class="shape" cx="${cx}" cy="${cy}" r="${b.r}" fill="${esc(look.fill)}"` +
+      ` stroke="${esc(look.border)}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="5,4"' : ""}/>` +
+      ((S.hideLab || {}).node ? "" : b.lines.map((t, i) => `<text x="${cx}" y="${y0 + i * lh}" fill="${esc(look.text)}">${esc(t)}</text>`).join("")) +
       (b.n.ask ? `<text x="${cx + b.r * 0.72}" y="${cy - b.r * 0.72}" class="mask">✎</text>` : "") + "</g>";
   }).join("");
 

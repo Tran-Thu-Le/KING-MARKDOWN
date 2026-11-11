@@ -62,26 +62,33 @@ function treeChildren() {
   }
   return {kids, roots};
 }
-function treeRow(n, depth, has, via) {
+const isOutput = r => /^(output|xuất|xuat)$/i.test(String(r || "").trim());   // role: output (hoặc Xuất của v0.2)
+function treeRow(n, depth, has, via, dim) {
   const ic = n.kind === "section" ? ["sec", "#"] : n.kind === "external" ? ["ext", "↗"] : ["nod", "@"];
-  // khóa meta hồng, giá trị nâu (cùng bộ màu với khung văn bản)
-  const meta = Object.entries(n.meta || {}).filter(([k]) => k !== "contain")
-    .map(([k, v]) => `<span class="mk">${esc(k)}</span>=<span class="mv">${esc(v)}</span>`).join(" ");
-  return `<div class="tr${n.show === "none" || n.def ? " hide" : ""}" data-id="${esc(n.id)}" style="padding-left:${8 + depth * 14}px" title="${esc(n.id)}${n.def ? " (" + n.def + ")" : ""}">` +
+  // chỉ hiện label + kiểu node + role khi là output; các attribute khác (và role input / scaffold…) ẩn,
+  // xem khi rê chuột, ở Book hoặc khung văn bản
+  const meta = Object.entries(n.meta || {}).filter(([k]) => !["contain", "type", "ask", "show", "label"].includes(k))
+    .map(([k, v]) => `${k}: ${v}`).join("\n");
+  const role = n.meta && n.meta.role, out = isOutput(role);
+  return `<div class="tr${n.show === "none" || n.def || dim ? " hide" : ""}" data-id="${esc(n.id)}" style="padding-left:${8 + depth * 14}px" title="${esc(n.id)}${n.def ? " (" + n.def + ")" : ""}${via ? " · " + via : ""}${meta ? "\n" + esc(meta) : ""}">` +
     `<span class="tw">${has ? (treeClosed.has(n.id) ? "▸" : "▾") : ""}</span>` +
     `<span class="ic ${ic[0]}">${ic[1]}</span><span class="nm ${ic[0]}">${esc(n.title || n.id)}</span>` +
-    (via ? `<span class="via" style="color:${esc(linkText(via))}">${via}</span>` : "") +
-    (n.ask ? '<span class="ask">✎</span>' : "") + (meta ? `<span class="meta">${meta}</span>` : "") + "</div>";
+    (n.type ? `<span class="ty">${esc(n.type)}</span>` : "") +
+    (out ? `<span class="ro">${esc(role)}</span>` : "") +
+    (n.ask ? '<span class="ask">✎</span>' : "") + "</div>";
 }
 function renderTree(el) {           // vẽ vào View Tree, hoặc vào Outline của Explorer
   el = el || $("#treeView");
   if (!S.graph) { el.innerHTML = '<div class="tr"><span class="nm" style="color:var(--mute)">(chưa có dữ liệu)</span></div>'; return; }
   const {kids, roots} = treeChildren(), out = [];
+  // - hide: tree / all: View Tree bỏ hẳn; Outline vẫn hiện (mờ) để còn tìm và sửa
+  const hid = hiddenIn("tree"), isView = el.id === "treeView";
   const walk = (items, depth, path) => {
     for (const {n, via} of items) {
       if (path.has(n.id)) continue;                      // phòng vòng lặp
-      const ch = kids[n.id] || [];
-      out.push(treeRow(n, depth, ch.length > 0, via));
+      if (isView && hid.has(n.id)) continue;
+      const ch = (kids[n.id] || []).filter(c => !(isView && hid.has(c.n.id)));
+      out.push(treeRow(n, depth, ch.length > 0, via, hid.has(n.id)));
       if (ch.length && !treeClosed.has(n.id)) walk(ch, depth + 1, new Set([...path, n.id]));
     }
   };
@@ -91,7 +98,7 @@ function renderTree(el) {           // vẽ vào View Tree, hoặc vào Outline 
     const id = r.dataset.id, n = S.byId[id];
     if (e.target.classList.contains("tw") && e.target.textContent) {
       if (treeClosed.has(id)) treeClosed.delete(id); else treeClosed.add(id);
-      renderTree($("#exOutline")); if (S.view === "tree") renderTree();
+      renderTree($("#exOutline")); if (shown("tree")) renderTree();
       return;
     }
     if (n && n.kind !== "external") jumpTo(n.line);

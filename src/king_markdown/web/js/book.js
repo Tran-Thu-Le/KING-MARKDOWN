@@ -71,22 +71,24 @@ function renderBook() {
   let hidden = 0;
   for (const n of items) {
     if (S.defHide && S.defHide.has(n.id)) continue;          // schema/style trong file: không phải nội dung sách
-    if (n.show === "none") { hidden++; continue; }
+    if (n.show === "none" || hiddenIn("book").has(n.id)) { hidden++; continue; }
     if (n.kind === "section") {
       const h = Math.min(Math.max(n.level || 1, 1), 6);
       out.push(`<h${h} data-id="${esc(n.id)}" data-line="${n.line}">${mdInline(n.title || n.id)}</h${h}>`);
+      if (n.content) out.push(`<div data-id="${esc(n.id)}" data-line="${n.line}" class="sec-text">${mdBlock(n.content)}</div>`);   // văn bản dưới heading
       continue;
     }
-    const meta = Object.entries(n.meta || {}).map(([k, v]) =>
-      `<span class="chip"><b style="color:${esc(keyColor(k))}">${esc(k)}</b>=<span class="mv">${esc(v)}</span></span>`).join("");
+    // attribute: chữ xám nhỏ (bảng màu 0.3); kiểu node: nhãn tím; ask nằm trên nội dung
+    const meta = Object.entries(n.meta || {}).filter(([k]) => !["type", "ask", "show", "hide", "label"].includes(k)).map(([k, v]) =>
+      `<span class="chip"><b>${esc(k)}</b>: <span class="mv">${esc(v)}</span></span>`).join("");
     out.push(`<article data-id="${esc(n.id)}" data-line="${n.line}">` +
-      `<h4>${mdInline(n.title || n.id)}<small>@${esc(n.id)}</small></h4>` +
-      (meta ? `<div class="chips">${meta}</div>` : "") +
-      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(chưa có nội dung)</p>')) +
+      `<h4>${mdInline(n.title || n.id)}${n.type ? `<span class="ty">${esc(n.type)}</span>` : ""}<small>@${esc(n.id)}</small></h4>` +
+      (meta ? `<div class="chips attrs">${meta}</div>` : "") +
       (n.ask ? `<div class="ask">✎ ${mdInline(n.ask)}</div>` : "") +
+      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(chưa có nội dung)</p>')) +
       bookLinks(n) + "</article>");
   }
-  if (hidden) out.push(`<p class="note">${hidden} mục có <code>show: none</code> không hiện trong sách.</p>`);
+  if (hidden) out.push(`<p class="note">${hidden} mục có <code>show: none</code> hoặc <code>hide</code> không hiện trong sách (View › Hiện cả node đã ẩn).</p>`);
   el.innerHTML = `<div class="book">${out.join("")}</div>`;
   el.querySelectorAll("[data-go]").forEach(a => a.onclick = e => {
     e.stopPropagation(); const id = a.dataset.go;

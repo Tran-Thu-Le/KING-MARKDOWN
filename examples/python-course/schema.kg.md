@@ -1,36 +1,29 @@
 ---
-kg: 0.2
+kg: 0.3
 ---
 
 # Kiểu node
 
-@concept: Khái niệm
-- meta: kind=type, allow="role, important"
+@node Concept
+- label: Khái niệm
 
-@group: Nhóm
-- meta: kind=type, allow="important"
+@node Group
+- label: Nhóm
 
-@module: Module
-- meta: kind=type
+@node Module
+- label: Module
 
-@dien-tich
-- meta: kind=type
-
-# Khóa meta
-
-@role: Vai trò
-- meta: kind=key, values="Nạp | Xuất | Cầu | Phụ", required=true
-
-@important: Quan trọng
-- meta: kind=key, value=bool
+@node Dien-tich
 
 # Loại link
 
-@export: Xuất ra node chứa
-- meta: kind=link
+@link export
+- label: Xuất ra node chứa
 
-@needs: Cần biết trước
-- meta: kind=link, dag=true
+@link needs
+- label: Cần biết trước
+- dag: true
 
-@part-of: Là phần của
-- meta: kind=link, dag=true, to=group
+@link part-of
+- label: Là phần của
+- dag: true

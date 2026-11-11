@@ -17,7 +17,6 @@ function tip(n) {
 }
 const LABEL_OUTSIDE = new Set(["dot", "star", "triangle", "diamond", "hexagon", "text"]), LABEL_OUT_COLOR = "#d4d4d4";
 // màu nhãn mặc định theo bộ màu chung: section xanh dương, node vàng nhạt (khi xuất SVG nền trắng thì đổi sang chữ tối)
-const labelColor = n => n.kind === "section" ? PAL.sec : PAL.node;
 const svgText = c => [LABEL_OUT_COLOR, PAL.sec, PAL.node].includes(c) ? "#1f2328" : c;
 
 // ---------- thu gọn / bung: con part-of cha, hoặc cha có meta contain=con ----------
@@ -48,6 +47,7 @@ function buildFold(g) {
     });
   }
   if (!S.showDefs) S.defHide.forEach(id => S.hidden.add(id));
+  hiddenIn("graph").forEach(id => S.hidden.add(id));          // - hide: graph / all (cả con cháu)
 }
 function countBelow(id) {
   const seen = new Set(), st = [...(S.kids[id] || [])];
@@ -108,27 +108,33 @@ function renderer(m) {
       ctx.globalAlpha = m.opacity;
       ctx.font = `${m.fontSize}px ${m.font}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
       ctx.lineWidth = 3; ctx.strokeStyle = "#1e1e1e"; ctx.fillStyle = m.fontColor; ctx.lineJoin = "round";
-      wrapLabel(ctx, m.label, 150).forEach((t, i) => {
+      const rows = wrapLabel(ctx, m.label, 150);
+      rows.forEach((t, i) => {
         const ty = y + m.h / 2 + 4 + i * (m.fontSize + 2);
         ctx.strokeText(t, x, ty); ctx.fillText(t, x, ty);
       });
+      if (m.type) {                    // kiểu node: chữ phụ nhỏ dưới tên (mặc định tím)
+        ctx.font = `${m.fontSize - 3}px ${m.font}`; ctx.fillStyle = m.subColor;
+        const ty = y + m.h / 2 + 5 + rows.length * (m.fontSize + 2);
+        ctx.strokeText(m.type, x, ty); ctx.fillText(m.type, x, ty);
+      }
     },
     nodeDimensions:{width:m.w, height:m.h},
   });
 }
 function visNode(n) {
   const s = H(n), err = n.kind !== "external" && S.bad.has(n.line), sec = n.kind === "section";
-  const bg = s.color || (sec ? "#dbeafe" : "#fff7cc"), bd = err ? "#b00020" : (s["border-color"] || (sec ? "#3b82f6" : "#c9a227"));
+  const look = nodeLook(n), bg = look.fill, bd = err ? "#b00020" : look.border;
   const bw = num(s.border, 1.5), shape = s.shape || (sec ? "box" : "ellipse");
   const fold = !S.kids[n.id] ? "" : S.folded.has(n.id) ? ` ▸ +${countBelow(n.id)}` : " ▾";
   const hide = (S.hideLab || {})[sec ? "section" : "node"];
   const label = hide ? "" : (n.title || n.id) + (n.ask ? " ✎" : "") + fold;
-  const font = {face:s.font || "system-ui", size:num(s["font-size"], 13), color:s["font-color"] || labelColor(n)};
+  const font = {face:s.font || "system-ui", size:num(s["font-size"], 13), color:look.label};   // nhãn Graph nằm ngoài hình
   const base = {id:n.id, title:tip(n), hidden:S.hidden.has(n.id), opacity:num(s.opacity, 1)};
   if (CUSTOM_SHAPES.has(shape)) {
     const m = {shape, ...shapeBox(shape, num(s.size, sec ? 13 : 14)), radius:num(s.radius, shape === "box" ? 6 : 0),
                bg, bd, bw:err ? 3 : bw, dash:s.dash === true, opacity:num(s.opacity, 1),
-               label, font:font.face, fontSize:font.size, fontColor:font.color};
+               label, font:font.face, fontSize:font.size, fontColor:font.color, subColor:look.sub, type:hide ? "" : n.type || ""};
     return {...base, shape:"custom", ctxRenderer:renderer(m), label, kg:m};
   }
   return {...base, label, shape, size:num(s.size, 14), font,
@@ -140,7 +146,7 @@ function visEdges() {
   S.edgeMap = {}; const show = $("#showTree").checked, out = [];
   S.graph.links.forEach((l, i) => {
     if (l.tree && !show) return;
-    if (S.hidden.has(l.source) || S.hidden.has(l.target)) return;
+    if (S.hidden.has(l.source) || S.hidden.has(l.target) || linkHiddenIn(l, "graph")) return;
     S.edgeMap[i] = l; const s = H(l);
     const arrows = s.arrows === "none" ? "" : s.arrows === "both" ? "to, from" : (s.arrows || "to");
     out.push({id:i, from:l.source, to:l.target, arrows,
@@ -150,7 +156,63 @@ function visEdges() {
   });
   return out;
 }
+// ---------- bố cục cây trái → phải trên lưới (mặc định); "Lực" = physics như cũ ----------
+const COL = 6;                                // mỗi cấp cách nhau COL ô lưới; mỗi hàng 2 ô
+const layoutKey = () => "kglayout:" + (S.root || "static") + "|" + S.name;
+const getLayout = () => { try { return localStorage.getItem(layoutKey()) || "tree"; } catch (e) { return "tree"; } };
+function treeParent(g) {     // mỗi node một cha: part-of > contain > section chứa nó > parent
+  const by = Object.fromEntries(g.nodes.map(n => [n.id, n])), par = {}, rank = {};
+  const put = (c, p, r) => { if (by[c] && by[p] && c !== p && !(rank[c] <= r)) { par[c] = p; rank[c] = r; } };
+  for (const l of g.links) {
+    if (l.type === "part-of") put(l.source, l.target, 0);
+    else if (l.type === "contain") put(l.target, l.source, 1);
+    else if (l.tree || l.type === "contains") put(l.target, l.source, 2);
+  }
+  for (const n of g.nodes) if (n.parent) put(n.id, n.parent, 3);
+  for (const id of Object.keys(par)) {        // chặn vòng: đi lên tới khi gặp lại chính mình thì cắt
+    const seen = new Set([id]); let p = par[id];
+    while (p !== undefined) { if (seen.has(p)) { delete par[id]; break; } seen.add(p); p = par[p]; }
+  }
+  return par;
+}
+// Bố cục: tree = cây thụt lề (cha ngang hàng con đầu), tidy = cây cân (cha ở giữa các con, kiểu D3 tree),
+// radial = tỏa tròn từ gốc, force = physics. Ba bố cục cây đều làm tròn toạ độ về lưới.
+const LAYOUTS = {tree:"⊢ Thụt lề", tidy:"⊣ Cây cân", radial:"✳ Tỏa tròn", force:"✺ Lực"};
+const LAYOUT_ORDER = ["tree", "tidy", "radial", "force"];
+function treeLayout(g, skip = new Set(), mode = "tree") {   // {id: {x, y}}; node trong skip (đang ẩn) không chiếm chỗ
+  const par = treeParent(g), kids = {}, order = n => n.line || 0;
+  const nodes = [...g.nodes].filter(n => !skip.has(n.id)).sort((a, b) => order(a) - order(b));
+  for (const n of nodes) if (par[n.id]) (kids[par[n.id]] = kids[par[n.id]] || []).push(n.id);
+  const slot = {}, depth = {}; let leaf = 0, maxD = 0;          // slot: vị trí theo thứ tự lá (số thực)
+  const walk = (id, d) => {
+    depth[id] = d; maxD = Math.max(maxD, d);
+    const ks = kids[id] || [];
+    if (!ks.length) { slot[id] = leaf++; return; }
+    ks.forEach(k => walk(k, d + 1));
+    slot[id] = mode === "tree" ? slot[ks[0]] : (slot[ks[0]] + slot[ks[ks.length - 1]]) / 2;
+  };
+  nodes.filter(n => !par[n.id] || skip.has(par[n.id])).forEach(n => walk(n.id, 0));
+  const snap = v => Math.round(v / GRID) * GRID, pos = {};
+  for (const id in slot) {
+    if (mode === "radial") {               // vòng thứ d có bán kính d·COL ô; chu vi đủ cho mỗi lá ~2 ô
+      const R = Math.max(COL * GRID, leaf * 2 * GRID / (2 * Math.PI) / Math.max(maxD, 1));
+      const r = depth[id] * R, t = 2 * Math.PI * (slot[id] + .5) / Math.max(leaf, 1);
+      pos[id] = {x: snap(r * Math.cos(t)), y: snap(r * Math.sin(t))};
+    } else pos[id] = {x: depth[id] * COL * GRID, y: snap(slot[id] * 2 * GRID)};
+  }
+  return pos;
+}
+const isTree = m => m !== "force";
+function setLayout(mode) {
+  try { localStorage.setItem(layoutKey(), mode); } catch (e) {}
+  $("#bLayout").value = mode;
+}
+function relayout() {        // bỏ mọi vị trí đã lưu của file, xếp lại theo chế độ hiện tại
+  try { localStorage.removeItem(posKey()); } catch (e) {}
+  nodesDS.clear(); render(S.graph);
+}
 function render(g) {
+  $("#bLayout").value = LAYOUTS[getLayout()] ? getLayout() : "tree";
   S.graph = g; S.byId = Object.fromEntries(g.nodes.map(n => [n.id, n]));
   S.bad = new Set(g.graph.errors.filter(e => !e.file).map(e => e.line));
   if (S.foldKey !== foldKey()) { S.foldKey = foldKey(); S.folded = loadFold(); }
@@ -174,15 +236,46 @@ function render(g) {
     }
     return v;
   });
+  // mở lại file mà có node mới (chưa có vị trí lưu): ghim mọi node đã có vị trí, chỉ node mới được mô phỏng xếp chỗ;
+  // node mới bắt đầu cạnh section / node cha nếu cha đã có vị trí
+  const placed = items.filter(v => v.x !== undefined), pinned = fresh && missing && placed.length ? placed.map(v => v.id) : [];
+  if (pinned.length) {
+    const at = Object.fromEntries(placed.map(v => [v.id, v]));
+    for (const v of items) {
+      if (v.x !== undefined) { v.fixed = {x:true, y:true}; continue; }
+      const n = S.byId[v.id], par = at[n.parent] || at[[...(S.parents[n.id] || [])].find(p => at[p])];
+      if (par) { v.x = par.x + (Math.random() - .5) * 160; v.y = par.y + 70 + Math.random() * 40; }
+    }
+  }
   S.pending = {};
   nodesDS.remove([...old].filter(id => !S.byId[id]));
   nodesDS.update(items);
   edgesDS.clear(); edgesDS.add(visEdges());
-  if (fresh && missing) {
+  if (fresh && missing && isTree(getLayout())) {
+    // node chưa có vị trí lưu: xếp theo cây; nếu ô đã có node ghim thì dời xuống ô trống gần nhất
+    const T = treeLayout(g, new Set(items.filter(v => v.hidden).map(v => v.id)), getLayout()), cell = p => Math.round(p.x / GRID) + "," + Math.round(p.y / GRID);
+    const used = new Set(items.filter(v => v.x !== undefined).map(cell));
+    const add = [];
+    for (const v of items) {
+      if (pinned.includes(v.id) || !T[v.id]) continue;
+      const p = {...T[v.id]};
+      while (used.has(cell(p))) p.y += 2 * GRID;
+      used.add(cell(p)); add.push({id:v.id, x:p.x, y:p.y});
+    }
+    nodesDS.update(add);
+    if (pinned.length) nodesDS.update(pinned.map(id => ({id, fixed:false})));
+    savePos(); net.fit();
+  } else if (fresh && missing) {
     net.setOptions({physics:{enabled:true}});
-    net.once("stabilizationIterationsDone", () => { net.setOptions({physics:{enabled:false}}); savePos(); net.fit(); });
+    net.once("stabilizationIterationsDone", () => {
+      net.setOptions({physics:{enabled:false}});
+      if (pinned.length) nodesDS.update(pinned.map(id => ({id, fixed:false})));    // bỏ ghim: vẫn kéo tay được
+      if (S.grid) snapNodes(items.filter(v => !pinned.includes(v.id)).map(v => v.id), true);   // node mới vào lưới luôn
+      savePos(); net.fit();
+    });
     net.stabilize(300);
   } else if (fresh) net.fit();
+  else if (items.some(v => !old.has(v.id))) savePos();     // node mới thêm khi đang sửa: lưu vị trí ngay
   fillLinkSel(g); showLog(g); updateGutter(); renderViews();
   fillLists(g); renderExplorer(); renderInspector();
   if (S.mode === "link") net.addEdgeMode();
@@ -268,10 +361,45 @@ net.on("select", p => {
   if (p.nodes.length) focusNode(p.nodes[0], false);
   else if (p.edges.length && S.edgeMap[p.edges[0]]) selectLink(S.edgeMap[p.edges[0]]);
 });
+// ---------- lưới: vẽ dưới đồ thị; node thả xuống hút về nút lưới gần nhất ----------
+const GRID = 40;                            // khoảng cách lưới (đơn vị toạ độ đồ thị); mỗi 5 ô một đường đậm
+S.grid = (() => { try { return localStorage.getItem("kggrid") !== "0"; } catch (e) { return true; } })();
+function setGrid(on) {
+  S.grid = on; $("#bGrid").classList.toggle("on", on);
+  try { localStorage.setItem("kggrid", on ? "1" : "0"); } catch (e) {}
+  net.redraw();                              // bật lưới không xếp lại node cũ; chỉ node được kéo thả mới hút vào lưới
+}
+function snapNodes(ids, quiet) {           // đặt node vào nút lưới gần nhất
+  const pos = net.getPositions(ids);
+  for (const id of ids) {
+    const p = pos[id]; if (!p) continue;
+    const x = Math.round(p.x / GRID) * GRID, y = Math.round(p.y / GRID) * GRID;
+    if (x !== p.x || y !== p.y) net.moveNode(id, x, y);
+  }
+  savePos();
+  if (!quiet) net.redraw();
+}
+net.on("beforeDrawing", ctx => {
+  if (!S.grid) return;
+  const sc = net.getScale(); if (sc * GRID < 6) return;               // thu nhỏ quá: lưới dày đặc, bỏ
+  const box = $("#g"), a = net.DOMtoCanvas({x:0, y:0}), b = net.DOMtoCanvas({x:box.clientWidth, y:box.clientHeight});
+  const x0 = Math.floor(a.x / GRID) * GRID, y0 = Math.floor(a.y / GRID) * GRID;
+  ctx.save(); ctx.lineWidth = 1 / sc;
+  for (const major of [false, true]) {
+    ctx.beginPath(); ctx.strokeStyle = major ? "#ffffff1c" : "#ffffff0b";
+    for (let x = x0; x <= b.x; x += GRID) if ((Math.round(x / GRID) % 5 === 0) === major) { ctx.moveTo(x, a.y); ctx.lineTo(x, b.y); }
+    for (let y = y0; y <= b.y; y += GRID) if ((Math.round(y / GRID) % 5 === 0) === major) { ctx.moveTo(a.x, y); ctx.lineTo(b.x, y); }
+    ctx.stroke();
+  }
+  ctx.restore();
+});
+$("#bGrid").onclick = () => setGrid(!S.grid);
+$("#bGrid").classList.toggle("on", S.grid);
+
 const inBox = (b, c) => b && c.x >= b.left && c.x <= b.right && c.y >= b.top && c.y <= b.bottom;
 net.on("dragEnd", async p => {
   if (!p.nodes.length) return;
-  savePos();
+  if (S.grid) snapNodes(p.nodes); else savePos();
   if (S.mode !== "move" || ST) return;
   const c = p.pointer.canvas;
   const tgt = S.graph.nodes.find(n => n.kind === "section" && !p.nodes.includes(n.id) && inBox(net.getBoundingBox(n.id), c));
@@ -288,7 +416,7 @@ async function onAddEdge(d) {
 document.addEventListener("keydown", async e => {
   const typing = ["TEXTAREA", "INPUT", "SELECT"].includes(document.activeElement.tagName);
   const k = e.key.toLowerCase();
-  if ((e.ctrlKey || e.metaKey) && k === "s") { e.preventDefault(); await save(); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === "s" || e.code === "KeyS")) { e.preventDefault(); await saveNow(); return; }
   if (typing || ST || $("#dlg").open) return;
   if ((e.ctrlKey || e.metaKey) && k === "z") { e.preventDefault(); await undo(); return; }
   if (e.key !== "Delete" && e.key !== "Backspace") return;
@@ -474,3 +602,26 @@ function exportSVG() {
   a.download = (S.name || "graph").replace(/\.kg\.md$/, "") + ".svg"; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000); status("Đã xuất " + a.download);
 }
+// Chọn bố cục ở ô sổ xuống, hoặc L: kiểu kế tiếp; Shift+L: xếp lại kiểu đang chọn (bỏ vị trí kéo tay)
+function applyLayout(mode) {
+  const cur = LAYOUTS[getLayout()] ? getLayout() : "tree";
+  if (!S.graph || !confirm(`Xếp lại toàn bộ đồ thị theo bố cục ${LAYOUTS[mode]}? Vị trí kéo tay của file này sẽ mất.`)) {
+    $("#bLayout").value = cur; return;
+  }
+  setLayout(mode); relayout();
+  status("Bố cục: " + LAYOUTS[mode]);
+}
+function toggleLayout(again) {
+  const cur = LAYOUTS[getLayout()] ? getLayout() : "tree";
+  applyLayout(again ? cur : LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(cur) + 1) % LAYOUT_ORDER.length]);
+}
+$("#bLayout").onchange = e => applyLayout(e.target.value);
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.key.toLowerCase() !== "l" || !onGraph() || !shown("graph")) return;
+  e.preventDefault(); toggleLayout(e.shiftKey);
+});
+// G: bật / tắt lưới (khi đang ở đồ thị, không gõ chữ)
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.key.toLowerCase() !== "g" || !onGraph() || !shown("graph")) return;
+  e.preventDefault(); setGrid(!S.grid); status(S.grid ? "Lưới: bật (node thả xuống hút về nút lưới)" : "Lưới: tắt");
+});

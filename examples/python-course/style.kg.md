@@ -22,7 +22,7 @@ kg: 0.2
 - meta: select="role=Xuất", typst.frame=khung-xuat, html.color="#ffebee", html.border-color="#c62828"
 
 @nhom: Nhóm
-- meta: select="type=group", html.color="#fff8e1"
+- meta: select="type=Group", html.color="#fff8e1"
 
 @cho-ai: Chờ AI viết
 - meta: select="ask", html.dash=true

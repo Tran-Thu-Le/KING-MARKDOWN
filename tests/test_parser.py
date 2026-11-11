@@ -1,152 +1,168 @@
+"""Parser KING Markdown 0.3."""
 import os
 import sys
 import unittest
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from king_markdown.parser import Parser, parse_meta, read, slug  # noqa: E402
+from king_markdown.parser import Parser, read  # noqa: E402
 
-FIX = os.path.join(ROOT, "tests", "fixtures")
+FIX = os.path.join(os.path.dirname(__file__), "fixtures03")
 
 
-def build(name):
+def parse(text, name="t.kg.md"):
+    return Parser(text, os.path.join(FIX, name)).build()
+
+
+def fx(name):
     path = os.path.join(FIX, name)
     return Parser(read(path), path).build()
+
+
+def nodes(g):
+    return {n["id"]: n for n in g["nodes"]}
+
+
+def edges(g, typ=None):
+    return {(l["source"], l["type"], l["target"]) for l in g["links"]
+            if not l.get("tree") and (typ is None or l["type"] == typ)}
 
 
 def msgs(g, kind="errors"):
     return " | ".join(e["msg"] for e in g["graph"][kind])
 
 
-class TestValid(unittest.TestCase):
-    def setUp(self):
-        self.g = build("ok.kg.md")
-
-    def test_no_errors(self):
-        self.assertEqual(self.g["graph"]["errors"], [])
-        self.assertEqual(self.g["graph"]["warnings"], [])
-
-    def test_nodes(self):
-        ids = {n["id"]: n for n in self.g["nodes"]}
-        self.assertEqual(set(ids), {"toan", "giai-tich", "dao-ham", "tich-phan"})
-        self.assertEqual(ids["toan"]["kind"], "section")
-        self.assertEqual(ids["dao-ham"]["parent"], "toan")
-        self.assertEqual(ids["dao-ham"]["title"], "Đạo hàm")
-
-    def test_links(self):
-        got = {(l["source"], l["type"], l["target"]) for l in self.g["links"]}
-        self.assertIn(("dao-ham", "part-of", "giai-tich"), got)
-        self.assertIn(("tich-phan", "needs", "dao-ham"), got)
-        self.assertIn(("tich-phan", "export", "toan"), got)       # loại() → section chứa
-        self.assertIn(("dao-ham", "mention", "tich-phan"), got)   # @id trong content
-        self.assertIn(("toan", "contains", "dao-ham"), got)       # cây chứa
-
-    def test_line_numbers(self):
-        n = next(n for n in self.g["nodes"] if n["id"] == "dao-ham")
-        self.assertEqual(n["line"], 9)
+HEAD = "---\nkg: 0.3\nuse:\n- king/schema.node: Concept, Group\n- king/schema.link: needs, part-of\n---\n"
 
 
-class TestErrors(unittest.TestCase):
-    def test_duplicate_id(self):
-        self.assertIn("ID trùng: a", msgs(build("dup-id.kg.md")))
-
-    def test_unknown_field(self):
-        self.assertIn("trường lạ: contain", msgs(build("bad-field.kg.md")))
-
-    def test_missing_target_and_module(self):
-        m = msgs(build("missing-target.kg.md"))
-        self.assertIn("không tìm thấy node: khong-co", m)
-        self.assertIn("module chưa import: math", m)
-
-    def test_cycle(self):
-        self.assertIn("vòng lặp needs", msgs(build("cycle.kg.md")))
-
-    def test_schema(self):
-        m = msgs(build("schema-error.kg.md"))
-        self.assertIn("role=Sai không thuộc", m)
-        self.assertIn("thiếu khóa bắt buộc role", m)
-        self.assertIn("loại link không khai báo trong schema: lien-quan", m)
-
-    def test_v01_frontmatter_warns(self):
-        g = build("v01-frontmatter.kg.md")
-        self.assertIn("không còn dùng (v0.2)", msgs(g, "warnings"))
-
-
-class TestContain(unittest.TestCase):
-    def test_edges_across_sections(self):
-        g = build("contain.kg.md")
-        self.assertEqual(g["graph"]["errors"], [])          # contain không cần khai báo trong schema
-        got = {(l["source"], l["type"], l["target"]) for l in g["links"]}
-        self.assertIn(("giai-tich", "contain", "dao-ham"), got)
-        self.assertIn(("giai-tich", "contain", "tich-phan"), got)
-        self.assertIn("contain", g["graph"]["dag"])
-
-    def test_errors(self):
-        m = msgs(build("contain-error.kg.md"))
-        self.assertIn("không tìm thấy node: khong-co", m)
-        self.assertIn("loại link contain do parser tự sinh", m)
-        self.assertIn("vòng lặp contain", m)
-        self.assertIn("contain cần danh sách ID", m)
-
-    def test_field_hint(self):
-        self.assertIn("là khóa meta: - meta: contain=b", msgs(build("bad-field.kg.md")))
-
-
-class TestStyle(unittest.TestCase):
-    def test_example_style(self):
-        path = os.path.join(ROOT, "examples", "python-course", "vidu.kg.md")
-        g = Parser(read(path), path).build()
-        n = {n["id"]: n for n in g["nodes"]}
-        self.assertEqual(n["tich-phan"]["style"]["html"]["shape"], "circle")       # #id thắng
-        self.assertEqual(n["dao-ham"]["style"]["typst"]["frame"], "khung-nap")     # role=Nạp
-
-
-class TestMentionInCode(unittest.TestCase):
-    def test_at_in_code_is_not_a_mention(self):
-        text = ("---\nkg: 0.2\n---\n\n@a: A\n- content: Ví dụ `@khong-co` và\n"
-                "```markdown\n@cung-khong-co: X\n- link: needs(b)\n```\n  còn @b là tham chiếu thật.\n\n@b: B\n")
-        g = Parser(text, "x.kg.md").build()
+class ExamplesTest(unittest.TestCase):
+    def test_hinh_tron(self):
+        g = fx("hinh-tron.kg.md")
         self.assertEqual(g["graph"]["errors"], [])
-        got = {(l["source"], l["type"], l["target"]) for l in g["links"] if not l.get("tree")}
-        self.assertEqual(got, {("a", "mention", "b")})
+        N = nodes(g)
+        self.assertEqual(N["duong-tron"]["type"], "Concept")
+        self.assertEqual(N["duong-tron"]["title"], "Đường tròn")
+        self.assertEqual(N["duong-tron"]["attrs"], {"role": "Nạp"})
+        self.assertTrue(N["duong-tron"]["content"].startswith("Tập hợp"))
+        self.assertEqual(N["hinh-tron"]["kind"], "node")             # tên section tự sinh nhường tên node
+        self.assertEqual(N["hinh-tron-2"]["kind"], "section")
+        self.assertIn(("hinh-tron", "needs", "duong-tron"), edges(g))
+        self.assertIn(("hinh-tron", "mention", "duong-tron"), edges(g))
+        self.assertEqual(N["hinh-hoc-phang"]["style"]["html"]["radius"], 10)   # king/style: type=Group
 
-
-class TestBracketContent(unittest.TestCase):
-    TEXT = ("---\nkg: 0.2\n---\n\n@a: A\n- content: [Dòng đầu\n- đây: không phải trường\n@b: tham chiếu, không phải node mới\n\n"
-            "# không phải heading\ncuối]\n- link: needs(b)\n\n@b: B\n- content: [một dòng]\n- ask: [xem [KING](url)\n")
-
-    def test_long_content_is_literal(self):
-        g = Parser(self.TEXT, "x.kg.md").build()
+    def test_truyen_kieu_inverse_merge(self):
+        g = fx("truyen-kieu.kg.md")
         self.assertEqual(g["graph"]["errors"], [])
-        n = {x["id"]: x for x in g["nodes"]}
-        self.assertEqual(set(n), {"a", "b"})
-        self.assertEqual(n["a"]["content"], "Dòng đầu\n- đây: không phải trường\n@b: tham chiếu, không phải node mới\n\n# không phải heading\ncuối")
-        self.assertEqual(n["b"]["content"], "một dòng")
-        got = {(l["source"], l["type"], l["target"]) for l in g["links"] if not l.get("tree")}
-        self.assertIn(("a", "needs", "b"), got)
+        author = [l for l in g["links"] if l["type"] == "author"]
+        self.assertEqual(len(author), 1)                               # author + works → một cạnh
+        self.assertEqual((author[0]["source"], author[0]["target"]), ("truyen-kieu", "nguyen-du"))
+        self.assertEqual(author[0]["lines"], [16, 22])
+        self.assertEqual(edges(g, "wrote"), {("nguyen-du", "wrote", "thi-sinh"),
+                                             ("ho-xuan-huong", "wrote", "thi-sinh")})
+        self.assertEqual(nodes(g)["van-hoc"]["content"], "Các tác phẩm và tác giả.")   # văn bản dưới heading
+        self.assertEqual(g["graph"]["schema"]["links"]["author"]["inverse"], "works")
 
-    def test_markdown_link_is_not_bracket(self):
-        g = Parser("@b: B\n- content: [KING](https://x.org) là ngôn ngữ\n- link: needs(c)\n\n@c: C\n", "x.kg.md").build()
+
+class BlockTest(unittest.TestCase):
+    def test_attrs_and_body(self):
+        g = parse(HEAD + "@node a\n- label: A\n- n: 3\n\n- ý một\n- ý hai: không phải thuộc tính\n\nĐoạn 2.\n")
+        a = nodes(g)["a"]
+        self.assertEqual(a["attrs"], {"n": 3})
+        self.assertEqual(a["content"], "- ý một\n- ý hai: không phải thuộc tính\n\nĐoạn 2.")
+
+    def test_block_ends(self):
+        g = parse(HEAD + "@node a\n- label: A\n@node b\n# S\n@node c\n")
+        N = nodes(g)
+        self.assertEqual(N["a"]["content"] if "content" in N["a"] else "", "")
+        self.assertEqual(N["c"]["parent"], "s")
+        self.assertIsNone(N["a"]["parent"])
+
+    def test_fence_and_indent(self):
+        g = parse(HEAD + "@node a\n\n```\n@node khong-phai\n# không phải heading\n```\n  @node cung-khong\n")
+        self.assertEqual(set(nodes(g)), {"a"})
+        self.assertIn("@node khong-phai", nodes(g)["a"]["content"])
+
+    def test_multiline_value(self):
+        g = parse(HEAD + "@node a\n- de: [\n  Cho $f(x)$.\n  Tính $f'(1)$.\n  ]\n- tags: (x,\n  y)\n")
+        a = nodes(g)["a"]
+        self.assertEqual(a["attrs"]["de"], {"content": "Cho $f(x)$.\nTính $f'(1)$."})
+        self.assertEqual(a["attrs"]["tags"], ["x", "y"])
+
+    def test_section_attrs(self):
+        g = parse(HEAD + "# Chương 1 @c1\n- level: 1\n\nMở đầu.\n\n## Mục\n- Ý danh sách ngay dưới heading\n")
+        N = nodes(g)
+        self.assertEqual(N["c1"]["attrs"], {"level": 1})
+        self.assertEqual(N["c1"]["content"], "Mở đầu.")
+        self.assertEqual(N["muc"]["content"], "- Ý danh sách ngay dưới heading")
+
+    def test_comment(self):
+        g = parse(HEAD + "@node a  // chú thích\n- web: https://x.org // c\n// dòng comment\n- n: 1\n")
+        self.assertEqual(nodes(g)["a"]["attrs"], {"web": "https://x.org", "n": 1})
+
+
+class ErrorTest(unittest.TestCase):
+    def test_v02_syntax(self):
+        self.assertIn("cú pháp v0.2", msgs(parse(HEAD + "@a: Tiêu đề\n")))
+
+    def test_label_on_open_line(self):
+        g = parse(HEAD + "@node a: Nhãn\n")
+        self.assertIn("không có ':'", msgs(g))
+        self.assertEqual(nodes(g)["a"]["title"], "Nhãn")
+
+    def test_type_rules(self):
+        self.assertIn("node type chưa import", msgs(parse(HEAD + "@node a\n- type: Module\n")))
+        self.assertIn("viết hoa chữ đầu", msgs(parse(HEAD + "@node a\n- type: concept\n")))
+        self.assertIn("tên node viết thường", msgs(parse(HEAD + "@node Hinh_x\n- n: 1\n")) or
+                      msgs(parse(HEAD + "@node hinh_x\n")))
+
+    def test_local_type(self):
+        g = parse(HEAD + "@node Hinh\n- label: Hình\n\nMô tả kiểu.\n\n@node a\n- type: Hinh\n")
         self.assertEqual(g["graph"]["errors"], [])
-        n = {x["id"]: x for x in g["nodes"]}
-        self.assertEqual(n["b"]["content"], "[KING](https://x.org) là ngôn ngữ")
+        self.assertEqual(g["graph"]["schema"]["types"]["Hinh"]["title"], "Hình")
+        self.assertNotIn("Hinh", nodes(g))
 
-    def test_ops_respect_brackets(self):
-        from king_markdown.ops import OPS, Doc
-        out, _ = OPS["set_meta"](Doc(self.TEXT, "x.kg.md"), id="a", meta={"type": "t"})
-        self.assertIn("@a: A\n- meta: type=t\n- content: [Dòng đầu", out)
-        out, _ = OPS["add_link"](Doc(out, "x.kg.md"), source="a", target="b", type="see")
-        self.assertIn("cuối]\n- link: needs(b), see(b)", out)
+    def test_link_errors(self):
+        self.assertIn("link type chưa import", msgs(parse(HEAD + "@node a\n@node b\n- link friend: (a)\n")))
+        self.assertIn("không tìm thấy node: zz", msgs(parse(HEAD + "@node a\n- link needs: (zz)\n")))
+        self.assertIn("vòng lặp needs", msgs(parse(HEAD + "@node a\n- link needs: (b)\n@node b\n- link needs: (a)\n")))
+        self.assertIn("tự sinh", msgs(parse(HEAD + "@node a\n@node b\n- link mention: (a)\n")))
 
+    def test_import_selective(self):
+        g = parse("---\nkg: 0.3\nuse:\n- king/schema.node: Concept\n---\n@node a\n- type: Group\n")
+        self.assertIn("node type chưa import", msgs(g))
+        g = parse("---\nkg: 0.3\nuse:\n- king/schema.node: Khong-co\n---\n")
+        self.assertIn("không có node type Khong-co", msgs(g))
 
-class TestHelpers(unittest.TestCase):
-    def test_slug(self):
-        self.assertEqual(slug("Đạo hàm cấp 2"), "dao-ham-cap-2")
+    def test_dup_and_bad_attr(self):
+        self.assertIn("tên trùng", msgs(parse(HEAD + "@node a\n@node a\n")))
+        self.assertIn("viết hai lần", msgs(parse(HEAD + "@node a\n- n: 1\n- n: 2\n")))
+        self.assertIn("thuộc tính phải có dạng", msgs(parse(HEAD + "@node a\n- ý không có khóa\n")))
+        self.assertIn("thiếu ngoặc đóng", msgs(parse(HEAD + "@node a\n- t: (a, b\n")))
 
-    def test_parse_meta(self):
-        self.assertEqual(parse_meta('type=concept, important=true, n=3, allow="a, b"'),
-                         {"type": "concept", "important": True, "n": 3, "allow": "a, b"})
+    def test_typo_warning(self):
+        g = parse(HEAD + "@node a\n- role: X\n@node b\n- role: Y\n@node c\n- rol: Z\n")
+        self.assertIn("có phải role", msgs(g, "warnings"))
+
+    def test_has_not_yet(self):
+        self.assertIn("chưa hỗ trợ", msgs(parse(HEAD + "@node a\n- has: (b)\n"), "warnings"))
+
+    def test_hide(self):
+        g = parse(HEAD + "# A @a\n- hide: graph, module\n\n@node x\n\n# B @b\n\n@link ban\n- hide: all\n\n"
+                  "@node g\n- type: Group\n- hide: (book)\n\n@node y\n- hide: true\n- link ban: (x)\n\n@node z\n- hide: grap\n")
+        n = nodes(g)
+        self.assertEqual(n["a"]["hide"], ["graph", "module"])
+        self.assertEqual(n["g"]["hide"], ["book"])
+        self.assertEqual(n["y"]["hide"], ["all"])
+        self.assertNotIn("hide", n["x"])                  # con của section bị ẩn: view tự ẩn theo, JSON không ghi
+        self.assertNotIn("hide", n["z"])
+        self.assertIn("không có view grap", msgs(g, "warnings"))
+        self.assertEqual([l["hide"] for l in g["links"] if l["type"] == "ban"], [["all"]])
+        self.assertEqual(g["graph"]["schema"]["links"]["ban"]["hide"], ["all"])
+
+    def test_legacy_file(self):
+        g = parse("---\nkg: 0.2\n---\n@a: A\n- content: x\n")
+        self.assertEqual(g["nodes"][0]["title"], "A")
+        self.assertIn("cú pháp cũ", msgs(g, "warnings"))
 
 
 if __name__ == "__main__":
