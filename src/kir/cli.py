@@ -1,10 +1,18 @@
-"""CLI: `kir run file.kg.md -o out.json` · `kir ask file.kg.md "?x friend-of bob"`."""
+"""CLI for KIR (charter edition).
+
+    kir run file.kg.md                 compile + run rules + print (`@print`) results
+    kir compile file.kg.md             KING sugar -> pure KIR (`@add s r o` lines)
+    kir export file.kg.md --json OUT   networkx node-link JSON   (--rdf OUT: RDF Turtle)
+    kir view [path] [--view text]      open the KING web app (server stops when the page closes)
+"""
 import argparse
-import json
+import os
 import sys
 
-from .parser import parse_file
-from .query import ask
+
+def _need_file(path):
+    if not os.path.isfile(path):
+        sys.exit(f"no such file: {os.path.abspath(path)}")
 
 
 def main(argv=None):
@@ -13,52 +21,40 @@ def main(argv=None):
             st.reconfigure(encoding="utf-8")
         except Exception:
             pass
-    ap = argparse.ArgumentParser(prog="kir", description="KING IR v0.4")
+    ap = argparse.ArgumentParser(prog="kir", description="KIR: KING IR (@add s r o)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run", help="parse + export node-link JSON")
-    r.add_argument("file")
-    r.add_argument("-o", "--out")
-    a = sub.add_parser("ask", help="query triple patterns")
-    a.add_argument("file")
-    a.add_argument("pattern")
-    o = sub.add_parser("open", help="open the KING web app on a file or folder")
-    o.add_argument("path", nargs="?", default=".")
-    o.add_argument("--view", choices=("book", "graph", "text", "tree", "module"))
-    o.add_argument("--keep", action="store_true", help="keep the server running after the page closes")
-    o.add_argument("--no-browser", action="store_true")
+    sub.add_parser("run", help="compile + run rules + print results").add_argument("file")
+    sub.add_parser("compile", help="KING sugar -> pure KIR").add_argument("file")
+    e = sub.add_parser("export", help="export to networkx node-link JSON or RDF Turtle")
+    e.add_argument("file")
+    e.add_argument("--json", metavar="OUT", help="write JSON ('-' = stdout; default)")
+    e.add_argument("--rdf", metavar="OUT", help="write RDF Turtle ('-' = stdout)")
+    e.add_argument("--base", help="IRI prefix for names")
+    for name in ("view", "open"):
+        o = sub.add_parser(name, help="open the KING web app on a file or folder"
+                           + (" (alias of view)" if name == "open" else ""))
+        o.add_argument("path", nargs="?", default=".")
+        o.add_argument("--view", choices=("text", "book", "lecture", "graph", "tree", "module"))
+        o.add_argument("--keep", action="store_true", help="keep the server running after the page closes")
+        o.add_argument("--no-browser", action="store_true")
     args = ap.parse_args(argv)
 
-    if args.cmd == "open":
+    if args.cmd in ("view", "open"):
         try:
             from king_markdown.open import open_in_browser   # lazy: kir does not depend on king_markdown
         except ImportError:
-            sys.exit("error: `kir open` needs the king_markdown package (pip install -e .)")
+            sys.exit("error: `kir view` needs the king_markdown package (pip install -e .)")
         open_in_browser(args.path, args.view, args.keep, not args.no_browser)
         return 0
 
-    import os
-    if not os.path.isfile(args.file):
-        sys.exit(f"no such file: {os.path.abspath(args.file)}")
-    res = parse_file(args.file)
-    for d in res.diags:
-        print(d, file=sys.stderr)
-    if res.errors:
-        return sys.exit(1)
+    _need_file(args.file)
     if args.cmd == "run":
-        text = json.dumps(res.graph.to_dict(), ensure_ascii=False, indent=2)
-        if args.out:
-            with open(args.out, "w", encoding="utf-8") as f:
-                f.write(text + "\n")
-            print(f"OK: {len(res.graph.nodes)} nodes, {len(res.graph.edges)} edges -> {args.out}")
-        else:
-            print(text)
-    else:
-        try:
-            cols, rows = ask(res.graph, args.pattern)
-        except ValueError as e:
-            print(f"pattern error: {e}", file=sys.stderr)
-            sys.exit(1)
-        print("\t".join("?" + c for c in cols))
-        for row in rows:
-            print("\t".join(json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v for v in row))
-    return 0
+        from .world import main as run_main
+        return run_main([args.file])
+    if args.cmd == "compile":
+        from .compile import main as compile_main
+        return compile_main([args.file])
+    from .export import main as export_main
+    rest = [args.file] + (["--json", args.json] if args.json else []) + (["--rdf", args.rdf] if args.rdf else []) \
+        + (["--base", args.base] if args.base else [])
+    return export_main(rest)

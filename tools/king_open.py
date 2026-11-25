@@ -1,8 +1,8 @@
 """Open the KING web app on a file or folder; the server stops when the editor page closes.
 
-  python tools/king_open.py <file.kg.md | folder> [--view graph|text|tree|book|module] [--keep] [--no-browser]
+  python tools/king_open.py <file.kg.md | folder> [--view graph|text|tree|book|lecture|module] [--keep] [--no-browser]
 
-Same as `kir open`. Works without installing the package (adds src/ to sys.path).
+Same as `kir view`. Works without installing the package (adds src/ to sys.path).
 """
 import argparse, sys
 from pathlib import Path

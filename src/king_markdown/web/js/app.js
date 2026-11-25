@@ -19,7 +19,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenus()
 // ---------- hai khung, mỗi khung nhiều tab ----------
 // Panel: text (khung văn bản) và 4 view. Mỗi panel chỉ có một bản, nằm ở một khung (left / right) hoặc đang đóng.
 // Mỗi khung có một tab đang mở; hai khung có thể mở hai view khác nhau cùng lúc (vd. Tree bên trái, Graph bên phải).
-const VIEWS = {graph:"Graph", tree:"Tree", book:"Book", module:"Module"};
+const VIEWS = {graph:"Graph", tree:"Tree", book:"Book", lecture:"Lecture", module:"Module"};
 const PANELS = {text:"Text (.kg.md)", ...VIEWS};
 const PANES = ["left", "right"];
 const PANE_KEY = "kgpanes";
@@ -38,11 +38,13 @@ function refreshPane(id) {
   const pane = $("#" + id), on = activeOf(id);
   pane.classList.toggle("empty", !on);
   pane.classList.toggle("text-on", on === "text");
+  if (on === "text") pane.querySelector(".tabs").append($("#bRun"), $("#bWrap2"));   // Run/Wrap follow the Text tab to its pane
   for (const t of pane.querySelectorAll(".tab-list .tab")) bodyOf(t.dataset.panel).classList.toggle("on", t.dataset.panel === on);
 }
 function renderViews() {
   if (shown("tree")) renderTree();
   if (shown("book")) renderBook();
+  if (shown("lecture")) renderLecture();
   if (shown("module")) renderModule();
 }
 function afterShow(p) {
@@ -89,7 +91,8 @@ function closePanel(p) {
 $$(".item[data-view]").forEach(el => el.addEventListener("click", () => setView(el.dataset.view)));   // menu View
 function setView(v) {                     // Ctrl+1..4, ?view=…: mở view v; nếu đang đóng thì đặt vào khung phải
   if (!VIEWS[v]) v = "graph";
-  if (paneOf(v)) activate(v); else placePanel(v, "right");
+  const id = paneOf(v);                    // a pane hidden by Ctrl+E (Text pane) cannot host the view: use the right pane
+  if (id && !$("#" + id).classList.contains("hidden-panel")) activate(v); else placePanel(v, "right");
 }
 // menu ＋ của mỗi khung
 const addMenu = $("#addMenu");
@@ -100,6 +103,9 @@ function openAddMenu(btn) {
     const note = where === id ? "already here" : where ? "move from " + (where === "left" ? "left" : "right") + " pane" : "";
     return `<button data-add="${p}" ${where === id ? "disabled" : ""}>${name}<small>${note}</small></button>`;
   }).join("");
+  const other = id === "left" ? "right" : "left", cur = activeOf(id);
+  if (cur && !activeOf(other) && paneTabs(id).length > 1)      // the other pane is gone: offer to split again
+    addMenu.innerHTML += `<button data-split="${cur}">Split: move ${PANELS[cur]} to the ${other} pane</button>`;
   const r = btn.getBoundingClientRect();
   addMenu.hidden = false; addMenu.dataset.pane = id;
   addMenu.style.top = r.bottom + 2 + "px";
@@ -111,6 +117,8 @@ $$(".tab-add").forEach(b => b.addEventListener("click", e => {
 }));
 addMenu.addEventListener("click", e => {
   e.stopPropagation();
+  const sp = e.target.closest("[data-split]");
+  if (sp) { addMenu.hidden = true; return placePanel(sp.dataset.split, addMenu.dataset.pane === "left" ? "right" : "left"); }
   const b = e.target.closest("[data-add]"); if (!b || b.disabled) return;
   addMenu.hidden = true; placePanel(b.dataset.add, addMenu.dataset.pane);
 });
@@ -135,7 +143,12 @@ for (const id of PANES) {
 }
 function restorePanes(view) {             // bố cục đã lưu; mặc định: Văn bản bên trái, 4 view bên phải
   let L = null; try { L = JSON.parse(localStorage.getItem(PANE_KEY) || "null"); } catch (e) {}
-  if (!(L && PANES.every(id => L[id] && Array.isArray(L[id].tabs)))) {
+  if (L && PANES.every(id => L[id] && Array.isArray(L[id].tabs))) {   // stale layout: drop unknown / duplicate panels
+    const seen = new Set();
+    for (const id of PANES) L[id].tabs = L[id].tabs.filter(p => PANELS[p] && !seen.has(p) && seen.add(p));
+    if (!seen.size) L = null;
+  } else L = null;
+  if (!L) {
     let v = null; try { v = localStorage.getItem("kgview"); } catch (e) {}
     L = {left: {tabs: ["text"], on: "text"}, right: {tabs: Object.keys(VIEWS), on: VIEWS[v] ? v : "graph"}};
   }
@@ -150,7 +163,7 @@ function restorePanes(view) {             // bố cục đã lưu; mặc định
   renderViews();
 }
 document.addEventListener("keydown", e => {
-  if ((e.ctrlKey || e.metaKey) && ["1", "2", "3", "4"].includes(e.key)) { e.preventDefault(); setView(["graph", "tree", "book", "module"][+e.key - 1]); }
+  if ((e.ctrlKey || e.metaKey) && ["1", "2", "3", "4", "5"].includes(e.key)) { e.preventDefault(); setView(["graph", "tree", "book", "module", "lecture"][+e.key - 1]); }
 });
 
 // ---------- báo server trang còn mở; đóng trang thì server tự dừng ----------
@@ -244,7 +257,8 @@ $$(".split").forEach(sp => sp.onmousedown = e => {
   };
   sp.classList.add("drag"); addEventListener("mousemove", mv); addEventListener("mouseup", up);
 });
-$$("[data-panel]").forEach(b => b.addEventListener("click", () => setPanel(b.dataset.panel)));
+// only menu/bar buttons toggle side panels; pane tabs (also data-panel) are handled by the tab code
+$$("[data-panel]:not(.tab)").forEach(b => { if (PANEL_SPLIT[b.dataset.panel]) b.addEventListener("click", () => setPanel(b.dataset.panel)); });
 $$("#bWrap, #bWrap2").forEach(b => b.addEventListener("click", () => setWrap(!S.wrap)));
 // Alt+Z: ngắt dòng (macOS: Option+Z cho ký tự "Ω"). Mở trang trong VS Code thì VS Code giữ Alt+Z: dùng nút ↵ Wrap.
 document.addEventListener("keydown", e => {

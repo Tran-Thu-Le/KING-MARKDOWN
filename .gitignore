@@ -8,7 +8,7 @@ venv/
 .pytest_cache/
 graph.json
 
-# ghi chú riêng của tác giả
+# private author notes (never committed)
 .infor/
 out.json
 examples/kir/*.json

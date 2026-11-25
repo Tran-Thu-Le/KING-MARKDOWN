@@ -1,0 +1,2 @@
+newton set.member Person: true
+leibniz name "Leibniz": unknown

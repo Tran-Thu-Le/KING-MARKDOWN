@@ -79,16 +79,22 @@ def test_warning_single_use():
     assert {d.msg.split("`")[1] for d in res.warnings} == {"b", "c"}
 
 
-def test_cli_run(tmp_path):
+def test_cli_run_compile_export(tmp_path):
+    env = {**__import__("os").environ, "PYTHONPATH": str(ROOT / "src")}
+    kir = lambda *a: subprocess.run([sys.executable, "-m", "kir", *map(str, a)], env=env,
+                                    capture_output=True, text=True, encoding="utf-8")
+    ex = EX / "world-closed.kg.md"
+    r = kir("run", ex)
+    assert r.returncode == 0 and r.stdout.splitlines() ==         (EX / "world-closed.expected.txt").read_text(encoding="utf-8").splitlines()
+    assert "@add k.file k.import set" in kir("compile", ex).stdout
     out = tmp_path / "o.json"
-    env = {"PYTHONPATH": str(ROOT / "src"), **__import__("os").environ}
-    env["PYTHONPATH"] = str(ROOT / "src")
-    r = subprocess.run([sys.executable, "-m", "kir", "run", str(EX / "demo.kg.md"), "-o", str(out)],
-                       env=env, capture_output=True)
-    assert r.returncode == 0 and json.loads(out.read_text(encoding="utf-8"))["multigraph"]
-    r = subprocess.run([sys.executable, "-m", "kir", "run", str(EX / "errors" / "e2-syntax.kg.md")],
-                       env=env, capture_output=True)
-    assert r.returncode == 1
+    assert kir("export", ex, "--json", out).returncode == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["multigraph"]
+    assert "<urn:kir:newton>" in kir("export", ex, "--rdf", "-").stdout
+    bad = tmp_path / "bad.kg.md"
+    bad.write_text("---\nkg: v0.4\n---\n@add a b\n", encoding="utf-8")
+    r = kir("run", bad)
+    assert r.returncode == 1 and ":4: E2:" in r.stderr
 
 
 def test_no_king_markdown_import():

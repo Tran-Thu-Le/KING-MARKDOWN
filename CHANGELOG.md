@@ -8,7 +8,29 @@ When changing KING:
 3. Syntax changes also update `docs/documentation.kg.md` and the examples; cite the section id (e.g. `@basic-syntax`).
 4. State **compatibility**: do old files still work, what must change.
 
-## Unreleased (2026-11-25)
+## 0.4.1 (2026-11-25), kir 0.4.1 (branch kir-charter)
+**Language (kir)**
+- Pure KIR is only `@add s r o` (column 0, 3 tokens). KING sugar compiles to it (`kir.compile`): named statements `@add q = s r o` (`k.subject`/`k.link`/`k.object`, not asserted), `@print(...)` with `and`/`or`/`not`/parentheses, `@world closed|open`, `@import set` / `@import "file.kg.md"`.
+- World engine `kir.world`: rules `k.then` / `k.else` (nesting = and), safety, stratification; open world (true/unknown, Kleene) vs closed world (true/false). `set` library (`src/kir/lib/set.kg.md`: member through subset, subset transitivity, `set.equal`), loaded only by `@import set`. Imports load each file once, without its world or prints. Errors E2, E11-E17. API `run_text`, `compile_text`.
+- Export `kir.export`: networkx node-link JSON and RDF Turtle.
+
+**CLI**
+- `kir run | compile | export [--json OUT] [--rdf OUT] [--base IRI] | view` (`open` = alias of `view`).
+
+**Web app**
+- Run button (Ctrl+Enter) with OUTPUT panel and status bar for `kg: v0.4` files; KIR highlighting in Book and Lecture views; `/run` endpoint.
+
+**Docs**
+- New tutorial `docs/kir.kg.md` (+ `docs/kir.html`); examples `examples/kir/world-*`, `logic-*` with expected outputs.
+
+**Breaking changes**
+- `kir run` now runs the world engine; the old JSON export moved to `kir export`.
+- `kir ask` removed (the 0.4.0 parser `@ask`/`@block`/`?x` remains only as a legacy module, see `examples/kir/demo.kg.md`).
+- `@import` is the preferred style (`@use` still accepted as an alias).
+- The `set` library must be imported explicitly (`@import set`).
+- Plain `@add` syntax errors are now reported as E2.
+
+## 0.4.0, commit `11b664d`
 **API/CLI**
 - New package `src/kir/` (KING IR, `kg: v0.4`): triple statements `@add [p =] s r o`, `@ask`, `@block` with fenced code, `_` anonymous nodes, `?x` variables, `a.b` attribute references, string/number/boolean/none values, `//` comments. Errors E1–E6 reported as `file:line`, plus a warning for names used once. Pattern matching for `@ask`; networkx node-link backend (lossless round-trip). CLI: `kir run f.kg.md -o out.json`, `kir ask f.kg.md "?x friend-of bob"`. Example in `examples/kir/`, tests in `tests/kir/`. Independent of `king_markdown`.
 - `king html` pages open in the Book view (unless `?view=` is given).

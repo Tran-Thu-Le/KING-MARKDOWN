@@ -7,7 +7,7 @@ import webbrowser
 from pathlib import Path
 from urllib.parse import quote
 
-VIEWS = ("graph", "text", "tree", "book", "module")
+VIEWS = ("graph", "text", "tree", "book", "lecture", "module")
 
 
 def free_port(start=8765, count=20):

@@ -304,3 +304,52 @@ dialog button.on{background:var(--acc);color:#fff}
 .bar-btn{flex:none;background:#3c3c3c;border:1px solid #6b6b6b;color:#ffffff;border-radius:4px;padding:2px 10px;margin:0 2px;cursor:pointer;font-size:12px;line-height:20px}
 .bar-btn:hover,.bar-btn:focus-visible{background:#0e639c;border-color:#1177bb;outline:none}
 .bar-btn.on{border-color:#1177bb}
+/* lecture: TOC sidebar + one unit at a time */
+#lectureView{padding:0;overflow:hidden}
+.lecture{display:flex;height:100%}
+.lec-side{flex:0 0 260px;border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.lecture.noside .lec-side{display:none}
+.lec-tools{display:flex;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute)}
+.lec-tools select,.lec-tools button,.lec-bar button{background:#333;color:var(--bright);border:1px solid #444;border-radius:3px;cursor:pointer}
+.lec-tools label{margin-right:auto}
+.lec-toc{overflow:auto;flex:1;padding:4px 0}
+.lec-main{flex:1;overflow:auto;padding:0 40px 80px;min-width:0}
+.lec-bar{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:8px 0;background:var(--bg,#1e1e1e);z-index:1}
+.lec-bar button{padding:2px 10px}.lec-bar button:disabled{opacity:.4;cursor:default}
+.lec-pos{color:var(--mute);font:12px var(--mono)}
+.lec-sub{margin-top:28px;border-top:1px solid var(--line);padding-top:8px;color:var(--mute)}
+/* menubar: title / read-only note shrink first so the Fullscreen button is never clipped */
+#title{flex:1 1 0;min-width:0;text-align:center}
+#toEdit{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* an empty pane is removed: the other pane takes the full width (no split) */
+#left.empty,#right.empty{display:none}
+main:has(#left.empty) #split,main:has(#right.empty) #split{display:none}
+main:has(#right.empty) #left{flex:1;width:auto!important}
+.book pre.hl-king{color:var(--k-text)}
+.king-env{border:1px solid var(--line,#8884);border-radius:6px;margin:.6em 0;overflow:hidden}
+.king-head{display:flex;align-items:center;gap:6px;padding:2px 8px;font-size:11px;opacity:.85;cursor:pointer;background:color-mix(in srgb,currentColor 7%,transparent);user-select:none}
+.king-head b{letter-spacing:.08em}
+.king-tg{border:0;background:none;color:inherit;cursor:pointer;padding:0;font-size:11px}
+.king-n{display:none}.king-env.folded .king-n{display:inline}
+.book .king-env pre.hl-king{margin:0;border:0;border-radius:0}
+.king-env.folded pre{display:none}
+.king-all{float:right;font-size:11px;padding:1px 6px;margin:0 0 4px 6px;cursor:pointer}
+
+/* Run output panel (bottom of the Text tab, like VS Code's terminal) */
+#bRun{margin-right:0}#bRun+#bWrap2{margin-left:4px}
+.pane:not(.text-on) #bRun,.static #bRun,.static #outPanel{display:none!important}
+#outPanel{flex:none;display:flex;flex-direction:column;border-top:1px solid var(--line);height:180px;min-height:28px}
+#outPanel[hidden]{display:none}
+#outPanel.collapsed{height:auto!important}#outPanel.collapsed #outBody,#outPanel.collapsed #outSplit{display:none}
+#outSplit{height:4px;margin-top:-3px;cursor:ns-resize}#outSplit:hover{background:var(--acc)}
+.out-head{display:flex;align-items:center;gap:4px;padding:2px 6px 2px 10px;font-size:11px;color:var(--mute);letter-spacing:.04em}
+.out-head .out-title{margin-right:auto}
+.out-head button{background:none;border:0;color:var(--mute);cursor:pointer;padding:1px 6px;border-radius:3px;font-size:12px}
+.out-head button:hover{background:#ffffff14;color:var(--ink)}
+#outBody{flex:1;min-height:0;overflow:auto;margin:0;padding:2px 10px 6px;font:12px/18px var(--mono);white-space:pre-wrap;word-break:break-word}
+#outBody div{min-height:18px}
+#outBody .cmd{color:var(--mute)}#outBody .err{color:var(--err)}#outBody .warn{color:var(--warn)}
+
+#sbRun{cursor:pointer;padding:0 6px;border-radius:3px}#sbRun:empty{display:none}
+#sbRun.ok{background:#2e7d32}#sbRun.err{background:#c62828}#sbRun.busy{background:#ffffff26}
+.static #sbRun{display:none}

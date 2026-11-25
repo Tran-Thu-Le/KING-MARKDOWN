@@ -1,0 +1,3 @@
+newton set.member Person: true
+newton name "Isaac Newton": true
+leibniz name "Leibniz": false

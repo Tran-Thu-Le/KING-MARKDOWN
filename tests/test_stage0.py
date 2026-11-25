@@ -112,3 +112,46 @@ def test_static_html_has_fullscreen_button_and_book_view():
     assert 'id="bFullscreen"' in page and "requestFullscreen" in page
     assert 'id="bExplorer"' in page
     assert 'setView("book")' in page
+
+
+def test_static_html_has_lecture_view():
+    from king_markdown.cli import static_html
+    page = static_html("x.kg.md", "---\nkg: 0.3\n---\n", {"graph": {}, "nodes": [], "links": []})
+    assert 'data-panel="lecture"' in page and 'id="lectureView"' in page
+    assert "function renderLecture" in page and 'lecture:"Lecture"' in page
+    assert "kglecture:" in page and "lecDepth" in page
+    assert "#left.empty,#right.empty{display:none}" in page and "data-split" in page   # empty pane removed, re-split offered
+
+
+def test_view_lecture_accepted():
+    import subprocess, sys
+    from king_markdown.open import VIEWS
+    assert "lecture" in VIEWS
+
+
+def test_static_html_has_king_fence_highlighter_and_hides_empty_pane():
+    from king_markdown.cli import static_html
+    page = static_html("x.kg.md", "---\nkg: 0.3\n---\n", {"graph": {}, "nodes": [], "links": []})
+    assert "function hlKing" in page and "KING_TOK" in page and 'lang === "king"' in page
+    assert "#left.empty,#right.empty{display:none}" in page
+
+
+def test_static_html_has_collapsible_king_blocks():
+    from king_markdown.cli import static_html
+    page = static_html("x.kg.md", "---\nkg: 0.3\n---\n", {"graph": {}, "nodes": [], "links": []})
+    assert "function kingBlockHtml" in page and "function kingToggle" in page and "function kingAllBtn" in page
+    assert ".king-env.folded pre{display:none}" in page
+
+
+def test_tabs_do_not_toggle_side_panels_and_stale_layout_is_sanitized():
+    from king_markdown.cli import static_html
+    page = static_html("x.kg.md", "---\nkg: 0.3\n---\n", {"graph": {}, "nodes": [], "links": []})
+    assert '[data-panel]:not(.tab)' in page and "stale layout" in page
+    assert 'fence === "king"' in page                       # editor highlights ```king with KING_TOK
+
+
+def test_king_highlighter_only_tokenizes_command_lines():
+    from king_markdown.cli import static_html
+    page = static_html("x.kg.md", "---\nkg: 0.3\n---\n", {"graph": {}, "nodes": [], "links": []})
+    assert r"const KING_CMD = /^@(?:add|ask|block|print|world|import|use)\b/;" in page
+    assert "if (!KING_CMD.test(line)) return esc(line);" in page and "hlKing(raw, kst)" in page

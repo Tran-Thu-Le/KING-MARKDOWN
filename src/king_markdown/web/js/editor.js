@@ -166,8 +166,9 @@ function depth(v) {                       // số ngoặc ( [ còn mở
   return d;
 }
 function highlight(text) {
+  if (isKir()) return hlKing(text) + "\n ";          // kg: v0.4 file: one tokenizer with Book/Lecture (book.js)
   const L = text.split("\n"), out = [];
-  let fm = L[0] && L[0].trim() === "---" ? 1 : 0, fence = false, block = null, phase = "body", open = 0;
+  let fm = L[0] && L[0].trim() === "---" ? 1 : 0, fence = false, kst = {}, block = null, phase = "body", open = 0;
   L.forEach((raw, i) => {
     if (open > 0) {                                   // giá trị [ … ] / ( … ) nhiều dòng
       open += depth(raw);
@@ -186,7 +187,12 @@ function highlight(text) {
       }
       out.push(esc(code) + tail); return;
     }
-    if (/^\s*(```|~~~)/.test(raw)) { fence = !fence; phase = "body"; out.push(span("t-fence", raw)); return; }
+    if (/^\s*(```|~~~)/.test(raw)) {
+      fence = fence ? false : (/^\s*(```|~~~)\s*king\b/i.test(raw) ? "king" : true); kst = {}; phase = "body"; out.push(span("t-fence", raw)); return;
+    }
+    if (fence === "king") {             // kir v0.4 fence: same KING_TOK roles as Book/Lecture (book.js)
+      out.push(hlKing(raw, kst)); return;
+    }
     if (fence) { out.push(span("t-code", raw)); return; }
     const [code, com] = splitComment(raw), tail = com ? span("t-com", com) : "";
     let m;

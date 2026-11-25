@@ -18,7 +18,7 @@ from .parser import Parser, kg_version, read, slug
 
 ROOT = [os.getcwd()]
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
-JS = ("editor", "graph", "explorer", "book", "module", "inspect", "app")
+JS = ("editor", "graph", "explorer", "book", "lecture", "module", "inspect", "run", "app")
 ASSETS = {"/app.css": "text/css; charset=utf-8",
           **{f"/js/{n}.js": "text/javascript; charset=utf-8" for n in JS}}
 
@@ -65,6 +65,64 @@ def new_file(name):
     # file mới theo cú pháp hiện hành 0.3 (không còn sinh schema/style kiểu 0.2)
     write(path, f"---\nkg: 0.3\n---\n\n# {base} @{slug(base)}\n")
     return {"name": base + ".kg.md"}
+
+
+def kg_version(text):
+    lines = text.replace("\r\n", "\n").splitlines()
+    if lines and lines[0].strip() == "---":
+        for raw in lines[1:]:
+            if raw.strip() == "---":
+                break
+            m = re.match(r"\s*kg\s*:\s*(\S+)", raw)
+            if m:
+                return m.group(1)
+    return None
+
+
+def is_kir(text):
+    return kg_version(text) in ("v0.4", "0.4")
+
+
+def _kir_run(text, name):
+    """kir.world.run_text with the file's real path (relative @import works); paths shown as file names."""
+    from kir.world import run_text
+    try:
+        path = kg_path(name) if name else "<string>"
+    except ValueError:
+        path = os.path.basename(name or "") or "<string>"
+    outputs, diags = run_text(text, str(path))
+    short = os.path.basename(str(path))
+    return outputs, [d.replace(str(path), short) for d in diags]
+
+
+def kir_parse(text, name):
+    """Outline/headings from the 0.3 parser, problems from kir (0.3 errors do not apply to kg: v0.4)."""
+    g = Parser(text, name).build()
+    errs = []
+    try:
+        for d in _kir_run(text, name)[1]:
+            m = re.match(r".*?:(\d+): (.*)$", d)
+            errs.append({"line": int(m.group(1)), "msg": m.group(2)} if m else {"line": 1, "msg": d})
+    except Exception as e:                                      # noqa: BLE001
+        errs.append({"line": 1, "msg": f"kir: {e}"})
+    g["graph"]["errors"], g["graph"]["warnings"] = errs, []
+    return g
+
+
+def run_kir(text, name=None):
+    """Run a `kg: v0.4` file with kir.world (lazy import); returns the /api/run JSON."""
+    text = text.replace("\r\n", "\n")
+    if not is_kir(text):
+        return {"ok": False, "outputs": [], "diags": ["Run is available for kg: v0.4 files"], "ms": 0}
+    try:
+        import kir.world                                        # noqa: F401
+    except Exception:                                            # noqa: BLE001
+        return {"ok": False, "outputs": [], "diags": ["kir run is not available"], "ms": 0,
+                "error": "kir run is not available"}
+    t0 = time.perf_counter()
+    outputs, diags = _kir_run(text, name)
+    return {"ok": not diags, "outputs": [str(o) for o in outputs],
+            "diags": [str(d) for d in diags], "ms": int((time.perf_counter() - t0) * 1000)}
 
 
 # ====================== HTTP ======================
@@ -133,7 +191,12 @@ class Handler(BaseHTTPRequestHandler):
                 write(p, b["text"])
                 return self.reply({"mtime": os.path.getmtime(p)})
             if path == "/api/parse":
-                return self.reply(Parser(b["text"].replace("\r\n", "\n"), kg_path(b["name"])).build())
+                text = b["text"].replace("\r\n", "\n")
+                if is_kir(text):
+                    return self.reply(kir_parse(text, b["name"]))
+                return self.reply(Parser(text, kg_path(b["name"])).build())
+            if path == "/api/run":
+                return self.reply(run_kir(b["text"], b.get("name")))
             if path == "/api/op":
                 src = b["text"].replace("\r\n", "\n")
                 ver = kg_version(src) or "0.3"
@@ -160,9 +223,11 @@ class Clients:
     """Các trang editor đang mở. Trang gửi /api/ping mỗi 10 s và /api/bye khi đóng.
     Đã từng có trang mà nay không còn trang nào (sau GRACE giây, để F5 tải lại kịp) → dừng server."""
     GRACE, STALE = 3.0, 90.0          # STALE: tab bị trình duyệt hãm timer (~1 lần/phút) vẫn chưa bị coi là đóng
+    STARTUP = 60.0                    # no page connected within this time (page never loaded) -> stop too
 
     def __init__(self):
         self.seen, self.lock, self.used, self.empty_at = {}, threading.Lock(), False, None
+        self.started = time.monotonic()
 
     def ping(self, cid):
         with self.lock:
@@ -179,7 +244,9 @@ class Clients:
         now = time.monotonic()
         with self.lock:
             self.seen = {k: t for k, t in self.seen.items() if now - t < self.STALE}
-            if not self.used or self.seen:
+            if not self.used:
+                return now - self.started >= self.STARTUP
+            if self.seen:
                 self.empty_at = None
                 return False
             self.empty_at = self.empty_at or now
@@ -193,7 +260,7 @@ def watch(srv):
     while True:
         time.sleep(0.5)
         if CLIENTS.all_closed():
-            print("Editor page closed: stopping server.", flush=True)
+            print("No editor page open: stopping server.", flush=True)
             srv.shutdown()
             return
 

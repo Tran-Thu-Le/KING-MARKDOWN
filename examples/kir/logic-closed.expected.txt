@@ -1,0 +1,7 @@
+newton set.member Person: true
+leibniz name "Leibniz": false
+(newton set.member Person) and (leibniz name "Leibniz"): false
+(newton set.member Person) or (leibniz name "Leibniz"): true
+not (leibniz name "Leibniz"): true
+(leibniz name "Leibniz") or not (leibniz name "Leibniz"): true
+not (leibniz name "Leibniz"): true

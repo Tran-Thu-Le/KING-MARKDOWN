@@ -27,3 +27,5 @@ The script only replaces the block between `// >>> KING theme=<name>` and `// <<
 3. `python tools/sync_vscode_highlight.py --theme <name>`.
 
 Notes: regexes are **JavaScript** syntax (Python only pre-checks them; variable-length lookbehinds are skipped). Each regex colours its `( )` groups in `decorations` order; `{}` means no colour. The `king` template comes from the repo's `.vscode/settings.json`, which also overrides user settings when the KING repo itself is the open workspace.
+
+**kir v0.4 (`kg: v0.4`)**: all three templates also colour kir commands with the same roles as the web app (`hlKing`): only lines starting at column 0 with `@add` / `@ask` / `@block` / `@print` are commands (keyword colour); subject and object get the node colour (or value / variable colours for `"str"`, numbers, `true/false/none`, `?x`, `_`), the middle word of a triple and `=` the link colour, and a trailing `//` (outside strings) the comment colour. `\@…`, mid-line `@` and `//` comment lines are left as prose / comment. `tests/test_vscode_themes.py` runs every template's regexes on sample lines (needs the `regex` package for variable-length lookbehinds).
