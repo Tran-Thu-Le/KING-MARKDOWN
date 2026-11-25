@@ -66,7 +66,7 @@ function bookLinks(n) {
 }
 function renderBook() {
   const el = $("#bookView");
-  if (!S.graph) { el.innerHTML = '<div class="book"><p class="empty">(chưa có dữ liệu)</p></div>'; return; }
+  if (!S.graph) { el.innerHTML = '<div class="book"><p class="empty">(no data yet)</p></div>'; return; }
   const items = S.graph.nodes.filter(n => n.kind !== "external").sort((a, b) => a.line - b.line), out = [];
   let hidden = 0;
   for (const n of items) {
@@ -85,14 +85,14 @@ function renderBook() {
       `<h4>${mdInline(n.title || n.id)}${n.type ? `<span class="ty">${esc(n.type)}</span>` : ""}<small>@${esc(n.id)}</small></h4>` +
       (meta ? `<div class="chips attrs">${meta}</div>` : "") +
       (n.ask ? `<div class="ask">✎ ${mdInline(n.ask)}</div>` : "") +
-      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(chưa có nội dung)</p>')) +
+      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(no content yet)</p>')) +
       bookLinks(n) + "</article>");
   }
-  if (hidden) out.push(`<p class="note">${hidden} mục có <code>show: none</code> hoặc <code>hide</code> không hiện trong sách (View › Hiện cả node đã ẩn).</p>`);
+  if (hidden) out.push(`<p class="note">${hidden} item(s) with <code>show: none</code> or <code>hide</code> are not shown in the book (View › Show hidden nodes).</p>`);
   el.innerHTML = `<div class="book">${out.join("")}</div>`;
   el.querySelectorAll("[data-go]").forEach(a => a.onclick = e => {
     e.stopPropagation(); const id = a.dataset.go;
-    if (!el.querySelector(`[data-id="${CSS.escape(id)}"]`)) return status(id + " không hiện trong sách (show: none hoặc node import).");
+    if (!el.querySelector(`[data-id="${CSS.escape(id)}"]`)) return status(id + " is not shown in the book (show: none or imported node).");
     focusNode(id, true);
   });
   el.querySelectorAll("[data-line]").forEach(b => b.onclick = e => {

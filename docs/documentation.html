@@ -307,20 +307,26 @@ dialog button.on{background:var(--acc);color:#fff}
 
 @media (max-width:900px){#explorer,#splitE,#inspector,#splitI{display:none}}
 @media (max-width:700px){main{flex-direction:column}#left{width:auto!important;height:45%}.split{display:none}#title{display:none}}
+
+/* menubar buttons: Explorer toggle, fullscreen */
+.bar-btn{flex:none;background:#3c3c3c;border:1px solid #6b6b6b;color:#ffffff;border-radius:4px;padding:2px 10px;margin:0 2px;cursor:pointer;font-size:12px;line-height:20px}
+.bar-btn:hover,.bar-btn:focus-visible{background:#0e639c;border-color:#1177bb;outline:none}
+.bar-btn.on{border-color:#1177bb}
 </style>
 </head>
 <body>
 <header id="menubar">
   <span class="logo" title="KING Markdown: Knowledge is KING">K</span>
+  <button class="bar-btn" id="bExplorer" data-panel="explorer" type="button" title="Collapse / expand Explorer (Ctrl+B)" aria-label="Toggle Explorer">&#9776;</button>
 
   <div class="menu" id="mFile">
     <button class="mbtn">File</button>
     <div class="drop">
-      <button class="item edit" id="bFolder">Mở thư mục…</button>
-      <button class="item edit" id="bNew">File mới…</button>
-      <button class="item" id="bSave">Lưu<kbd>Ctrl+S</kbd></button>
-      <button class="item edit" id="bUndo">Hoàn tác thao tác đồ thị<kbd>Ctrl+Z</kbd></button>
-      <button class="item" id="bSvg">Xuất SVG của đồ thị</button>
+      <button class="item edit" id="bFolder">Open folder…</button>
+      <button class="item edit" id="bNew">New file…</button>
+      <button class="item" id="bSave">Save<kbd>Ctrl+S</kbd></button>
+      <button class="item edit" id="bUndo">Undo graph edit<kbd>Ctrl+Z</kbd></button>
+      <button class="item" id="bSvg">Export graph as SVG</button>
     </div>
   </div>
 
@@ -334,81 +340,82 @@ dialog button.on{background:var(--acc);color:#fff}
       <div class="sep"></div>
       <button class="item" data-panel="explorer">Explorer<kbd>Ctrl+B</kbd></button>
       <button class="item" data-panel="inspector">Inspector<kbd>Ctrl+Alt+B</kbd></button>
-      <button class="item" data-panel="left">Khung văn bản<kbd>Ctrl+E</kbd></button>
-      <button class="item" id="bWrap">Ngắt dòng<kbd>Alt+Z</kbd></button>
+      <button class="item" data-panel="left">Text pane<kbd>Ctrl+E</kbd></button>
+      <button class="item" id="bWrap">Word wrap<kbd>Alt+Z</kbd></button>
       <div class="sep"></div>
-      <button class="item" id="bShowHidden" title="Tạm hiện lại các node / link có - hide: …">Hiện cả node đã ẩn (hide)<kbd>Ctrl+H</kbd></button>
+      <button class="item" id="bShowHidden" title="Temporarily show nodes / links with - hide: …">Show hidden nodes (hide)<kbd>Ctrl+H</kbd></button>
     </div>
   </div>
 
   <div class="menu" id="mFormat">
     <button class="mbtn">Format</button>
     <div class="drop wide">
-      <div class="label edit">Node / link đang chọn trên đồ thị (đủ thuộc tính hơn ở Inspector bên phải)</div>
+      <div class="label edit">Selected node / link on the graph (more attributes in the Inspector on the right)</div>
       <div class="row edit" id="fmt">
         <select data-p="font" title="Font">
           <option value="">font</option><option>system-ui</option><option>Arial</option><option>Times New Roman</option><option>Georgia</option><option>Consolas</option>
         </select>
-        <input type="number" data-p="font-size" min="8" max="48" placeholder="cỡ" title="Cỡ chữ">
-        <select data-p="shape" title="Hình">
-          <option value="">hình</option><option value="ellipse">elip</option><option value="box">chữ nhật</option><option value="circle">tròn</option><option value="square">vuông</option>
-          <option value="diamond">thoi</option><option value="hexagon">lục giác</option><option value="triangle">tam giác</option><option value="star">sao</option><option value="dot">chấm</option><option value="database">trụ</option><option value="text">chỉ chữ</option>
+        <input type="number" data-p="font-size" min="8" max="48" placeholder="size" title="Font size">
+        <select data-p="shape" title="Shape">
+          <option value="">shape</option><option value="ellipse">ellipse</option><option value="box">box</option><option value="circle">circle</option><option value="square">square</option>
+          <option value="diamond">diamond</option><option value="hexagon">hexagon</option><option value="triangle">triangle</option><option value="star">star</option><option value="dot">dot</option><option value="database">database</option><option value="text">text only</option>
         </select>
-        <label title="Màu nền (với link: màu đường)">nền <input type="color" data-p="color" value="#e0f2f1"></label>
-        <label title="Màu viền (với link: màu đường)">viền <input type="color" data-p="border-color" value="#607d8b"></label>
-        <label title="Màu chữ">chữ <input type="color" data-p="font-color" value="#1f2328"></label>
-        <input type="number" data-p="border" min="0" max="10" placeholder="dày" title="Độ dày viền (với link: độ dày đường)">
-        <select data-p="dash" title="Kiểu nét"><option value="">nét</option><option value="false">liền</option><option value="true">đứt</option></select>
-        <button id="bClear" title="Bỏ định dạng riêng của node/loại link đang chọn">Xóa format</button>
+        <label title="Fill color (for links: line color)">fill <input type="color" data-p="color" value="#e0f2f1"></label>
+        <label title="Border color (for links: line color)">border <input type="color" data-p="border-color" value="#607d8b"></label>
+        <label title="Font color">text <input type="color" data-p="font-color" value="#1f2328"></label>
+        <input type="number" data-p="border" min="0" max="10" placeholder="width" title="Border width (for links: line width)">
+        <select data-p="dash" title="Line style"><option value="">line</option><option value="false">solid</option><option value="true">dashed</option></select>
+        <button id="bClear" title="Remove custom formatting of the selected node / link type">Clear format</button>
       </div>
 
       <div class="sep edit"></div>
-      <div class="label edit">Chế độ trên đồ thị (cũng có trên thanh công cụ của Graph)</div>
+      <div class="label edit">Graph mode (also on the Graph toolbar)</div>
       <div class="row edit">
-        <button data-mode="select">Chọn</button>
+        <button data-mode="select">Select</button>
         <button data-mode="add">+ Node</button>
-        <button data-mode="link">Nối</button>
-        <button data-mode="move">Chuyển nhóm</button>
+        <button data-mode="link">Connect</button>
+        <button data-mode="move">Move to group</button>
       </div>
 
       <div class="sep"></div>
-      <div class="label">Nhóm (part-of / contain)</div>
+      <div class="label">Groups (part-of / contain)</div>
       <div class="row">
-        <button data-mode="fold">Thu gọn</button>
-        <button id="bFoldAll" title="Thu gọn mọi node cha">Thu hết</button>
-        <button id="bUnfoldAll" title="Bung mọi node">Bung hết</button>
-        <label title="Hiện cạnh section → node"><input type="checkbox" id="showTree" checked> cạnh chứa</label>
-        <label title="Hiện trên đồ thị các node định nghĩa schema/style viết ngay trong file dữ liệu"><input type="checkbox" id="showDefs"> node schema/style</label>
+        <button data-mode="fold">Collapse</button>
+        <button id="bFoldAll" title="Collapse all parent nodes">Collapse all</button>
+        <button id="bUnfoldAll" title="Expand all nodes">Expand all</button>
+        <label title="Show section → node edges"><input type="checkbox" id="showTree" checked> containment edges</label>
+        <label title="Show schema/style definition nodes written inside the data file"><input type="checkbox" id="showDefs"> node schema/style</label>
       </div>
 
       <div class="sep"></div>
-      <div class="label">Nhãn trên đồ thị (Graph, Module)</div>
+      <div class="label">Graph labels (Graph, Module)</div>
       <div class="row">
-        <label title="Hiện tên node (dưới hình)"><input type="checkbox" data-lab="node" checked> nhãn node</label>
-        <label title="Hiện tên section"><input type="checkbox" data-lab="section" checked> nhãn section</label>
-        <label title="Hiện tên loại link trên đường nối"><input type="checkbox" data-lab="link" checked> nhãn link</label>
-        <button id="bLabAll" title="Ẩn / hiện mọi nhãn">Ẩn / hiện tất cả</button>
+        <label title="Show node names (below the shape)"><input type="checkbox" data-lab="node" checked> node labels</label>
+        <label title="Show section names"><input type="checkbox" data-lab="section" checked> section labels</label>
+        <label title="Show link type names on edges"><input type="checkbox" data-lab="link" checked> link labels</label>
+        <button id="bLabAll" title="Hide / show all labels">Hide / show all</button>
       </div>
 
       <div class="sep edit"></div>
       <div class="label edit">Schema</div>
       <div class="row edit">
-        <button data-schema="type" title="Thêm kiểu node vào schema.kg.md">+ Kiểu</button>
-        <button data-schema="key" title="Thêm khóa meta vào schema.kg.md">+ Meta</button>
-        <button data-schema="link" title="Thêm loại link vào schema.kg.md">+ Link</button>
+        <button data-schema="type" title="Add a node type to schema.kg.md">+ Type</button>
+        <button data-schema="key" title="Add a meta key to schema.kg.md">+ Meta</button>
+        <button data-schema="link" title="Add a link type to schema.kg.md">+ Link</button>
       </div>
     </div>
   </div>
 
-  <span class="static-only" id="toEdit">Bản chỉ xem. Muốn sửa: chạy <code>king serve</code> rồi mở <a id="editLink" href="http://127.0.0.1:8765/">editor</a>.</span>
+  <span class="static-only" id="toEdit">Read-only copy. To edit: run <code>king serve</code> and open the <a id="editLink" href="http://127.0.0.1:8765/">editor</a>.</span>
   <span id="title"></span>
+  <button class="bar-btn" id="bFullscreen" type="button" title="Toggle fullscreen (Esc to exit)" aria-pressed="false">&#x26F6; Fullscreen</button>
 </header>
 
 <main>
   <aside id="explorer" class="side">
     <div class="side-head">EXPLORER
       <span class="side-acts edit">
-        <button id="exNew" title="File mới">＋</button><button id="exFolder" title="Mở thư mục">📁</button><button id="exRefresh" title="Tải lại danh sách">⟳</button>
+        <button id="exNew" title="New file">＋</button><button id="exFolder" title="Open folder">📁</button><button id="exRefresh" title="Reload list">⟳</button>
       </span>
     </div>
     <div class="side-sec" id="exRoot"></div>
@@ -421,9 +428,9 @@ dialog button.on{background:var(--acc);color:#fff}
   <!-- hai khung giống nhau: mỗi panel (Văn bản, Graph, Tree, Book, Module) là một tab, nằm ở khung nào cũng được -->
   <section id="left" class="pane">
     <div class="tabs"><span class="tab-list">
-      <span class="tab" data-panel="text"><span id="fname"></span><i class="tab-x" title="Đóng">×</i></span>
-    </span><button class="tab-add" title="Thêm view vào khung này">＋</button>
-      <button id="bWrap2" class="tab-btn" title="Ngắt dòng (Alt+Z)">↵ Wrap</button></div>
+      <span class="tab" data-panel="text"><span id="fname"></span><i class="tab-x" title="Close">×</i></span>
+    </span><button class="tab-add" title="Add a view to this pane">＋</button>
+      <button id="bWrap2" class="tab-btn" title="Word wrap (Alt+Z)">↵ Wrap</button></div>
     <div class="views">
       <div id="textView" class="view">
         <div id="ed">
@@ -433,35 +440,35 @@ dialog button.on{background:var(--acc);color:#fff}
         <div class="panel-title">PROBLEMS <span id="nprob"></span></div>
         <div id="log"></div>
       </div>
-      <div class="pane-empty">Khung trống. Bấm ＋ để thêm Văn bản, Graph, Tree, Book hoặc Module.</div>
+      <div class="pane-empty">Empty pane. Click ＋ to add Text, Graph, Tree, Book or Module.</div>
     </div>
   </section>
   <div class="split" id="split" data-target="left" data-side="left"></div>
 
   <section id="right" class="pane">
     <div class="tabs"><span class="tab-list">
-      <span class="tab" data-panel="graph">Graph<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="tree">Tree<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="book">Book<i class="tab-x" title="Đóng">×</i></span><span class="tab" data-panel="module">Module<i class="tab-x" title="Đóng">×</i></span>
-    </span><button class="tab-add" title="Thêm view vào khung này">＋</button></div>
+      <span class="tab" data-panel="graph">Graph<i class="tab-x" title="Close">×</i></span><span class="tab" data-panel="tree">Tree<i class="tab-x" title="Close">×</i></span><span class="tab" data-panel="book">Book<i class="tab-x" title="Close">×</i></span><span class="tab" data-panel="module">Module<i class="tab-x" title="Close">×</i></span>
+    </span><button class="tab-add" title="Add a view to this pane">＋</button></div>
     <div class="views">
       <div id="graphView" class="view">
         <div id="g"></div>
         <div id="toolbar">
-          <button data-mode="select" class="edit" title="Chọn, kéo node để sắp xếp (Esc)">⬚ Chọn</button>
-          <button data-mode="add" class="edit" title="Bấm nền: node cuối file · bấm section: node trong section (N)">＋ Node</button>
-          <button data-mode="link" class="edit" title="Kéo từ node nguồn sang node đích (L)">⤳ Nối</button>
-          <select id="linkSel" class="edit" title="Loại link khi nối"></select>
-          <button data-mode="move" class="edit" title="Kéo node thả lên một section để chuyển nhóm">⇲ Chuyển nhóm</button>
-          <button data-mode="fold" title="Bấm node cha để thu gọn / bung">▾ Thu gọn</button>
-          <select id="bLayout" title="Bố cục đồ thị: chọn để xếp lại (L: kiểu kế tiếp; Shift+L: xếp lại kiểu đang chọn)"><option value="tree">⊢ Thụt lề</option><option value="tidy">⊣ Cây cân</option><option value="radial">✳ Tỏa tròn</option><option value="force">✺ Lực</option></select>
-          <button id="bGrid" title="Lưới: node kéo thả sẽ hút về nút lưới gần nhất (G)">▦ Lưới</button>
-          <button id="bFit" title="Vừa khung">⤢</button>
+          <button data-mode="select" class="edit" title="Select, drag nodes to arrange (Esc)">⬚ Select</button>
+          <button data-mode="add" class="edit" title="Click background: node at end of file · click a section: node in that section (N)">＋ Node</button>
+          <button data-mode="link" class="edit" title="Drag from source node to target node (L)">⤳ Connect</button>
+          <select id="linkSel" class="edit" title="Link type for new connections"></select>
+          <button data-mode="move" class="edit" title="Drag a node onto a section to move it there">⇲ Move to group</button>
+          <button data-mode="fold" title="Click a parent node to collapse / expand">▾ Collapse</button>
+          <select id="bLayout" title="Graph layout: pick one to re-arrange (L: next layout; Shift+L: re-apply current)"><option value="tree">⊢ Indented</option><option value="tidy">⊣ Tidy tree</option><option value="radial">✳ Radial</option><option value="force">✺ Force</option></select>
+          <button id="bGrid" title="Grid: dragged nodes snap to the nearest grid point (G)">▦ Grid</button>
+          <button id="bFit" title="Fit to view">⤢</button>
         </div>
         <div id="hint"></div>
       </div>
       <div id="treeView" class="view"></div>
       <div id="bookView" class="view"></div>
       <div id="moduleView" class="view"></div>
-      <div class="pane-empty">Khung trống. Bấm ＋ để thêm Văn bản, Graph, Tree, Book hoặc Module.</div>
+      <div class="pane-empty">Empty pane. Click ＋ to add Text, Graph, Tree, Book or Module.</div>
     </div>
   </section>
   <div id="addMenu" class="add-menu" hidden></div>
@@ -481,15 +488,15 @@ dialog button.on{background:var(--acc);color:#fff}
 </footer>
 
 <dialog id="dlg">
-  <b>Mở thư mục</b>
-  <input id="dpath" type="text" title="Gõ đường dẫn rồi Enter">
+  <b>Open folder</b>
+  <input id="dpath" type="text" title="Type a path, then Enter">
   <div id="dlist"></div>
-  <menu><button id="dcancel">Hủy</button><button id="dok" class="on">Mở thư mục này</button></menu>
+  <menu><button id="dcancel">Cancel</button><button id="dok" class="on">Open this folder</button></menu>
 </dialog>
 <datalist id="dlNodes"></datalist><datalist id="dlKeys"></datalist><datalist id="dlLinks"></datalist>
 <script>
 // editor.js - trạng thái chung, gọi API, khung văn bản (có tô màu), mở/lưu file
-const ST = {"name": "documentation.kg.md", "text": "---\nkg: 0.3\nuse:\n- king/schema.node: Concept, Group\n- king/schema.link: needs, part-of\n- king/style\n---\n\n# KING Markdown Documentation @documentation\n\nKING Markdown (Knowledge In Nodes & Graphs), language version 0.3. This document is itself a `.kg.md` file: open it with `king serve docs` to read it as a Graph, Tree, Book or Module.\n\n## 1. Goals and author @goals-and-author\n\n@node what\n- label: What is KING Markdown\n- type: Concept\n\nKING Markdown is a Markdown dialect for writing **knowledge graphs** as plain text. A `.kg.md` file is valid Markdown: headings are sections, `@node` and `@link` blocks declare nodes and links, and the `- key: value` lines right under a block are its attributes.\n\nThe parser turns a file into a node-link graph in JSON that networkx, the HTML editor or Typst can use. *Knowledge is KING.* See also @goals, @blocks.\n\n@node goals\n- label: Goals\n- type: Concept\n\n- Write knowledge once, as text, and read it as a graph, a tree, a book or nested modules.\n- Keep the text as the single source of truth, so files work with Git and any text editor.\n- Make prerequisites, part-whole structure and references explicit with typed links.\n- Let teachers, students and AI assistants work on the same file: an `ask` attribute marks a node waiting to be written.\n- Stay small: the Python side uses only the standard library.\n\n@node author\n- label: Dr. Thu-Le Tran\n- important: true\n\nKING Markdown is designed and written by **Dr. Thu-Le Tran**: the language, the parser, the editor and this documentation.\n\n@node tooling\n- label: Tools in this repository\n\n- `king serve [folder]` opens the editor in the browser.\n- `king parse file.kg.md [-o graph.json] [--strict]` prints or writes JSON; `--strict` exits with code 1 on errors.\n- `king html file.kg.md [out.html]` writes a static, read-only page.\n- Run without installing: `PYTHONPATH=src python -m king_markdown ...`.\n\n## 2. Basic syntax @basic-syntax\n\n@node blocks\n- label: Blocks\n- type: Concept\n\nA file is cut into blocks:\n\n| Block | Starts with | Ends |\n|---|---|---|\n| Section | `#` … `######` | before a heading of the same or a higher level, or at the end of the file |\n| Node | `@node name` at column 1 | before the next `@` at column 1, the next heading, or the end of the file |\n| Link | `@link name` at column 1 | same as a node |\n\nThe opening line has no `:` and no label. `@` inside a fenced code block or an indented `@` does not open a block.\n\n@node attributes\n- label: Attributes and content\n- type: Concept\n- link needs: (blocks)\n\nThe `- ` lines right under the opening line (or under a heading) are the **attributes** of the block. After a blank line comes the **content**: plain Markdown until the end of the block, including list items.\n\n```markdown\n@node circle\n- label: Circle\n- type: Concept\n- role: Output\n- link needs: (disc)\n\nThe set of points at distance R from a centre O.\n- Area: S = πR².\n```\n\n`- label:` is only the text shown to readers. Attributes are free: any `- key: value` is allowed.\n\n@node names\n- label: Names and types\n- type: Concept\n- link needs: (blocks)\n\n- `@node circle` declares the **name** `circle`, like a variable in a program. Its scope is the file. There is no separate ID: links and references use the name.\n- Node names and link names are lower case with hyphens: `part-of`, `circle-area`.\n- Type names start with a capital letter: `Concept`, `Group`. `@node Concept` declares a node type instead of a node.\n- A section can be named at the end of its heading: `# Calculus @calculus`. Without a name, one is generated from the title (it changes when the title changes).\n\n@node node-links\n- label: Links inside a node\n- type: Concept\n- link needs: (attributes)\n\n`- link needs: (a, b)` creates the edges `this → a` and `this → b` of type `needs`. Read it as \"the **needs** of this node are a and b\".\n\n@node link-blocks\n- label: Link types and inverse\n- type: Concept\n- link needs: (node-links)\n\n```markdown\n@link author\n- label: Author\n- inverse: works\n\n@node kieu\n- label: The Tale of Kieu\n- link author: (nguyen-du)\n\n@node nguyen-du\n- label: Nguyen Du\n- link works: (kieu)\n```\n\n`- inverse: works` lets a node write the link from the other side. `- link works: (kieu)` on `nguyen-du` is stored as `kieu → nguyen-du` of type `author`. The graph keeps only the original direction, and duplicate links are merged into one edge.\n\nA `@link` block can also list links directly: `- from a to (b, c)`.\n\n@node values\n- label: Values\n- type: Concept\n- link needs: (attributes)\n\n| Type | Example |\n|---|---|\n| Num | `3`, `-2`, `0.5` |\n| Bool | `true`, `false` |\n| None | `none` |\n| Str | `free text`, `\"with, commas\"` |\n| List | `(a, b)`; `(a)` is a list of one |\n| Dict | `(w=3, h=2)` |\n| Content | `[ ... ]`, raw text such as Typst, LaTeX, Markdown or Python; may span several lines |\n| code | `` `f(x) // not a comment` `` |\n\n`//` starts a comment when it is at the start of a line or after a space, outside quotes and backticks, so `https://…` is safe.\n\n@node frontmatter\n- label: Frontmatter and imports\n- type: Concept\n- link needs: (names)\n\n```markdown\n---\nkg: 0.3\nuse:\n- king/schema.node: Concept, Group\n- king/schema.link: part-of, needs\n- king/style\nimport: math, lop11.tangent\n---\n```\n\n- Node types and link types must be imported (or declared in the file). Using a name that is not imported is an error.\n- `- schema` without `.node:` / `.link:` imports every type of `schema.kg.md` in the same folder. `king/…` names the system files.\n- `import: math` makes `math.limit` a valid target; `import: lop11.tangent` makes `tangent` usable by its short name.\n\n## 3. Advanced syntax @advanced-syntax\n\n@node schema-files\n- label: Schema files\n- type: Concept\n- link needs: (names, link-blocks)\n\nA schema is a `.kg.md` file of declarations:\n\n```markdown\n@node Concept\n- label: Concept\n\n@link needs\n- label: Needs\n- inverse: needed-by\n- dag: true\n```\n\n`- dag: true` forbids cycles for that link type. `templates/schema.kg.md` declares the node types `Concept`, `Group`, `Example` and `Warning`. Declarations can also be written inside a data file.\n\n@node sections-text\n- label: Sections and generated edges\n- type: Concept\n- link needs: (blocks)\n\n- Text under a heading, before the first `@` block, is the content of the section itself.\n- The parser generates `contains` edges from a section to each node and sub-section under it.\n- `@name` in content (outside code) generates a `mention` edge.\n- `contains` and `mention` are never written by hand.\n\n@node hide\n- label: Hiding nodes and links\n- type: Concept\n- link needs: (attributes, sections-text)\n\n`- hide:` removes a node, a section or a link type from some views, so you can focus on one part of a large file.\n\n```markdown\n# Exercises\n- hide: graph, module      // only in Graph and Module\n\n@node draft\n- hide: all                // every view (true means the same)\n\n@link mention-of\n- hide: book               // every link of this type\n```\n\n- Views: `graph`, `tree`, `book`, `module`, or `all`. Write them as `graph, module` or `(graph, module)`.\n- Hiding a section or a group node also hides everything under it: the nodes in the section and the nodes that are `part-of` it.\n- The Outline in the Explorer still lists hidden nodes (dimmed), so you can find and edit them.\n- View › *Show hidden nodes* (Ctrl+H) shows everything again for a moment.\n\n@node style\n- label: Style\n- type: Concept\n\nStyle files keep the 0.2 format in KING 0.3: a rule is `@rule: Title` with `- meta: select=\"…\", html.*=…`. Selectors: `kind=section`, `type=Concept`, `role=Output`, `#name`, `link`, `link=needs`. See `templates/style.kg.md`.\n\nEvery node look has five colours, so all views draw a node the same way:\n\n| Key | Meaning |\n|---|---|\n| `html.color` | fill |\n| `html.border-color` | border |\n| `html.font-color` | main text (if missing, black or white is chosen for contrast with the fill) |\n| `html.label-color` | title of a group or section box |\n| `html.sub-color` | secondary text (type, role) |\n\n@node validation\n- label: Validation\n- type: Concept\n- link needs: (schema-files)\n\n| Level | Rule |\n|---|---|\n| Error | Duplicate name; attribute written twice; malformed attribute line; missing `)` / `]` / `\"` |\n| Error | Node type or link type not imported; type name not capitalised; link to a missing node; cycle in a `dag` link type |\n| Error | 0.2 syntax (`@id: Title`) or a label on the opening line |\n| Warning | An attribute used once that looks like another one (`rol` vs `role`); `has` not supported yet; skipped heading level |\n\n@node json\n- label: JSON output\n- type: Concept\n- link needs: (validation)\n\nA networkx node-link graph. Every node has `id` (its name), `kind`, `type`, `label`, `attrs`, `content`, `parent` and `line`; every link has `source`, `target`, `type` and `line`. `title` and `meta` are kept for older tools.\n\n@node views\n- label: The editor\n- link needs: (tooling)\n\n- Views: **Text**, **Graph**, **Tree**, **Book**, **Module**. Every view follows the text.\n- Two panes, each with tabs. The **+** button of a pane adds a view to it, e.g. Tree on the left and Graph or Book on the right. Tabs can be closed or dragged to the other pane; the layout is remembered.\n- **Ctrl+S** saves the file (as does the Save button).\n- **Tree** shows each node's label, its type and, only when the role is `output`, its role. The Tree and the Outline do not list attributes.\n- **Graph** is laid out as a tree by default: the root on the left, each level one column to the right, nodes snapped to the grid (parent: `part-of`, then `contain`, then the section). Pick the layout from the drop-down on the Graph toolbar (or press **L** for the next one): *Indented* (parent level with its first child, the default), *Tidy* (parent centred on its children), *Radial* (rings around the root) and *Force*; **Shift+L** lays the file out again. The grid (button or **G**) snaps dragged nodes to grid points. Hand-placed positions are saved per file and kept when you add or remove nodes and reload: known nodes stay put and only new nodes are laid out.\n- **Ctrl+H** shows hidden nodes for a moment (see @hide).\n- In 0.3 the Inspector and graph editing tools are frozen (read-only).\n\n@node vscode-colors\n- label: Colours in VS Code\n- type: Concept\n- link needs: (views)\n\nTo colour `.kg.md` files in VS Code like the KING editor, install the extension *Highlight* (`fabiospampinato.vscode-highlight`) and add `highlight.regexes` rules with `filterFileRegex` set to `.*\\.kg\\.md$` in `.vscode/settings.json`. Palette: node `#E8D48A`, link `#A5ABB6`, keyword `#C586C0`, key `#9CDCFE`, type `#4EC9B0`, string `#CE9178`, comment `#6A9955` italic, punctuation `#808080`. The colouring works line by line, so it is only close to the KING editor.\n\n## 4. Improvement plan @roadmap\n\n@node r-has\n- label: Child nodes (has)\n- ask: Choose a syntax for child nodes with their types.\n\n@node r-types\n- label: Type inheritance\n- ask: `<:` for inheritance and `::` for type annotations.\n\n@node r-operators\n- label: Operators\n- ask: Arithmetic and comparison operators in values (0.4).\n\n@node r-style\n- label: Style in 0.3 syntax\n- ask: Rewrite the style format in 0.3 syntax and allow style inside data files again.\n\n@node r-inspector\n- label: Inspector and graph editing\n- ask: Unfreeze the Inspector and the graph tools on top of the new block tree.\n\n@node r-typst\n- label: Typst output\n- ask: Export Content `[ ]` as Typst markup.\n", "graph": {"directed": true, "multigraph": true, "graph": {"file": "documentation.kg.md", "kg": "0.3", "use": ["king/schema.kg.md", "king/style.kg.md"], "fields": [], "schema": {"types": {"Concept": {"title": "Khái niệm", "line": 10, "file": "schema.kg.md"}, "Group": {"title": "Nhóm node", "line": 15, "file": "schema.kg.md"}}, "keys": {}, "links": {"needs": {"title": "Cần biết trước", "line": 35, "inverse": "needed-by", "dag": true, "file": "schema.kg.md"}, "part-of": {"title": "Là phần của", "line": 40, "inverse": "parts", "dag": true, "file": "schema.kg.md"}}}, "dag": ["needs", "part-of"], "import_modules": [], "import_names": {}, "errors": [], "warnings": []}, "nodes": [{"id": "documentation", "kind": "section", "title": "KING Markdown Documentation", "content": "KING Markdown (Knowledge In Nodes & Graphs), language version 0.3. This document is itself a `.kg.md` file: open it with `king serve docs` to read it as a Graph, Tree, Book or Module.", "parent": null, "level": 1, "line": 9, "end": 12, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "goals-and-author", "kind": "section", "title": "1. Goals and author", "parent": "documentation", "level": 2, "line": 13, "end": 14, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "what", "kind": "node", "type": "Concept", "label": "What is KING Markdown", "title": "What is KING Markdown", "content": "KING Markdown is a Markdown dialect for writing **knowledge graphs** as plain text. A `.kg.md` file is valid Markdown: headings are sections, `@node` and `@link` blocks declare nodes and links, and the `- key: value` lines right under a block are its attributes.\n\nThe parser turns a file into a node-link graph in JSON that networkx, the HTML editor or Typst can use. *Knowledge is KING.* See also @goals, @blocks.", "parent": "goals-and-author", "line": 15, "end": 22, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "goals", "kind": "node", "type": "Concept", "label": "Goals", "title": "Goals", "content": "- Write knowledge once, as text, and read it as a graph, a tree, a book or nested modules.\n- Keep the text as the single source of truth, so files work with Git and any text editor.\n- Make prerequisites, part-whole structure and references explicit with typed links.\n- Let teachers, students and AI assistants work on the same file: an `ask` attribute marks a node waiting to be written.\n- Stay small: the Python side uses only the standard library.", "parent": "goals-and-author", "line": 23, "end": 32, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "author", "kind": "node", "label": "Dr. Thu-Le Tran", "title": "Dr. Thu-Le Tran", "attrs": {"important": true}, "content": "KING Markdown is designed and written by **Dr. Thu-Le Tran**: the language, the parser, the editor and this documentation.", "parent": "goals-and-author", "line": 33, "end": 38, "auto_id": false, "external": false, "meta": {"important": true}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "border": 3}}}, {"id": "tooling", "kind": "node", "label": "Tools in this repository", "title": "Tools in this repository", "content": "- `king serve [folder]` opens the editor in the browser.\n- `king parse file.kg.md [-o graph.json] [--strict]` prints or writes JSON; `--strict` exits with code 1 on errors.\n- `king html file.kg.md [out.html]` writes a static, read-only page.\n- Run without installing: `PYTHONPATH=src python -m king_markdown ...`.", "parent": "goals-and-author", "line": 39, "end": 46, "auto_id": false, "external": false, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "basic-syntax", "kind": "section", "title": "2. Basic syntax", "parent": "documentation", "level": 2, "line": 47, "end": 48, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "blocks", "kind": "node", "type": "Concept", "label": "Blocks", "title": "Blocks", "content": "A file is cut into blocks:\n\n| Block | Starts with | Ends |\n|---|---|---|\n| Section | `#` … `######` | before a heading of the same or a higher level, or at the end of the file |\n| Node | `@node name` at column 1 | before the next `@` at column 1, the next heading, or the end of the file |\n| Link | `@link name` at column 1 | same as a node |\n\nThe opening line has no `:` and no label. `@` inside a fenced code block or an indented `@` does not open a block.", "parent": "basic-syntax", "line": 49, "end": 62, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "attributes", "kind": "node", "type": "Concept", "label": "Attributes and content", "title": "Attributes and content", "content": "The `- ` lines right under the opening line (or under a heading) are the **attributes** of the block. After a blank line comes the **content**: plain Markdown until the end of the block, including list items.\n\n```markdown\n@node circle\n- label: Circle\n- type: Concept\n- role: Output\n- link needs: (disc)\n\nThe set of points at distance R from a centre O.\n- Area: S = πR².\n```\n\n`- label:` is only the text shown to readers. Attributes are free: any `- key: value` is allowed.", "parent": "basic-syntax", "line": 63, "end": 82, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "names", "kind": "node", "type": "Concept", "label": "Names and types", "title": "Names and types", "content": "- `@node circle` declares the **name** `circle`, like a variable in a program. Its scope is the file. There is no separate ID: links and references use the name.\n- Node names and link names are lower case with hyphens: `part-of`, `circle-area`.\n- Type names start with a capital letter: `Concept`, `Group`. `@node Concept` declares a node type instead of a node.\n- A section can be named at the end of its heading: `# Calculus @calculus`. Without a name, one is generated from the title (it changes when the title changes).", "parent": "basic-syntax", "line": 83, "end": 92, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "node-links", "kind": "node", "type": "Concept", "label": "Links inside a node", "title": "Links inside a node", "content": "`- link needs: (a, b)` creates the edges `this → a` and `this → b` of type `needs`. Read it as \"the **needs** of this node are a and b\".", "parent": "basic-syntax", "line": 93, "end": 99, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "link-blocks", "kind": "node", "type": "Concept", "label": "Link types and inverse", "title": "Link types and inverse", "content": "```markdown\n@link author\n- label: Author\n- inverse: works\n\n@node kieu\n- label: The Tale of Kieu\n- link author: (nguyen-du)\n\n@node nguyen-du\n- label: Nguyen Du\n- link works: (kieu)\n```\n\n`- inverse: works` lets a node write the link from the other side. `- link works: (kieu)` on `nguyen-du` is stored as `kieu → nguyen-du` of type `author`. The graph keeps only the original direction, and duplicate links are merged into one edge.\n\nA `@link` block can also list links directly: `- from a to (b, c)`.", "parent": "basic-syntax", "line": 100, "end": 122, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "values", "kind": "node", "type": "Concept", "label": "Values", "title": "Values", "content": "| Type | Example |\n|---|---|\n| Num | `3`, `-2`, `0.5` |\n| Bool | `true`, `false` |\n| None | `none` |\n| Str | `free text`, `\"with, commas\"` |\n| List | `(a, b)`; `(a)` is a list of one |\n| Dict | `(w=3, h=2)` |\n| Content | `[ ... ]`, raw text such as Typst, LaTeX, Markdown or Python; may span several lines |\n| code | `` `f(x) // not a comment` `` |\n\n`//` starts a comment when it is at the start of a line or after a space, outside quotes and backticks, so `https://…` is safe.", "parent": "basic-syntax", "line": 123, "end": 140, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "frontmatter", "kind": "node", "type": "Concept", "label": "Frontmatter and imports", "title": "Frontmatter and imports", "content": "```markdown\n---\nkg: 0.3\nuse:\n- king/schema.node: Concept, Group\n- king/schema.link: part-of, needs\n- king/style\nimport: math, lop11.tangent\n---\n```\n\n- Node types and link types must be imported (or declared in the file). Using a name that is not imported is an error.\n- `- schema` without `.node:` / `.link:` imports every type of `schema.kg.md` in the same folder. `king/…` names the system files.\n- `import: math` makes `math.limit` a valid target; `import: lop11.tangent` makes `tangent` usable by its short name.", "parent": "basic-syntax", "line": 141, "end": 160, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "advanced-syntax", "kind": "section", "title": "3. Advanced syntax", "parent": "documentation", "level": 2, "line": 161, "end": 162, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "schema-files", "kind": "node", "type": "Concept", "label": "Schema files", "title": "Schema files", "content": "A schema is a `.kg.md` file of declarations:\n\n```markdown\n@node Concept\n- label: Concept\n\n@link needs\n- label: Needs\n- inverse: needed-by\n- dag: true\n```\n\n`- dag: true` forbids cycles for that link type. `templates/schema.kg.md` declares the node types `Concept`, `Group`, `Example` and `Warning`. Declarations can also be written inside a data file.", "parent": "advanced-syntax", "line": 163, "end": 181, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "sections-text", "kind": "node", "type": "Concept", "label": "Sections and generated edges", "title": "Sections and generated edges", "content": "- Text under a heading, before the first `@` block, is the content of the section itself.\n- The parser generates `contains` edges from a section to each node and sub-section under it.\n- `@name` in content (outside code) generates a `mention` edge.\n- `contains` and `mention` are never written by hand.", "parent": "advanced-syntax", "line": 182, "end": 191, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "hide", "kind": "node", "type": "Concept", "label": "Hiding nodes and links", "title": "Hiding nodes and links", "content": "`- hide:` removes a node, a section or a link type from some views, so you can focus on one part of a large file.\n\n```markdown\n# Exercises\n- hide: graph, module      // only in Graph and Module\n\n@node draft\n- hide: all                // every view (true means the same)\n\n@link mention-of\n- hide: book               // every link of this type\n```\n\n- Views: `graph`, `tree`, `book`, `module`, or `all`. Write them as `graph, module` or `(graph, module)`.\n- Hiding a section or a group node also hides everything under it: the nodes in the section and the nodes that are `part-of` it.\n- The Outline in the Explorer still lists hidden nodes (dimmed), so you can find and edit them.\n- View › *Show hidden nodes* (Ctrl+H) shows everything again for a moment.", "parent": "advanced-syntax", "line": 192, "end": 214, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "style", "kind": "node", "type": "Concept", "label": "Style", "title": "Style", "content": "Style files keep the 0.2 format in KING 0.3: a rule is `@rule: Title` with `- meta: select=\"…\", html.*=…`. Selectors: `kind=section`, `type=Concept`, `role=Output`, `#name`, `link`, `link=needs`. See `templates/style.kg.md`.\n\nEvery node look has five colours, so all views draw a node the same way:\n\n| Key | Meaning |\n|---|---|\n| `html.color` | fill |\n| `html.border-color` | border |\n| `html.font-color` | main text (if missing, black or white is chosen for contrast with the fill) |\n| `html.label-color` | title of a group or section box |\n| `html.sub-color` | secondary text (type, role) |", "parent": "advanced-syntax", "line": 215, "end": 230, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "validation", "kind": "node", "type": "Concept", "label": "Validation", "title": "Validation", "content": "| Level | Rule |\n|---|---|\n| Error | Duplicate name; attribute written twice; malformed attribute line; missing `)` / `]` / `\"` |\n| Error | Node type or link type not imported; type name not capitalised; link to a missing node; cycle in a `dag` link type |\n| Error | 0.2 syntax (`@id: Title`) or a label on the opening line |\n| Warning | An attribute used once that looks like another one (`rol` vs `role`); `has` not supported yet; skipped heading level |", "parent": "advanced-syntax", "line": 231, "end": 242, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "json", "kind": "node", "type": "Concept", "label": "JSON output", "title": "JSON output", "content": "A networkx node-link graph. Every node has `id` (its name), `kind`, `type`, `label`, `attrs`, `content`, `parent` and `line`; every link has `source`, `target`, `type` and `line`. `title` and `meta` are kept for older tools.", "parent": "advanced-syntax", "line": 243, "end": 249, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "views", "kind": "node", "label": "The editor", "title": "The editor", "content": "- Views: **Text**, **Graph**, **Tree**, **Book**, **Module**. Every view follows the text.\n- Two panes, each with tabs. The **+** button of a pane adds a view to it, e.g. Tree on the left and Graph or Book on the right. Tabs can be closed or dragged to the other pane; the layout is remembered.\n- **Ctrl+S** saves the file (as does the Save button).\n- **Tree** shows each node's label, its type and, only when the role is `output`, its role. The Tree and the Outline do not list attributes.\n- **Graph** is laid out as a tree by default: the root on the left, each level one column to the right, nodes snapped to the grid (parent: `part-of`, then `contain`, then the section). Pick the layout from the drop-down on the Graph toolbar (or press **L** for the next one): *Indented* (parent level with its first child, the default), *Tidy* (parent centred on its children), *Radial* (rings around the root) and *Force*; **Shift+L** lays the file out again. The grid (button or **G**) snaps dragged nodes to grid points. Hand-placed positions are saved per file and kept when you add or remove nodes and reload: known nodes stay put and only new nodes are laid out.\n- **Ctrl+H** shows hidden nodes for a moment (see @hide).\n- In 0.3 the Inspector and graph editing tools are frozen (read-only).", "parent": "advanced-syntax", "line": 250, "end": 261, "auto_id": false, "external": false, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "vscode-colors", "kind": "node", "type": "Concept", "label": "Colours in VS Code", "title": "Colours in VS Code", "content": "To colour `.kg.md` files in VS Code like the KING editor, install the extension *Highlight* (`fabiospampinato.vscode-highlight`) and add `highlight.regexes` rules with `filterFileRegex` set to `.*\\.kg\\.md$` in `.vscode/settings.json`. Palette: node `#E8D48A`, link `#A5ABB6`, keyword `#C586C0`, key `#9CDCFE`, type `#4EC9B0`, string `#CE9178`, comment `#6A9955` italic, punctuation `#808080`. The colouring works line by line, so it is only close to the KING editor.", "parent": "advanced-syntax", "line": 262, "end": 268, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "roadmap", "kind": "section", "title": "4. Improvement plan", "parent": "documentation", "level": 2, "line": 269, "end": 270, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "r-has", "kind": "node", "label": "Child nodes (has)", "title": "Child nodes (has)", "attrs": {"ask": "Choose a syntax for child nodes with their types."}, "parent": "roadmap", "line": 271, "end": 274, "auto_id": false, "external": false, "ask": "Choose a syntax for child nodes with their types.", "meta": {"ask": "Choose a syntax for child nodes with their types."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-types", "kind": "node", "label": "Type inheritance", "title": "Type inheritance", "attrs": {"ask": "`<:` for inheritance and `::` for type annotations."}, "parent": "roadmap", "line": 275, "end": 278, "auto_id": false, "external": false, "ask": "`<:` for inheritance and `::` for type annotations.", "meta": {"ask": "`<:` for inheritance and `::` for type annotations."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-operators", "kind": "node", "label": "Operators", "title": "Operators", "attrs": {"ask": "Arithmetic and comparison operators in values (0.4)."}, "parent": "roadmap", "line": 279, "end": 282, "auto_id": false, "external": false, "ask": "Arithmetic and comparison operators in values (0.4).", "meta": {"ask": "Arithmetic and comparison operators in values (0.4)."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-style", "kind": "node", "label": "Style in 0.3 syntax", "title": "Style in 0.3 syntax", "attrs": {"ask": "Rewrite the style format in 0.3 syntax and allow style inside data files again."}, "parent": "roadmap", "line": 283, "end": 286, "auto_id": false, "external": false, "ask": "Rewrite the style format in 0.3 syntax and allow style inside data files again.", "meta": {"ask": "Rewrite the style format in 0.3 syntax and allow style inside data files again."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-inspector", "kind": "node", "label": "Inspector and graph editing", "title": "Inspector and graph editing", "attrs": {"ask": "Unfreeze the Inspector and the graph tools on top of the new block tree."}, "parent": "roadmap", "line": 287, "end": 290, "auto_id": false, "external": false, "ask": "Unfreeze the Inspector and the graph tools on top of the new block tree.", "meta": {"ask": "Unfreeze the Inspector and the graph tools on top of the new block tree."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-typst", "kind": "node", "label": "Typst output", "title": "Typst output", "attrs": {"ask": "Export Content `[ ]` as Typst markup."}, "parent": "roadmap", "line": 291, "end": 294, "auto_id": false, "external": false, "ask": "Export Content `[ ]` as Typst markup.", "meta": {"ask": "Export Content `[ ]` as Typst markup."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}], "links": [{"source": "attributes", "target": "blocks", "type": "needs", "line": 66, "declared_at": "attributes", "reversed": false, "key": "needs:0", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "names", "target": "blocks", "type": "needs", "line": 86, "declared_at": "names", "reversed": false, "key": "needs:1", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "node-links", "target": "attributes", "type": "needs", "line": 96, "declared_at": "node-links", "reversed": false, "key": "needs:2", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "link-blocks", "target": "node-links", "type": "needs", "line": 103, "declared_at": "link-blocks", "reversed": false, "key": "needs:3", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "values", "target": "attributes", "type": "needs", "line": 126, "declared_at": "values", "reversed": false, "key": "needs:4", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "frontmatter", "target": "names", "type": "needs", "line": 144, "declared_at": "frontmatter", "reversed": false, "key": "needs:5", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "schema-files", "target": "names", "type": "needs", "line": 166, "declared_at": "schema-files", "reversed": false, "key": "needs:6", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "schema-files", "target": "link-blocks", "type": "needs", "line": 166, "declared_at": "schema-files", "reversed": false, "key": "needs:7", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "sections-text", "target": "blocks", "type": "needs", "line": 185, "declared_at": "sections-text", "reversed": false, "key": "needs:8", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "hide", "target": "attributes", "type": "needs", "line": 195, "declared_at": "hide", "reversed": false, "key": "needs:9", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "hide", "target": "sections-text", "type": "needs", "line": 195, "declared_at": "hide", "reversed": false, "key": "needs:10", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "validation", "target": "schema-files", "type": "needs", "line": 234, "declared_at": "validation", "reversed": false, "key": "needs:11", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "json", "target": "validation", "type": "needs", "line": 246, "declared_at": "json", "reversed": false, "key": "needs:12", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "views", "target": "tooling", "type": "needs", "line": 252, "declared_at": "views", "reversed": false, "key": "needs:13", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "vscode-colors", "target": "views", "type": "needs", "line": 265, "declared_at": "vscode-colors", "reversed": false, "key": "needs:14", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "what", "target": "goals", "type": "mention", "line": 15, "declared_at": "what", "reversed": false, "key": "mention:15", "style": {"html": {"color": "#A5ABB6", "opacity": 0.6, "width": 1, "dash": true}}}, {"source": "what", "target": "blocks", "type": "mention", "line": 15, "declared_at": "what", "reversed": false, "key": "mention:16", "style": {"html": {"color": "#A5ABB6", "opacity": 0.6, "width": 1, "dash": true}}}, {"source": "views", "target": "hide", "type": "mention", "line": 250, "declared_at": "views", "reversed": false, "key": "mention:17", "style": {"html": {"color": "#A5ABB6", "opacity": 0.6, "width": 1, "dash": true}}}, {"source": "documentation", "target": "goals-and-author", "type": "contains", "tree": true, "key": "contains:18", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "goals-and-author", "target": "what", "type": "contains", "tree": true, "key": "contains:19", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "goals-and-author", "target": "goals", "type": "contains", "tree": true, "key": "contains:20", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "goals-and-author", "target": "author", "type": "contains", "tree": true, "key": "contains:21", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "goals-and-author", "target": "tooling", "type": "contains", "tree": true, "key": "contains:22", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "documentation", "target": "basic-syntax", "type": "contains", "tree": true, "key": "contains:23", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "blocks", "type": "contains", "tree": true, "key": "contains:24", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "attributes", "type": "contains", "tree": true, "key": "contains:25", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "names", "type": "contains", "tree": true, "key": "contains:26", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "node-links", "type": "contains", "tree": true, "key": "contains:27", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "link-blocks", "type": "contains", "tree": true, "key": "contains:28", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "values", "type": "contains", "tree": true, "key": "contains:29", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "frontmatter", "type": "contains", "tree": true, "key": "contains:30", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "documentation", "target": "advanced-syntax", "type": "contains", "tree": true, "key": "contains:31", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "schema-files", "type": "contains", "tree": true, "key": "contains:32", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "sections-text", "type": "contains", "tree": true, "key": "contains:33", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "hide", "type": "contains", "tree": true, "key": "contains:34", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "style", "type": "contains", "tree": true, "key": "contains:35", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "validation", "type": "contains", "tree": true, "key": "contains:36", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "json", "type": "contains", "tree": true, "key": "contains:37", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "views", "type": "contains", "tree": true, "key": "contains:38", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "vscode-colors", "type": "contains", "tree": true, "key": "contains:39", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "documentation", "target": "roadmap", "type": "contains", "tree": true, "key": "contains:40", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-has", "type": "contains", "tree": true, "key": "contains:41", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-types", "type": "contains", "tree": true, "key": "contains:42", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-operators", "type": "contains", "tree": true, "key": "contains:43", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-style", "type": "contains", "tree": true, "key": "contains:44", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-inspector", "type": "contains", "tree": true, "key": "contains:45", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-typst", "type": "contains", "tree": true, "key": "contains:46", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}]}};   // king html thay bằng dữ liệu → chế độ chỉ xem
+const ST = {"name": "documentation.kg.md", "text": "---\nkg: 0.3\nuse:\n- king/schema.node: Concept, Group\n- king/schema.link: needs, part-of\n- king/style\n---\n\n# KING Markdown Documentation @documentation\n\nKING Markdown (Knowledge In Nodes & Graphs), language version 0.3. This document is itself a `.kg.md` file: open it with `king serve docs` to read it as a Graph, Tree, Book or Module.\n\n## 1. Goals and author @goals-and-author\n\n@node what\n- label: What is KING Markdown\n- type: Concept\n\nKING Markdown is a Markdown dialect for writing **knowledge graphs** as plain text. A `.kg.md` file is valid Markdown: headings are sections, `@node` and `@link` blocks declare nodes and links, and the `- key: value` lines right under a block are its attributes.\n\nThe parser turns a file into a node-link graph in JSON that networkx, the HTML editor or Typst can use. *Knowledge is KING.* See also @goals, @blocks.\n\n@node goals\n- label: Goals\n- type: Concept\n\n- Write knowledge once, as text, and read it as a graph, a tree, a book or nested modules.\n- Keep the text as the single source of truth, so files work with Git and any text editor.\n- Make prerequisites, part-whole structure and references explicit with typed links.\n- Let teachers, students and AI assistants work on the same file: an `ask` attribute marks a node waiting to be written.\n- Stay small: the Python side uses only the standard library.\n\n@node author\n- label: Dr. Thu-Le Tran\n- important: true\n\nKING Markdown is designed and written by **Dr. Thu-Le Tran**: the language, the parser, the editor and this documentation.\n\n@node tooling\n- label: Tools in this repository\n\n- `king serve [folder]` opens the editor in the browser.\n- `king parse file.kg.md [-o graph.json] [--strict]` prints or writes JSON; `--strict` exits with code 1 on errors.\n- `king html file.kg.md [out.html]` writes a static, read-only page.\n- Run without installing: `PYTHONPATH=src python -m king_markdown ...`.\n\n## 2. Basic syntax @basic-syntax\n\n@node blocks\n- label: Blocks\n- type: Concept\n\nA file is cut into blocks:\n\n| Block | Starts with | Ends |\n|---|---|---|\n| Section | `#` … `######` | before a heading of the same or a higher level, or at the end of the file |\n| Node | `@node name` at column 1 | before the next `@` at column 1, the next heading, or the end of the file |\n| Link | `@link name` at column 1 | same as a node |\n\nThe opening line has no `:` and no label. `@` inside a fenced code block or an indented `@` does not open a block.\n\n@node attributes\n- label: Attributes and content\n- type: Concept\n- link needs: (blocks)\n\nThe `- ` lines right under the opening line (or under a heading) are the **attributes** of the block. After a blank line comes the **content**: plain Markdown until the end of the block, including list items.\n\n```markdown\n@node circle\n- label: Circle\n- type: Concept\n- role: Output\n- link needs: (disc)\n\nThe set of points at distance R from a centre O.\n- Area: S = πR².\n```\n\n`- label:` is only the text shown to readers. Attributes are free: any `- key: value` is allowed.\n\n@node names\n- label: Names and types\n- type: Concept\n- link needs: (blocks)\n\n- `@node circle` declares the **name** `circle`, like a variable in a program. Its scope is the file. There is no separate ID: links and references use the name.\n- Node names and link names are lower case with hyphens: `part-of`, `circle-area`.\n- Type names start with a capital letter: `Concept`, `Group`. `@node Concept` declares a node type instead of a node.\n- A section can be named at the end of its heading: `# Calculus @calculus`. Without a name, one is generated from the title (it changes when the title changes).\n\n@node node-links\n- label: Links inside a node\n- type: Concept\n- link needs: (attributes)\n\n`- link needs: (a, b)` creates the edges `this → a` and `this → b` of type `needs`. Read it as \"the **needs** of this node are a and b\".\n\n@node link-blocks\n- label: Link types and inverse\n- type: Concept\n- link needs: (node-links)\n\n```markdown\n@link author\n- label: Author\n- inverse: works\n\n@node kieu\n- label: The Tale of Kieu\n- link author: (nguyen-du)\n\n@node nguyen-du\n- label: Nguyen Du\n- link works: (kieu)\n```\n\n`- inverse: works` lets a node write the link from the other side. `- link works: (kieu)` on `nguyen-du` is stored as `kieu → nguyen-du` of type `author`. The graph keeps only the original direction, and duplicate links are merged into one edge.\n\nA `@link` block can also list links directly: `- from a to (b, c)`.\n\n@node values\n- label: Values\n- type: Concept\n- link needs: (attributes)\n\n| Type | Example |\n|---|---|\n| Num | `3`, `-2`, `0.5` |\n| Bool | `true`, `false` |\n| None | `none` |\n| Str | `free text`, `\"with, commas\"` |\n| List | `(a, b)`; `(a)` is a list of one |\n| Dict | `(w=3, h=2)` |\n| Content | `[ ... ]`, raw text such as Typst, LaTeX, Markdown or Python; may span several lines |\n| code | `` `f(x) // not a comment` `` |\n\n`//` starts a comment when it is at the start of a line or after a space, outside quotes and backticks, so `https://…` is safe.\n\n@node frontmatter\n- label: Frontmatter and imports\n- type: Concept\n- link needs: (names)\n\n```markdown\n---\nkg: 0.3\nuse:\n- king/schema.node: Concept, Group\n- king/schema.link: part-of, needs\n- king/style\nimport: math, lop11.tangent\n---\n```\n\n- Node types and link types must be imported (or declared in the file). Using a name that is not imported is an error.\n- `- schema` without `.node:` / `.link:` imports every type of `schema.kg.md` in the same folder. `king/…` names the system files.\n- `import: math` makes `math.limit` a valid target; `import: lop11.tangent` makes `tangent` usable by its short name.\n\n## 3. Advanced syntax @advanced-syntax\n\n@node schema-files\n- label: Schema files\n- type: Concept\n- link needs: (names, link-blocks)\n\nA schema is a `.kg.md` file of declarations:\n\n```markdown\n@node Concept\n- label: Concept\n\n@link needs\n- label: Needs\n- inverse: needed-by\n- dag: true\n```\n\n`- dag: true` forbids cycles for that link type. `src/king_markdown/templates/schema.kg.md` declares the node types `Concept`, `Group`, `Example` and `Warning`. Declarations can also be written inside a data file.\n\n@node sections-text\n- label: Sections and generated edges\n- type: Concept\n- link needs: (blocks)\n\n- Text under a heading, before the first `@` block, is the content of the section itself.\n- The parser generates `contains` edges from a section to each node and sub-section under it.\n- `@name` in content (outside code) generates a `mention` edge.\n- `contains` and `mention` are never written by hand.\n\n@node hide\n- label: Hiding nodes and links\n- type: Concept\n- link needs: (attributes, sections-text)\n\n`- hide:` removes a node, a section or a link type from some views, so you can focus on one part of a large file.\n\n```markdown\n# Exercises\n- hide: graph, module      // only in Graph and Module\n\n@node draft\n- hide: all                // every view (true means the same)\n\n@link mention-of\n- hide: book               // every link of this type\n```\n\n- Views: `graph`, `tree`, `book`, `module`, or `all`. Write them as `graph, module` or `(graph, module)`.\n- Hiding a section or a group node also hides everything under it: the nodes in the section and the nodes that are `part-of` it.\n- The Outline in the Explorer still lists hidden nodes (dimmed), so you can find and edit them.\n- View › *Show hidden nodes* (Ctrl+H) shows everything again for a moment.\n\n@node style\n- label: Style\n- type: Concept\n\nStyle files keep the 0.2 format in KING 0.3: a rule is `@rule: Title` with `- meta: select=\"…\", html.*=…`. Selectors: `kind=section`, `type=Concept`, `role=Output`, `#name`, `link`, `link=needs`. See `src/king_markdown/templates/style.kg.md`.\n\nEvery node look has five colours, so all views draw a node the same way:\n\n| Key | Meaning |\n|---|---|\n| `html.color` | fill |\n| `html.border-color` | border |\n| `html.font-color` | main text (if missing, black or white is chosen for contrast with the fill) |\n| `html.label-color` | title of a group or section box |\n| `html.sub-color` | secondary text (type, role) |\n\n@node validation\n- label: Validation\n- type: Concept\n- link needs: (schema-files)\n\n| Level | Rule |\n|---|---|\n| Error | Duplicate name; attribute written twice; malformed attribute line; missing `)` / `]` / `\"` |\n| Error | Node type or link type not imported; type name not capitalised; link to a missing node; cycle in a `dag` link type |\n| Error | 0.2 syntax (`@id: Title`) or a label on the opening line |\n| Warning | An attribute used once that looks like another one (`rol` vs `role`); `has` not supported yet; skipped heading level |\n\n@node json\n- label: JSON output\n- type: Concept\n- link needs: (validation)\n\nA networkx node-link graph. Every node has `id` (its name), `kind`, `type`, `label`, `attrs`, `content`, `parent` and `line`; every link has `source`, `target`, `type` and `line`. `title` and `meta` are kept for older tools.\n\n@node views\n- label: The editor\n- link needs: (tooling)\n\n- Views: **Text**, **Graph**, **Tree**, **Book**, **Module**. Every view follows the text.\n- Two panes, each with tabs. The **+** button of a pane adds a view to it, e.g. Tree on the left and Graph or Book on the right. Tabs can be closed or dragged to the other pane; the layout is remembered.\n- **Ctrl+S** saves the file (as does the Save button).\n- **Tree** shows each node's label, its type and, only when the role is `output`, its role. The Tree and the Outline do not list attributes.\n- **Graph** is laid out as a tree by default: the root on the left, each level one column to the right, nodes snapped to the grid (parent: `part-of`, then `contain`, then the section). Pick the layout from the drop-down on the Graph toolbar (or press **L** for the next one): *Indented* (parent level with its first child, the default), *Tidy* (parent centred on its children), *Radial* (rings around the root) and *Force*; **Shift+L** lays the file out again. The grid (button or **G**) snaps dragged nodes to grid points. Hand-placed positions are saved per file and kept when you add or remove nodes and reload: known nodes stay put and only new nodes are laid out.\n- **Ctrl+H** shows hidden nodes for a moment (see @hide).\n- In 0.3 the Inspector and graph editing tools are frozen (read-only).\n\n@node vscode-colors\n- label: Colours in VS Code\n- type: Concept\n- link needs: (views)\n\nTo colour `.kg.md` files in VS Code like the KING editor, install the extension *Highlight* (`fabiospampinato.vscode-highlight`) and add `highlight.regexes` rules with `filterFileRegex` set to `.*\\.kg\\.md$` in `.vscode/settings.json`. Palette: node `#E8D48A`, link `#A5ABB6`, keyword `#C586C0`, key `#9CDCFE`, type `#4EC9B0`, string `#CE9178`, comment `#6A9955` italic, punctuation `#808080`. The colouring works line by line, so it is only close to the KING editor.\n\n## 4. Improvement plan @roadmap\n\n@node r-has\n- label: Child nodes (has)\n- ask: Choose a syntax for child nodes with their types.\n\n@node r-types\n- label: Type inheritance\n- ask: `<:` for inheritance and `::` for type annotations.\n\n@node r-operators\n- label: Operators\n- ask: Arithmetic and comparison operators in values (0.4).\n\n@node r-style\n- label: Style in 0.3 syntax\n- ask: Rewrite the style format in 0.3 syntax and allow style inside data files again.\n\n@node r-inspector\n- label: Inspector and graph editing\n- ask: Unfreeze the Inspector and the graph tools on top of the new block tree.\n\n@node r-typst\n- label: Typst output\n- ask: Export Content `[ ]` as Typst markup.\n", "graph": {"directed": true, "multigraph": true, "graph": {"file": "documentation.kg.md", "kg": "0.3", "use": ["king/schema.kg.md", "king/style.kg.md"], "fields": [], "schema": {"types": {"Concept": {"title": "Khái niệm", "line": 10, "file": "schema.kg.md"}, "Group": {"title": "Nhóm node", "line": 15, "file": "schema.kg.md"}}, "keys": {}, "links": {"needs": {"title": "Cần biết trước", "line": 35, "inverse": "needed-by", "dag": true, "file": "schema.kg.md"}, "part-of": {"title": "Là phần của", "line": 40, "inverse": "parts", "dag": true, "file": "schema.kg.md"}}}, "dag": ["needs", "part-of"], "import_modules": [], "import_names": {}, "errors": [], "warnings": []}, "nodes": [{"id": "documentation", "kind": "section", "title": "KING Markdown Documentation", "content": "KING Markdown (Knowledge In Nodes & Graphs), language version 0.3. This document is itself a `.kg.md` file: open it with `king serve docs` to read it as a Graph, Tree, Book or Module.", "parent": null, "level": 1, "line": 9, "end": 12, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "goals-and-author", "kind": "section", "title": "1. Goals and author", "parent": "documentation", "level": 2, "line": 13, "end": 14, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "what", "kind": "node", "type": "Concept", "label": "What is KING Markdown", "title": "What is KING Markdown", "content": "KING Markdown is a Markdown dialect for writing **knowledge graphs** as plain text. A `.kg.md` file is valid Markdown: headings are sections, `@node` and `@link` blocks declare nodes and links, and the `- key: value` lines right under a block are its attributes.\n\nThe parser turns a file into a node-link graph in JSON that networkx, the HTML editor or Typst can use. *Knowledge is KING.* See also @goals, @blocks.", "parent": "goals-and-author", "line": 15, "end": 22, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "goals", "kind": "node", "type": "Concept", "label": "Goals", "title": "Goals", "content": "- Write knowledge once, as text, and read it as a graph, a tree, a book or nested modules.\n- Keep the text as the single source of truth, so files work with Git and any text editor.\n- Make prerequisites, part-whole structure and references explicit with typed links.\n- Let teachers, students and AI assistants work on the same file: an `ask` attribute marks a node waiting to be written.\n- Stay small: the Python side uses only the standard library.", "parent": "goals-and-author", "line": 23, "end": 32, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "author", "kind": "node", "label": "Dr. Thu-Le Tran", "title": "Dr. Thu-Le Tran", "attrs": {"important": true}, "content": "KING Markdown is designed and written by **Dr. Thu-Le Tran**: the language, the parser, the editor and this documentation.", "parent": "goals-and-author", "line": 33, "end": 38, "auto_id": false, "external": false, "meta": {"important": true}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "border": 3}}}, {"id": "tooling", "kind": "node", "label": "Tools in this repository", "title": "Tools in this repository", "content": "- `king serve [folder]` opens the editor in the browser.\n- `king parse file.kg.md [-o graph.json] [--strict]` prints or writes JSON; `--strict` exits with code 1 on errors.\n- `king html file.kg.md [out.html]` writes a static, read-only page.\n- Run without installing: `PYTHONPATH=src python -m king_markdown ...`.", "parent": "goals-and-author", "line": 39, "end": 46, "auto_id": false, "external": false, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "basic-syntax", "kind": "section", "title": "2. Basic syntax", "parent": "documentation", "level": 2, "line": 47, "end": 48, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "blocks", "kind": "node", "type": "Concept", "label": "Blocks", "title": "Blocks", "content": "A file is cut into blocks:\n\n| Block | Starts with | Ends |\n|---|---|---|\n| Section | `#` … `######` | before a heading of the same or a higher level, or at the end of the file |\n| Node | `@node name` at column 1 | before the next `@` at column 1, the next heading, or the end of the file |\n| Link | `@link name` at column 1 | same as a node |\n\nThe opening line has no `:` and no label. `@` inside a fenced code block or an indented `@` does not open a block.", "parent": "basic-syntax", "line": 49, "end": 62, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "attributes", "kind": "node", "type": "Concept", "label": "Attributes and content", "title": "Attributes and content", "content": "The `- ` lines right under the opening line (or under a heading) are the **attributes** of the block. After a blank line comes the **content**: plain Markdown until the end of the block, including list items.\n\n```markdown\n@node circle\n- label: Circle\n- type: Concept\n- role: Output\n- link needs: (disc)\n\nThe set of points at distance R from a centre O.\n- Area: S = πR².\n```\n\n`- label:` is only the text shown to readers. Attributes are free: any `- key: value` is allowed.", "parent": "basic-syntax", "line": 63, "end": 82, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "names", "kind": "node", "type": "Concept", "label": "Names and types", "title": "Names and types", "content": "- `@node circle` declares the **name** `circle`, like a variable in a program. Its scope is the file. There is no separate ID: links and references use the name.\n- Node names and link names are lower case with hyphens: `part-of`, `circle-area`.\n- Type names start with a capital letter: `Concept`, `Group`. `@node Concept` declares a node type instead of a node.\n- A section can be named at the end of its heading: `# Calculus @calculus`. Without a name, one is generated from the title (it changes when the title changes).", "parent": "basic-syntax", "line": 83, "end": 92, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "node-links", "kind": "node", "type": "Concept", "label": "Links inside a node", "title": "Links inside a node", "content": "`- link needs: (a, b)` creates the edges `this → a` and `this → b` of type `needs`. Read it as \"the **needs** of this node are a and b\".", "parent": "basic-syntax", "line": 93, "end": 99, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "link-blocks", "kind": "node", "type": "Concept", "label": "Link types and inverse", "title": "Link types and inverse", "content": "```markdown\n@link author\n- label: Author\n- inverse: works\n\n@node kieu\n- label: The Tale of Kieu\n- link author: (nguyen-du)\n\n@node nguyen-du\n- label: Nguyen Du\n- link works: (kieu)\n```\n\n`- inverse: works` lets a node write the link from the other side. `- link works: (kieu)` on `nguyen-du` is stored as `kieu → nguyen-du` of type `author`. The graph keeps only the original direction, and duplicate links are merged into one edge.\n\nA `@link` block can also list links directly: `- from a to (b, c)`.", "parent": "basic-syntax", "line": 100, "end": 122, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "values", "kind": "node", "type": "Concept", "label": "Values", "title": "Values", "content": "| Type | Example |\n|---|---|\n| Num | `3`, `-2`, `0.5` |\n| Bool | `true`, `false` |\n| None | `none` |\n| Str | `free text`, `\"with, commas\"` |\n| List | `(a, b)`; `(a)` is a list of one |\n| Dict | `(w=3, h=2)` |\n| Content | `[ ... ]`, raw text such as Typst, LaTeX, Markdown or Python; may span several lines |\n| code | `` `f(x) // not a comment` `` |\n\n`//` starts a comment when it is at the start of a line or after a space, outside quotes and backticks, so `https://…` is safe.", "parent": "basic-syntax", "line": 123, "end": 140, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "frontmatter", "kind": "node", "type": "Concept", "label": "Frontmatter and imports", "title": "Frontmatter and imports", "content": "```markdown\n---\nkg: 0.3\nuse:\n- king/schema.node: Concept, Group\n- king/schema.link: part-of, needs\n- king/style\nimport: math, lop11.tangent\n---\n```\n\n- Node types and link types must be imported (or declared in the file). Using a name that is not imported is an error.\n- `- schema` without `.node:` / `.link:` imports every type of `schema.kg.md` in the same folder. `king/…` names the system files.\n- `import: math` makes `math.limit` a valid target; `import: lop11.tangent` makes `tangent` usable by its short name.", "parent": "basic-syntax", "line": 141, "end": 160, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "advanced-syntax", "kind": "section", "title": "3. Advanced syntax", "parent": "documentation", "level": 2, "line": 161, "end": 162, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "schema-files", "kind": "node", "type": "Concept", "label": "Schema files", "title": "Schema files", "content": "A schema is a `.kg.md` file of declarations:\n\n```markdown\n@node Concept\n- label: Concept\n\n@link needs\n- label: Needs\n- inverse: needed-by\n- dag: true\n```\n\n`- dag: true` forbids cycles for that link type. `src/king_markdown/templates/schema.kg.md` declares the node types `Concept`, `Group`, `Example` and `Warning`. Declarations can also be written inside a data file.", "parent": "advanced-syntax", "line": 163, "end": 181, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "sections-text", "kind": "node", "type": "Concept", "label": "Sections and generated edges", "title": "Sections and generated edges", "content": "- Text under a heading, before the first `@` block, is the content of the section itself.\n- The parser generates `contains` edges from a section to each node and sub-section under it.\n- `@name` in content (outside code) generates a `mention` edge.\n- `contains` and `mention` are never written by hand.", "parent": "advanced-syntax", "line": 182, "end": 191, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "hide", "kind": "node", "type": "Concept", "label": "Hiding nodes and links", "title": "Hiding nodes and links", "content": "`- hide:` removes a node, a section or a link type from some views, so you can focus on one part of a large file.\n\n```markdown\n# Exercises\n- hide: graph, module      // only in Graph and Module\n\n@node draft\n- hide: all                // every view (true means the same)\n\n@link mention-of\n- hide: book               // every link of this type\n```\n\n- Views: `graph`, `tree`, `book`, `module`, or `all`. Write them as `graph, module` or `(graph, module)`.\n- Hiding a section or a group node also hides everything under it: the nodes in the section and the nodes that are `part-of` it.\n- The Outline in the Explorer still lists hidden nodes (dimmed), so you can find and edit them.\n- View › *Show hidden nodes* (Ctrl+H) shows everything again for a moment.", "parent": "advanced-syntax", "line": 192, "end": 214, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "style", "kind": "node", "type": "Concept", "label": "Style", "title": "Style", "content": "Style files keep the 0.2 format in KING 0.3: a rule is `@rule: Title` with `- meta: select=\"…\", html.*=…`. Selectors: `kind=section`, `type=Concept`, `role=Output`, `#name`, `link`, `link=needs`. See `src/king_markdown/templates/style.kg.md`.\n\nEvery node look has five colours, so all views draw a node the same way:\n\n| Key | Meaning |\n|---|---|\n| `html.color` | fill |\n| `html.border-color` | border |\n| `html.font-color` | main text (if missing, black or white is chosen for contrast with the fill) |\n| `html.label-color` | title of a group or section box |\n| `html.sub-color` | secondary text (type, role) |", "parent": "advanced-syntax", "line": 215, "end": 230, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "validation", "kind": "node", "type": "Concept", "label": "Validation", "title": "Validation", "content": "| Level | Rule |\n|---|---|\n| Error | Duplicate name; attribute written twice; malformed attribute line; missing `)` / `]` / `\"` |\n| Error | Node type or link type not imported; type name not capitalised; link to a missing node; cycle in a `dag` link type |\n| Error | 0.2 syntax (`@id: Title`) or a label on the opening line |\n| Warning | An attribute used once that looks like another one (`rol` vs `role`); `has` not supported yet; skipped heading level |", "parent": "advanced-syntax", "line": 231, "end": 242, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "json", "kind": "node", "type": "Concept", "label": "JSON output", "title": "JSON output", "content": "A networkx node-link graph. Every node has `id` (its name), `kind`, `type`, `label`, `attrs`, `content`, `parent` and `line`; every link has `source`, `target`, `type` and `line`. `title` and `meta` are kept for older tools.", "parent": "advanced-syntax", "line": 243, "end": 249, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "views", "kind": "node", "label": "The editor", "title": "The editor", "content": "- Views: **Text**, **Graph**, **Tree**, **Book**, **Module**. Every view follows the text.\n- Two panes, each with tabs. The **+** button of a pane adds a view to it, e.g. Tree on the left and Graph or Book on the right. Tabs can be closed or dragged to the other pane; the layout is remembered.\n- **Ctrl+S** saves the file (as does the Save button).\n- **Tree** shows each node's label, its type and, only when the role is `output`, its role. The Tree and the Outline do not list attributes.\n- **Graph** is laid out as a tree by default: the root on the left, each level one column to the right, nodes snapped to the grid (parent: `part-of`, then `contain`, then the section). Pick the layout from the drop-down on the Graph toolbar (or press **L** for the next one): *Indented* (parent level with its first child, the default), *Tidy* (parent centred on its children), *Radial* (rings around the root) and *Force*; **Shift+L** lays the file out again. The grid (button or **G**) snaps dragged nodes to grid points. Hand-placed positions are saved per file and kept when you add or remove nodes and reload: known nodes stay put and only new nodes are laid out.\n- **Ctrl+H** shows hidden nodes for a moment (see @hide).\n- In 0.3 the Inspector and graph editing tools are frozen (read-only).", "parent": "advanced-syntax", "line": 250, "end": 261, "auto_id": false, "external": false, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "vscode-colors", "kind": "node", "type": "Concept", "label": "Colours in VS Code", "title": "Colours in VS Code", "content": "To colour `.kg.md` files in VS Code like the KING editor, install the extension *Highlight* (`fabiospampinato.vscode-highlight`) and add `highlight.regexes` rules with `filterFileRegex` set to `.*\\.kg\\.md$` in `.vscode/settings.json`. Palette: node `#E8D48A`, link `#A5ABB6`, keyword `#C586C0`, key `#9CDCFE`, type `#4EC9B0`, string `#CE9178`, comment `#6A9955` italic, punctuation `#808080`. The colouring works line by line, so it is only close to the KING editor.", "parent": "advanced-syntax", "line": 262, "end": 268, "auto_id": false, "external": false, "meta": {"type": "Concept"}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0"}}}, {"id": "roadmap", "kind": "section", "title": "4. Improvement plan", "parent": "documentation", "level": 2, "line": 269, "end": 270, "auto_id": false, "external": false, "style": {"html": {"shape": "box", "radius": 0, "color": "#3A3D41", "border-color": "#A5ABB6", "font-color": "#FFFFFF", "label-color": "#FFFFFF", "sub-color": "#A5ABB6"}}}, {"id": "r-has", "kind": "node", "label": "Child nodes (has)", "title": "Child nodes (has)", "attrs": {"ask": "Choose a syntax for child nodes with their types."}, "parent": "roadmap", "line": 271, "end": 274, "auto_id": false, "external": false, "ask": "Choose a syntax for child nodes with their types.", "meta": {"ask": "Choose a syntax for child nodes with their types."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-types", "kind": "node", "label": "Type inheritance", "title": "Type inheritance", "attrs": {"ask": "`<:` for inheritance and `::` for type annotations."}, "parent": "roadmap", "line": 275, "end": 278, "auto_id": false, "external": false, "ask": "`<:` for inheritance and `::` for type annotations.", "meta": {"ask": "`<:` for inheritance and `::` for type annotations."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-operators", "kind": "node", "label": "Operators", "title": "Operators", "attrs": {"ask": "Arithmetic and comparison operators in values (0.4)."}, "parent": "roadmap", "line": 279, "end": 282, "auto_id": false, "external": false, "ask": "Arithmetic and comparison operators in values (0.4).", "meta": {"ask": "Arithmetic and comparison operators in values (0.4)."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-style", "kind": "node", "label": "Style in 0.3 syntax", "title": "Style in 0.3 syntax", "attrs": {"ask": "Rewrite the style format in 0.3 syntax and allow style inside data files again."}, "parent": "roadmap", "line": 283, "end": 286, "auto_id": false, "external": false, "ask": "Rewrite the style format in 0.3 syntax and allow style inside data files again.", "meta": {"ask": "Rewrite the style format in 0.3 syntax and allow style inside data files again."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-inspector", "kind": "node", "label": "Inspector and graph editing", "title": "Inspector and graph editing", "attrs": {"ask": "Unfreeze the Inspector and the graph tools on top of the new block tree."}, "parent": "roadmap", "line": 287, "end": 290, "auto_id": false, "external": false, "ask": "Unfreeze the Inspector and the graph tools on top of the new block tree.", "meta": {"ask": "Unfreeze the Inspector and the graph tools on top of the new block tree."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}, {"id": "r-typst", "kind": "node", "label": "Typst output", "title": "Typst output", "attrs": {"ask": "Export Content `[ ]` as Typst markup."}, "parent": "roadmap", "line": 291, "end": 294, "auto_id": false, "external": false, "ask": "Export Content `[ ]` as Typst markup.", "meta": {"ask": "Export Content `[ ]` as Typst markup."}, "style": {"html": {"shape": "ellipse", "color": "#E8D48A", "border-color": "#C9B66E", "font-color": "#1E1E1E", "label-color": "#E8D48A", "sub-color": "#C586C0", "dash": true}}}], "links": [{"source": "attributes", "target": "blocks", "type": "needs", "line": 66, "declared_at": "attributes", "reversed": false, "key": "needs:0", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "names", "target": "blocks", "type": "needs", "line": 86, "declared_at": "names", "reversed": false, "key": "needs:1", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "node-links", "target": "attributes", "type": "needs", "line": 96, "declared_at": "node-links", "reversed": false, "key": "needs:2", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "link-blocks", "target": "node-links", "type": "needs", "line": 103, "declared_at": "link-blocks", "reversed": false, "key": "needs:3", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "values", "target": "attributes", "type": "needs", "line": 126, "declared_at": "values", "reversed": false, "key": "needs:4", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "frontmatter", "target": "names", "type": "needs", "line": 144, "declared_at": "frontmatter", "reversed": false, "key": "needs:5", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "schema-files", "target": "names", "type": "needs", "line": 166, "declared_at": "schema-files", "reversed": false, "key": "needs:6", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "schema-files", "target": "link-blocks", "type": "needs", "line": 166, "declared_at": "schema-files", "reversed": false, "key": "needs:7", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "sections-text", "target": "blocks", "type": "needs", "line": 185, "declared_at": "sections-text", "reversed": false, "key": "needs:8", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "hide", "target": "attributes", "type": "needs", "line": 195, "declared_at": "hide", "reversed": false, "key": "needs:9", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "hide", "target": "sections-text", "type": "needs", "line": 195, "declared_at": "hide", "reversed": false, "key": "needs:10", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "validation", "target": "schema-files", "type": "needs", "line": 234, "declared_at": "validation", "reversed": false, "key": "needs:11", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "json", "target": "validation", "type": "needs", "line": 246, "declared_at": "json", "reversed": false, "key": "needs:12", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "views", "target": "tooling", "type": "needs", "line": 252, "declared_at": "views", "reversed": false, "key": "needs:13", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "vscode-colors", "target": "views", "type": "needs", "line": 265, "declared_at": "vscode-colors", "reversed": false, "key": "needs:14", "style": {"html": {"color": "#A5ABB6", "opacity": 0.7, "width": 1.5}}}, {"source": "what", "target": "goals", "type": "mention", "line": 15, "declared_at": "what", "reversed": false, "key": "mention:15", "style": {"html": {"color": "#A5ABB6", "opacity": 0.6, "width": 1, "dash": true}}}, {"source": "what", "target": "blocks", "type": "mention", "line": 15, "declared_at": "what", "reversed": false, "key": "mention:16", "style": {"html": {"color": "#A5ABB6", "opacity": 0.6, "width": 1, "dash": true}}}, {"source": "views", "target": "hide", "type": "mention", "line": 250, "declared_at": "views", "reversed": false, "key": "mention:17", "style": {"html": {"color": "#A5ABB6", "opacity": 0.6, "width": 1, "dash": true}}}, {"source": "documentation", "target": "goals-and-author", "type": "contains", "tree": true, "key": "contains:18", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "goals-and-author", "target": "what", "type": "contains", "tree": true, "key": "contains:19", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "goals-and-author", "target": "goals", "type": "contains", "tree": true, "key": "contains:20", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "goals-and-author", "target": "author", "type": "contains", "tree": true, "key": "contains:21", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "goals-and-author", "target": "tooling", "type": "contains", "tree": true, "key": "contains:22", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "documentation", "target": "basic-syntax", "type": "contains", "tree": true, "key": "contains:23", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "blocks", "type": "contains", "tree": true, "key": "contains:24", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "attributes", "type": "contains", "tree": true, "key": "contains:25", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "names", "type": "contains", "tree": true, "key": "contains:26", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "node-links", "type": "contains", "tree": true, "key": "contains:27", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "link-blocks", "type": "contains", "tree": true, "key": "contains:28", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "values", "type": "contains", "tree": true, "key": "contains:29", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "basic-syntax", "target": "frontmatter", "type": "contains", "tree": true, "key": "contains:30", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "documentation", "target": "advanced-syntax", "type": "contains", "tree": true, "key": "contains:31", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "schema-files", "type": "contains", "tree": true, "key": "contains:32", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "sections-text", "type": "contains", "tree": true, "key": "contains:33", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "hide", "type": "contains", "tree": true, "key": "contains:34", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "style", "type": "contains", "tree": true, "key": "contains:35", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "validation", "type": "contains", "tree": true, "key": "contains:36", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "json", "type": "contains", "tree": true, "key": "contains:37", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "views", "type": "contains", "tree": true, "key": "contains:38", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "advanced-syntax", "target": "vscode-colors", "type": "contains", "tree": true, "key": "contains:39", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "documentation", "target": "roadmap", "type": "contains", "tree": true, "key": "contains:40", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-has", "type": "contains", "tree": true, "key": "contains:41", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-types", "type": "contains", "tree": true, "key": "contains:42", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-operators", "type": "contains", "tree": true, "key": "contains:43", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-style", "type": "contains", "tree": true, "key": "contains:44", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-inspector", "type": "contains", "tree": true, "key": "contains:45", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}, {"source": "roadmap", "target": "r-typst", "type": "contains", "tree": true, "key": "contains:46", "style": {"html": {"color": "#A5ABB6", "opacity": 0.35, "width": 1, "dash": true}}}]}};   // king html thay bằng dữ liệu → chế độ chỉ xem
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = (v, d) => { const x = parseFloat(v); return isNaN(x) ? d : x; };
@@ -788,7 +795,7 @@ function caretSync() {
 }
 let tmr;
 src.addEventListener("input", () => {
-  S.text = src.value; S.dirty = true; status("Đang sửa…"); updateGutter();
+  S.text = src.value; S.dirty = true; status("Editing…"); updateGutter();
   clearTimeout(tmr); tmr = setTimeout(async () => { await reparse(); await save(); }, 600);
 });
 src.addEventListener("scroll", syncScroll);
@@ -849,7 +856,7 @@ async function refreshState() {
   const need = ["set_meta", "set_field", "set_style", "add_link"], miss = need.filter(o => !(s.ops || []).includes(o));
   if (miss.length && !S.warnedOld) {
     S.warnedOld = true;
-    const msg = "Server đang chạy là bản cũ (thiếu " + miss.join(", ") + "): sửa trên Inspector sẽ không lưu. Tắt server (Ctrl+C) rồi chạy lại king serve.";
+    const msg = "The running server is outdated (missing " + miss.join(", ") + "): Inspector edits will not be saved. Stop the server (Ctrl+C) and run king serve again.";
     status(msg, "err"); alert(msg);
   }
   return s;
@@ -858,13 +865,13 @@ async function openFile(name) {
   if (S.dirty) await save();
   nodesDS.clear(); edgesDS.clear(); S.undo = []; S.graph = null; S.hl = 0; S.selected = null; S.selLink = null;
   S.name = name || ""; showFiles(S.files || []); renderInspector(true);
-  if (!name) { src.value = S.text = ""; $("#fname").textContent = "(chưa mở file)"; updateGutter(); $("#log").innerHTML = ""; renderViews(); return; }
+  if (!name) { src.value = S.text = ""; $("#fname").textContent = "(no file open)"; updateGutter(); $("#log").innerHTML = ""; renderViews(); return; }
   const f = await api("/api/file?name=" + encodeURIComponent(name));
   S.mtime = f.mtime; S.side = f.side; src.value = S.text = f.text; S.dirty = false;
   $("#fname").textContent = name; $("#title").textContent = name + " — " + S.root;
   document.title = name + " · KING Markdown";
   history.replaceState(null, "", "?file=" + encodeURIComponent(name) + (S.view !== "graph" ? "&view=" + S.view : ""));
-  await reparse(); status("Đã mở " + name);
+  await reparse(); status("Opened " + name);
 }
 let seq = 0;
 async function reparse() {
@@ -881,26 +888,26 @@ async function save(force) {
     S.mtime = r.mtime;
     if (S.text === text) S.dirty = false;            // gõ thêm trong lúc đang lưu: vẫn còn là "chưa lưu"
     $("#fname").classList.toggle("dirty", S.dirty);
-    status("Đã lưu " + S.name);
+    status("Saved " + S.name);
   }
-  catch (e) { status("Lưu lỗi: " + e.message, "err"); }
+  catch (e) { status("Save failed: " + e.message, "err"); }
 }
 async function saveNow() {                           // Ctrl+S: lưu ngay, không chờ hẹn giờ tự lưu
-  if (ST) { status("Trang tĩnh (chỉ xem): không lưu được. Mở bằng king serve để sửa."); return; }
-  if (!S.name) { status("Chưa mở file."); return; }
+  if (ST) { status("Static page (read-only): cannot save. Open with king serve to edit."); return; }
+  if (!S.name) { status("No file open."); return; }
   clearTimeout(tmr);
   await save(true); await reparse();
 }
 async function undo() {
-  if (!S.undo.length) return status("Không còn gì để hoàn tác.");
-  setText(S.undo.pop(), true); S.dirty = true; await reparse(); await save(); status("Đã hoàn tác.");
+  if (!S.undo.length) return status("Nothing to undo.");
+  setText(S.undo.pop(), true); S.dirty = true; await reparse(); await save(); status("Undone.");
 }
-// KING 0.3: Inspector và các thao tác sửa trên view tạm khóa (dev/plan-working/README.md mục 2).
+// KING 0.3: Inspector và các thao tác sửa trên view tạm khóa.
 // Mọi chỉnh sửa đi qua khung văn bản; op() không gửi gì.
 const FROZEN = true;
 async function op(name, args, before) {
   if (ST || !S.name) return;
-  if (FROZEN) { status("KING 0.3: sửa trên view / Inspector đang tạm khóa — hãy sửa trong khung văn bản.", "warn"); return; }
+  if (FROZEN) { status("KING 0.3: editing in views / Inspector is temporarily locked — edit in the text pane.", "warn"); return; }
   try {
     const r = await api("/api/op", {name:S.name, text:S.text, op:name, args});
     if (before) before(r);
@@ -969,10 +976,10 @@ function countBelow(id) {
   return seen.size;
 }
 function toggleFold(id) {
-  if (!S.kids[id]) return status("Node " + id + " không có node con (part-of / contain).");
+  if (!S.kids[id]) return status("Node " + id + " has no child nodes (part-of / contain).");
   if (S.folded.has(id)) S.folded.delete(id); else S.folded.add(id);
   saveFold(); render(S.graph);
-  status((S.folded.has(id) ? "Đã thu gọn " : "Đã bung ") + id);
+  status((S.folded.has(id) ? "Collapsed " : "Expanded ") + id);
 }
 function foldAll(on) {
   if (!S.graph) return;
@@ -1091,7 +1098,7 @@ function treeParent(g) {     // mỗi node một cha: part-of > contain > sectio
 }
 // Bố cục: tree = cây thụt lề (cha ngang hàng con đầu), tidy = cây cân (cha ở giữa các con, kiểu D3 tree),
 // radial = tỏa tròn từ gốc, force = physics. Ba bố cục cây đều làm tròn toạ độ về lưới.
-const LAYOUTS = {tree:"⊢ Thụt lề", tidy:"⊣ Cây cân", radial:"✳ Tỏa tròn", force:"✺ Lực"};
+const LAYOUTS = {tree:"⊢ Indented", tidy:"⊣ Tidy tree", radial:"✳ Radial", force:"✺ Force"};
 const LAYOUT_ORDER = ["tree", "tidy", "radial", "force"];
 function treeLayout(g, skip = new Set(), mode = "tree") {   // {id: {x, y}}; node trong skip (đang ẩn) không chiếm chỗ
   const par = treeParent(g), kids = {}, order = n => n.line || 0;
@@ -1220,10 +1227,10 @@ function fillLinkSel(g) {
   if (opts.includes(cur)) sel.value = cur;
 }
 function showLog(g) {
-  const L = [...g.graph.errors.map(e => ({...e, c:"err", t:"Lỗi"})), ...g.graph.warnings.map(e => ({...e, c:"warn", t:"Cảnh báo"}))];
+  const L = [...g.graph.errors.map(e => ({...e, c:"err", t:"Error"})), ...g.graph.warnings.map(e => ({...e, c:"warn", t:"Warning"}))];
   $("#log").innerHTML = L.length
-    ? L.map((e, i) => `<div class="${e.c}" data-i="${i}">${e.t} ${e.file ? esc(e.file) + ":" : "dòng "}${e.line}: ${esc(e.msg)}</div>`).join("")
-    : '<span style="color:var(--mute)">Không có lỗi.</span>';
+    ? L.map((e, i) => `<div class="${e.c}" data-i="${i}">${e.t} ${e.file ? esc(e.file) + ":" : "line "}${e.line}: ${esc(e.msg)}</div>`).join("")
+    : '<span style="color:var(--mute)">No errors.</span>';
   const ne = g.graph.errors.length, nw = g.graph.warnings.length;
   $("#nprob").textContent = ne + nw;
   $("#sbProb").textContent = `⊗ ${ne}  ⚠ ${nw}`;
@@ -1233,16 +1240,16 @@ function showLog(g) {
 // ---------- chế độ, sự kiện đồ thị ----------
 const AUTO_LINKS = ["mention", "contain"];   // parser sinh từ @id / meta contain: sửa trong văn bản
 const HINT = {
-  fold:"Bấm node cha (▾) để thu gọn các node con part-of / contain · bấm lại (▸) để bung",
-  select:"Kéo node để sắp xếp · bấm node: nhảy tới dòng · nhấp đúp: đổi tiêu đề · Delete: xóa node/link",
-  add:"Bấm nền: thêm node cuối file · bấm một section: thêm node vào section đó",
-  link:"Kéo từ node nguồn sang node đích để nối (loại link chọn ở menu)",
-  move:"Kéo node thả lên một section để chuyển node sang section đó"};
+  fold:"Click a parent node (▾) to collapse its part-of / contain children · click again (▸) to expand",
+  select:"Drag nodes to arrange · click a node: jump to its line · double-click: rename · Delete: delete node/link",
+  add:"Click background: add a node at end of file · click a section: add a node to that section",
+  link:"Drag from source node to target node to connect (link type chosen in the menu)",
+  move:"Drag a node onto a section to move it into that section"};
 function setMode(m) {
   S.mode = m;
   $$("[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
   net.disableEditMode(); if (m === "link") net.addEdgeMode();
-  $("#hint").textContent = ST && m !== "fold" ? "Bản tĩnh: chỉ xem. Sửa bằng: king serve" : HINT[m];
+  $("#hint").textContent = ST && m !== "fold" ? "Static copy: read-only. Edit with: king serve" : HINT[m];
 }
 net.on("click", async p => {
   const a = document.activeElement;              // bấm vào đồ thị: rời ô nhập để phím tắt dùng cho node
@@ -1251,8 +1258,8 @@ net.on("click", async p => {
   if (S.mode === "add" && !ST) {
     const id = p.nodes[0], n = id && S.byId[id];
     if (n && n.kind !== "section") return;
-    const t = (prompt(n ? `Node mới trong section "${n.title}" (có thể viết "id: Tiêu đề"):`
-                        : 'Node mới ở cuối file (có thể viết "id: Tiêu đề"):') || "").trim();
+    const t = (prompt(n ? `New node in section "${n.title}" (you may write "id: Title"):`
+                        : 'New node at end of file (you may write "id: Title"):') || "").trim();
     if (!t) return;
     const m = t.match(/^([a-z0-9][a-z0-9-]*)\s*:\s*(.+)$/);
     let pt = p.pointer.canvas;
@@ -1267,7 +1274,7 @@ net.on("click", async p => {
 net.on("doubleClick", async p => {
   if (ST || S.mode !== "select" || !p.nodes.length) return;
   const n = S.byId[p.nodes[0]]; if (!n || n.kind === "external") return;
-  const t = (prompt("Tiêu đề mới cho " + n.id + (n.auto_id ? " (section không có @id: ID sẽ đổi theo)" : "") + ":", n.title) || "").trim();
+  const t = (prompt("New title for " + n.id + (n.auto_id ? " (section has no @id: its ID will change too)" : "") + ":", n.title) || "").trim();
   if (t && t !== n.title) await op("rename", {id:n.id, title:t});
 });
 net.on("select", p => {
@@ -1323,7 +1330,7 @@ net.on("dragEnd", async p => {
 async function onAddEdge(d) {
   if (d.from === d.to) { net.addEdgeMode(); return; }
   const type = $("#linkSel").value;
-  if (!type) { alert("Chưa có loại link. Thêm bằng Schema → + Link."); return; }
+  if (!type) { alert("No link types yet. Add one via Schema → + Link."); return; }
   await op("add_link", {source:d.from, target:d.to, type});
   if (S.mode === "link") net.addEdgeMode();
 }
@@ -1336,9 +1343,9 @@ document.addEventListener("keydown", async e => {
   if (e.key !== "Delete" && e.key !== "Backspace") return;
   const ns = net.getSelectedNodes().filter(id => S.byId[id] && S.byId[id].kind === "node");
   const es = net.getSelectedEdges().map(i => S.edgeMap[i]).filter(l => l && !l.tree && !AUTO_LINKS.includes(l.type));
-  if (ns.length) { if (confirm("Xóa node " + ns.join(", ") + " khỏi " + S.name + "?")) await op("delete_node", {ids:ns}); }
+  if (ns.length) { if (confirm("Delete node " + ns.join(", ") + " from " + S.name + "?")) await op("delete_node", {ids:ns}); }
   else if (es.length) await op("delete_link", {links:es.map(l => ({source:l.source, target:l.target, type:l.type}))});
-  else if (net.getSelectedEdges().length) status("Cạnh chứa, meta contain và tham chiếu @ sửa trong văn bản.");
+  else if (net.getSelectedEdges().length) status("Containment edges, meta contain and @ references are edited in the text.");
 });
 
 // ---------- Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+/ trên node (đồ thị, Tree, Book) ----------
@@ -1362,7 +1369,7 @@ function copyNodes(e, cut) {
   if (!ids.length) return;
   e.preventDefault();
   e.clipboardData.setData("text/plain", ids.map(nodeText).join("\n\n") + "\n");
-  status((cut ? "Đã cắt " : "Đã sao chép ") + ids.join(", ") + " · Ctrl+V để dán thành node mới");
+  status((cut ? "Cut " : "Copied ") + ids.join(", ") + " · Ctrl+V to paste as new nodes");
   if (cut && !ST) op("delete_node", {ids});
 }
 document.addEventListener("copy", e => copyNodes(e, false));
@@ -1406,9 +1413,9 @@ function targets() {
 }
 async function applyFmt(p, v) {
   const t = targets();
-  if (!t) return status("Chọn node hoặc link trước khi format.", "err");
+  if (!t) return status("Select a node or link before formatting.", "err");
   let k = p;
-  if (t.link) { k = LINKMAP[p]; if (!k) return status("Thuộc tính này không áp cho link.", "err"); }
+  if (t.link) { k = LINKMAP[p]; if (!k) return status("This property does not apply to links.", "err"); }
   await op("set_style", {selectors:t.sel, props:{[k]:v}});
 }
 $$("#fmt [data-p]").forEach(el => el.addEventListener("change", () => {
@@ -1417,23 +1424,23 @@ $$("#fmt [data-p]").forEach(el => el.addEventListener("change", () => {
   if (el.dataset.p === "dash") v = v === "true";
   applyFmt(el.dataset.p, v);
 }));
-$("#bClear").onclick = async () => { const t = targets(); if (t) await op("set_style", {selectors:t.sel, props:null}); else status("Chọn node hoặc link trước.", "err"); };
+$("#bClear").onclick = async () => { const t = targets(); if (t) await op("set_style", {selectors:t.sel, props:null}); else status("Select a node or link first.", "err"); };
 
 // ---------- schema ----------
 $$("[data-schema]").forEach(b => b.onclick = async () => {
-  const kind = b.dataset.schema, L = {type:"kiểu node", key:"khóa meta", link:"loại link"}[kind];
-  const id = (prompt(`ID ${L} mới (a-z, 0-9, -):`) || "").trim(); if (!id) return;
-  const title = (prompt("Tên hiển thị (có thể bỏ trống):") || "").trim(), extra = {};
+  const kind = b.dataset.schema, L = {type:"node type", key:"meta key", link:"link type"}[kind];
+  const id = (prompt(`New ${L} ID (a-z, 0-9, -):`) || "").trim(); if (!id) return;
+  const title = (prompt("Display name (optional):") || "").trim(), extra = {};
   if (kind === "type") {
-    const a = (prompt("Các khóa meta kiểu này được dùng, ngăn bằng dấu phẩy (bỏ trống = mọi khóa):") || "").trim();
+    const a = (prompt("Meta keys this type may use, comma-separated (empty = any key):") || "").trim();
     if (a) extra.allow = a;
   } else if (kind === "key") {
-    const v = (prompt('Giá trị cho phép ngăn bằng | (ví dụ "Nạp | Xuất"), hoặc bool / int / number / text (bỏ trống = tự do):') || "").trim();
+    const v = (prompt('Allowed values separated by | (e.g. "Input | Output"), or bool / int / number / text (empty = free):') || "").trim();
     if (/^(bool|int|number|text)$/.test(v)) extra.value = v; else if (v) extra.values = v;
-    if (confirm("Bắt buộc với các kiểu node có khóa này trong allow?")) extra.required = true;
+    if (confirm("Required for node types that list this key in allow?")) extra.required = true;
   } else {
-    if (confirm("Cấm vòng lặp (dag)?")) extra.dag = true;
-    const to = (prompt("Đích phải có type nào? (bỏ trống = bất kỳ)") || "").trim(); if (to) extra.to = to;
+    if (confirm("Forbid cycles (dag)?")) extra.dag = true;
+    const to = (prompt("Required target type? (empty = any)") || "").trim(); if (to) extra.to = to;
   }
   await op("schema_add", {kind, id, title, extra});
 });
@@ -1448,7 +1455,7 @@ function poly(s, x, y, r) {
   return p.map(q => q.map(v => v.toFixed(1)).join(",")).join(" ");
 }
 function exportSVG() {
-  const ids = nodesDS.getIds({filter:n => !n.hidden}); if (!ids.length) return status("Đồ thị trống.", "err");
+  const ids = nodesDS.getIds({filter:n => !n.hidden}); if (!ids.length) return status("Graph is empty.", "err");
   const pos = net.getPositions(), G = {}, OUT = new Set(["dot", "star", "triangle", "diamond", "square", "hexagon"]);
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const id of ids) {
@@ -1514,16 +1521,16 @@ function exportSVG() {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([svg], {type:"image/svg+xml"}));
   a.download = (S.name || "graph").replace(/\.kg\.md$/, "") + ".svg"; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000); status("Đã xuất " + a.download);
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000); status("Exported " + a.download);
 }
 // Chọn bố cục ở ô sổ xuống, hoặc L: kiểu kế tiếp; Shift+L: xếp lại kiểu đang chọn (bỏ vị trí kéo tay)
 function applyLayout(mode) {
   const cur = LAYOUTS[getLayout()] ? getLayout() : "tree";
-  if (!S.graph || !confirm(`Xếp lại toàn bộ đồ thị theo bố cục ${LAYOUTS[mode]}? Vị trí kéo tay của file này sẽ mất.`)) {
+  if (!S.graph || !confirm(`Re-arrange the whole graph with layout ${LAYOUTS[mode]}? Manual positions for this file will be lost.`)) {
     $("#bLayout").value = cur; return;
   }
   setLayout(mode); relayout();
-  status("Bố cục: " + LAYOUTS[mode]);
+  status("Layout: " + LAYOUTS[mode]);
 }
 function toggleLayout(again) {
   const cur = LAYOUTS[getLayout()] ? getLayout() : "tree";
@@ -1537,7 +1544,7 @@ document.addEventListener("keydown", e => {
 // G: bật / tắt lưới (khi đang ở đồ thị, không gõ chữ)
 document.addEventListener("keydown", e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.key.toLowerCase() !== "g" || !onGraph() || !shown("graph")) return;
-  e.preventDefault(); setGrid(!S.grid); status(S.grid ? "Lưới: bật (node thả xuống hút về nút lưới)" : "Lưới: tắt");
+  e.preventDefault(); setGrid(!S.grid); status(S.grid ? "Grid: on (dropped nodes snap to grid)" : "Grid: off");
 });
 </script>
 <script>
@@ -1549,7 +1556,7 @@ async function listDirs(p) {
     $("#dpath").value = r.path;
     $("#dlist").innerHTML = (r.parent ? `<div data-p="${esc(r.parent)}">⬆ ..</div>` : "") +
       r.dirs.map(d => `<div data-p="${esc(d.path)}">📁 ${esc(d.name)}${d.kg ? ` <small>${d.kg} file .kg.md</small>` : ""}</div>`).join("") +
-      (r.files.length ? `<div style="cursor:default;color:var(--mute)">Trong thư mục: ${r.files.map(esc).join(", ")}</div>` : "");
+      (r.files.length ? `<div style="cursor:default;color:var(--mute)">In folder: ${r.files.map(esc).join(", ")}</div>` : "");
     $$("#dlist [data-p]").forEach(d => d.onclick = () => listDirs(d.dataset.p));
   } catch (e) { alert(e.message); }
 }
@@ -1562,15 +1569,15 @@ $("#dok").onclick = async () => {
     if (S.dirty) await save();
     await api("/api/open-folder", {path:$("#dpath").value}); $("#dlg").close();
     const s = await refreshState(); await openFile(s.files[0] || "");
-    if (!s.files.length) status("Thư mục chưa có file .kg.md: File → File mới…");
+    if (!s.files.length) status("Folder has no .kg.md files: File → New file…");
   } catch (e) { alert(e.message); }
 };
 $("#bNew").onclick = $("#exNew").onclick = async () => {
   closeMenus();
-  const n = (prompt("Tên file mới (không cần đuôi .kg.md):") || "").trim(); if (!n) return;
+  const n = (prompt("New file name (without .kg.md):") || "").trim(); if (!n) return;
   try { const r = await api("/api/new", {name:n}); await refreshState(); await openFile(r.name); } catch (e) { alert(e.message); }
 };
-$("#exRefresh").onclick = async () => { try { await refreshState(); status("Đã tải lại danh sách file."); } catch (e) { status(e.message, "err"); } };
+$("#exRefresh").onclick = async () => { try { await refreshState(); status("File list reloaded."); } catch (e) { status(e.message, "err"); } };
 
 // ---------- Explorer: file trong thư mục (schema / style mở và sửa trực tiếp) + outline ----------
 function fileRole(f) {
@@ -1581,12 +1588,12 @@ function fileRole(f) {
 }
 function renderExplorer() {
   const files = ST ? [ST.name] : (S.files || []);
-  $("#exRoot").textContent = ST ? "BẢN TĨNH" : (S.root.split(/[\\/]/).pop() || S.root);
+  $("#exRoot").textContent = ST ? "STATIC COPY" : (S.root.split(/[\\/]/).pop() || S.root);
   $("#exRoot").title = S.root;
   const role = f => { const r = fileRole(f); return r ? `<span class="role ${r}">${r}</span>` : ""; };
   $("#exFiles").innerHTML = files.length
     ? files.map(f => `<div class="fi${f === S.name ? " on" : ""}" data-f="${esc(f)}" title="${esc(f)}"><span class="ic">K</span><span class="nm">${esc(f)}</span>${role(f)}</div>`).join("")
-    : '<div class="fi" style="cursor:default;color:var(--mute)">(chưa có file .kg.md)</div>';
+    : '<div class="fi" style="cursor:default;color:var(--mute)">(no .kg.md files yet)</div>';
   $$("#exFiles [data-f]").forEach(el => el.onclick = () => { if (!ST && el.dataset.f !== S.name) openFile(el.dataset.f); });
   renderTree($("#exOutline"));
 }
@@ -1622,7 +1629,7 @@ function treeRow(n, depth, has, via, dim) {
 }
 function renderTree(el) {           // vẽ vào View Tree, hoặc vào Outline của Explorer
   el = el || $("#treeView");
-  if (!S.graph) { el.innerHTML = '<div class="tr"><span class="nm" style="color:var(--mute)">(chưa có dữ liệu)</span></div>'; return; }
+  if (!S.graph) { el.innerHTML = '<div class="tr"><span class="nm" style="color:var(--mute)">(no data yet)</span></div>'; return; }
   const {kids, roots} = treeChildren(), out = [];
   // - hide: tree / all: View Tree bỏ hẳn; Outline vẫn hiện (mờ) để còn tìm và sửa
   const hid = hiddenIn("tree"), isView = el.id === "treeView";
@@ -1737,7 +1744,7 @@ function bookLinks(n) {
 }
 function renderBook() {
   const el = $("#bookView");
-  if (!S.graph) { el.innerHTML = '<div class="book"><p class="empty">(chưa có dữ liệu)</p></div>'; return; }
+  if (!S.graph) { el.innerHTML = '<div class="book"><p class="empty">(no data yet)</p></div>'; return; }
   const items = S.graph.nodes.filter(n => n.kind !== "external").sort((a, b) => a.line - b.line), out = [];
   let hidden = 0;
   for (const n of items) {
@@ -1756,14 +1763,14 @@ function renderBook() {
       `<h4>${mdInline(n.title || n.id)}${n.type ? `<span class="ty">${esc(n.type)}</span>` : ""}<small>@${esc(n.id)}</small></h4>` +
       (meta ? `<div class="chips attrs">${meta}</div>` : "") +
       (n.ask ? `<div class="ask">✎ ${mdInline(n.ask)}</div>` : "") +
-      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(chưa có nội dung)</p>')) +
+      (n.content ? mdBlock(n.content) : (n.ask ? "" : '<p class="empty">(no content yet)</p>')) +
       bookLinks(n) + "</article>");
   }
-  if (hidden) out.push(`<p class="note">${hidden} mục có <code>show: none</code> hoặc <code>hide</code> không hiện trong sách (View › Hiện cả node đã ẩn).</p>`);
+  if (hidden) out.push(`<p class="note">${hidden} item(s) with <code>show: none</code> or <code>hide</code> are not shown in the book (View › Show hidden nodes).</p>`);
   el.innerHTML = `<div class="book">${out.join("")}</div>`;
   el.querySelectorAll("[data-go]").forEach(a => a.onclick = e => {
     e.stopPropagation(); const id = a.dataset.go;
-    if (!el.querySelector(`[data-id="${CSS.escape(id)}"]`)) return status(id + " không hiện trong sách (show: none hoặc node import).");
+    if (!el.querySelector(`[data-id="${CSS.escape(id)}"]`)) return status(id + " is not shown in the book (show: none or imported node).");
     focusNode(id, true);
   });
   el.querySelectorAll("[data-line]").forEach(b => b.onclick = e => {
@@ -1889,7 +1896,7 @@ function clipTo(b, tx, ty) {            // điểm trên mép hình của b, hư
 }
 function renderModule() {
   const el = $("#moduleView");
-  if (!S.graph) { el.innerHTML = '<p class="ins-empty">(chưa có dữ liệu)</p>'; return; }
+  if (!S.graph) { el.innerHTML = '<p class="ins-empty">(no data yet)</p>'; return; }
   if (S.modKey !== modKey()) loadMod();
   const {kids, roots} = modChildren();
   const main = roots.filter(r => r.n.kind !== "external" && modVisible(r.n)), ext = roots.filter(r => r.n.kind === "external");
@@ -1929,7 +1936,7 @@ function renderModule() {
       ` stroke="${esc(stroke)}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="6,4"' : ""}/>` +
       (has ? `<text class="mtw" x="${b.ax + 14}" y="${b.ay + 21}">${b.closed ? "▸" : "▾"}</text>` : "") +
       (sec && (S.hideLab || {}).section ? "" : `<text class="mgt${sec ? " sec" : ""}" x="${b.ax + (has ? 30 : 14)}" y="${b.ay + 21}" style="fill:${esc(look.label)}">${esc(b.n.title || b.n.id)}</text>`) +
-      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}" style="fill:${esc(look.sub)}">+${b.count} con · nhấp đúp để mở</text>` : "") + "</g>";
+      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}" style="fill:${esc(look.sub)}">+${b.count} children · double-click to open</text>` : "") + "</g>";
   }).join("");
   const lsvg = leaves.map(b => {
     // lá: chữ nằm trên nền node → dùng màu chữ chính (tự đổi trắng / đen theo nền nếu style không ghi)
@@ -1943,14 +1950,14 @@ function renderModule() {
   const types = [...new Set(S.graph.links.filter(l => !l.tree && !["part-of", "contain", "mention"].includes(l.type)).map(l => l.type))];
   const parents = groups.filter(b => b.count > 0 && b.n.id !== "__ext").map(b => b.n.id);
   el.innerHTML =
-    `<div class="mbar"><button class="btn" data-mall="open">Bung hết</button><button class="btn" data-mall="close">Thu hết</button>` +
-    `<button class="btn" data-mall="fit" title="Vừa khung">⤢</button>` +
-    `<span class="mlinks" title="Mặc định: con part-of cha, cha contain con, node trong section. Tick thêm loại link: nguồn nằm trong đích.">Lồng theo: ` +
+    `<div class="mbar"><button class="btn" data-mall="open">Expand all</button><button class="btn" data-mall="close">Collapse all</button>` +
+    `<button class="btn" data-mall="fit" title="Fit to view">⤢</button>` +
+    `<span class="mlinks" title="Default: child part-of parent, parent contain child, node in section. Tick more link types: source nested in target.">Nest by: ` +
     `<b style="color:${esc(linkText("part-of"))}">part-of</b>, <b style="color:${esc(linkText("contain"))}">contain</b>` +
     types.map(t => `<label><input type="checkbox" data-mlink="${esc(t)}"${modLinks.has(t) ? " checked" : ""}> <span style="color:${esc(linkText(t))}">${esc(t)}</span></label>`).join("") +
     `</span></div>` +
     `<svg id="msvg" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs><g id="mz">${gsvg}${edges}${lsvg}</g></svg>` +
-    `<div class="mhint">▾ / ▸ hoặc nhấp đúp nhóm: hiện / ẩn node con · kéo nền: di chuyển · cuộn: phóng to</div>`;
+    `<div class="mhint">▾ / ▸ or double-click a group: show / hide children · drag background: pan · scroll: zoom</div>`;
   const svg = el.querySelector("#msvg"), z = el.querySelector("#mz");
   const apply = () => z.setAttribute("transform", `translate(${MV.tx},${MV.ty}) scale(${MV.k})`);
   const fit = () => {
@@ -2001,10 +2008,10 @@ function renderModule() {
 <script>
 // inspect.js - Inspector (thanh bên phải): node / link đang chọn.
 // Sửa tiêu đề, meta, nội dung, link → ghi vào .kg.md; sửa format → ghi luật vào style.kg.md. Sau mỗi lần sửa, parse lại.
-const SHAPES = [["ellipse", "Elip"], ["box", "Chữ nhật"], ["circle", "Tròn"], ["square", "Vuông"], ["diamond", "Thoi"],
-  ["hexagon", "Lục giác"], ["triangle", "Tam giác"], ["star", "Sao"], ["dot", "Chấm"], ["database", "Trụ"], ["text", "Chỉ chữ"]];
-const ARROWS = [["to", "→ ở đích"], ["from", "← ở nguồn"], ["both", "↔ hai đầu"], ["none", "không có"]];
-const DASH = [["false", "liền"], ["true", "đứt"]];
+const SHAPES = [["ellipse", "Ellipse"], ["box", "Box"], ["circle", "Circle"], ["square", "Square"], ["diamond", "Diamond"],
+  ["hexagon", "Hexagon"], ["triangle", "Triangle"], ["star", "Star"], ["dot", "Dot"], ["database", "Database"], ["text", "Text only"]];
+const ARROWS = [["to", "→ at target"], ["from", "← at source"], ["both", "↔ both ends"], ["none", "none"]];
+const DASH = [["false", "solid"], ["true", "dashed"]];
 const FONTS = ["system-ui", "Segoe UI", "Arial", "Times New Roman", "Georgia", "Consolas"].map(f => [f, f]);
 let insClosed = new Set();
 try { insClosed = new Set(JSON.parse(localStorage.getItem("kgins") || "[]")); } catch (e) {}
@@ -2031,7 +2038,7 @@ const row = (label, ctl) => `<div class="ins-row"><span>${label}</span>${ctl}</d
 const sel = (attr, list, cur, blank) => `<select ${attr}>${blank ? `<option value="">${blank}</option>` : ""}` +
   list.map(([v, l]) => `<option value="${esc(v)}"${fmtVal(cur) === v ? " selected" : ""}>${esc(l)}</option>`).join("") + "</select>";
 const numIn = (attr, v, min, max, step) =>
-  `<input type="number" ${attr} min="${min}" max="${max}" step="${step || 1}" value="${v === undefined ? "" : esc(v)}" placeholder="mặc định">`;
+  `<input type="number" ${attr} min="${min}" max="${max}" step="${step || 1}" value="${v === undefined ? "" : esc(v)}" placeholder="default">`;
 // màu có sẵn (tên màu CSS) ghi thẳng vào style.kg.md: html.color=red
 const NAMED = ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "brown", "gray", "black", "white",
   "lightblue", "lightgreen", "lightyellow", "lightpink", "lightgray"];
@@ -2042,10 +2049,10 @@ function colorHex(v) {             // tên màu / #rgb / rgb() → #rrggbb cho �
 }
 const colorIn = (attr, v, d) => {
   const cur = v === undefined || v === null ? "" : String(v);
-  return `<div class="cc"><select ${attr} title="Màu có sẵn"><option value="">(mặc định)</option>` +
+  return `<div class="cc"><select ${attr} title="Preset colors"><option value="">(default)</option>` +
     NAMED.map(n => `<option value="${n}"${cur === n ? " selected" : ""}>■ ${n}</option>`).join("") +
     (cur && !NAMED.includes(cur) ? `<option value="${esc(cur)}" selected>${esc(cur)}</option>` : "") +
-    `</select><input type="color" ${attr} value="${colorHex(cur) || d}" title="Chọn màu bất kỳ"></div>`;
+    `</select><input type="color" ${attr} value="${colorHex(cur) || d}" title="Pick any color"></div>`;
 };
 const title = id => { const n = S.byId[id]; return n ? (n.title || id) : id; };
 
@@ -2060,60 +2067,60 @@ function valueList(n, k) {       // gợi ý giá trị cho một khóa meta
 }
 function linkRows(n) {
   const L = S.graph.links.filter(l => !l.tree && (l.source === n.id || l.target === n.id));
-  if (!L.length) return '<div class="ins-note">Chưa có link.</div>';
+  if (!L.length) return '<div class="ins-note">No links yet.</div>';
   return '<div class="ins-links">' + L.map(l => {
     const out = l.source === n.id, other = out ? l.target : l.source, auto = AUTO_LINKS.includes(l.type);
     const spec = esc(JSON.stringify({source:l.source, target:l.target, type:l.type}));
-    return `<div class="lk"><span class="t" style="color:${esc(linkText(l.type))};cursor:pointer" data-sellink="${spec}" title="Chọn link này">${esc(l.type)}</span>` +
+    return `<div class="lk"><span class="t" style="color:${esc(linkText(l.type))};cursor:pointer" data-sellink="${spec}" title="Select this link">${esc(l.type)}</span>` +
       `${out ? "→" : "←"} <a data-sel="${esc(other)}" title="${esc(other)}">${esc(title(other))}</a>` +
-      (auto ? `<span class="auto" title="Parser tự sinh: sửa trong văn bản (${l.type === "contain" ? "meta contain" : "@tham chiếu"})">tự sinh</span>`
-            : (ST ? "" : `<button class="x" data-dellink="${spec}" title="Xóa link">×</button>`)) + "</div>";
+      (auto ? `<span class="auto" title="Generated by the parser: edit in the text (${l.type === "contain" ? "meta contain" : "@reference"})">auto</span>`
+            : (ST ? "" : `<button class="x" data-dellink="${spec}" title="Delete link">×</button>`)) + "</div>";
   }).join("") + "</div>";
 }
 function nodeFormat(n) {
   const s = H(n);
-  return row("Hình", sel('data-fmt="shape"', SHAPES, s.shape, "(mặc định)")) +
-    row("Màu nền", colorIn('data-fmt="color"', s.color, "#ffffff")) +
-    row("Màu viền", colorIn('data-fmt="border-color"', s["border-color"], "#607d8b")) +
-    row("Màu chữ", colorIn('data-fmt="font-color"', s["font-color"], "#1f2328")) +
-    row("Viền dày", numIn('data-fmt="border"', s.border, 0, 10)) +
-    row("Nét viền", sel('data-fmt="dash"', DASH, s.dash, "(mặc định)")) +
-    row("Bo góc", numIn('data-fmt="radius"', s.radius, 0, 40)) +
-    row("Font", sel('data-fmt="font"', FONTS, s.font, "(mặc định)")) +
-    row("Cỡ chữ", numIn('data-fmt="font-size"', s["font-size"], 8, 48)) +
-    row("Kích thước", numIn('data-fmt="size"', s.size, 5, 300)) +
-    row("Độ đậm", numIn('data-fmt="opacity"', s.opacity, 0, 1, 0.1)) +
-    `<div class="ins-acts"><button class="btn" data-act="clearfmt">Xóa format riêng</button></div>` +
-    `<div class="ins-note">Ghi vào style.kg.md, luật <code>select="#${esc(n.id)}"</code>. Kích thước dùng cho vuông, chấm, sao…</div>`;
+  return row("Shape", sel('data-fmt="shape"', SHAPES, s.shape, "(default)")) +
+    row("Fill color", colorIn('data-fmt="color"', s.color, "#ffffff")) +
+    row("Border color", colorIn('data-fmt="border-color"', s["border-color"], "#607d8b")) +
+    row("Font color", colorIn('data-fmt="font-color"', s["font-color"], "#1f2328")) +
+    row("Border width", numIn('data-fmt="border"', s.border, 0, 10)) +
+    row("Border style", sel('data-fmt="dash"', DASH, s.dash, "(default)")) +
+    row("Corner radius", numIn('data-fmt="radius"', s.radius, 0, 40)) +
+    row("Font", sel('data-fmt="font"', FONTS, s.font, "(default)")) +
+    row("Font size", numIn('data-fmt="font-size"', s["font-size"], 8, 48)) +
+    row("Size", numIn('data-fmt="size"', s.size, 5, 300)) +
+    row("Opacity", numIn('data-fmt="opacity"', s.opacity, 0, 1, 0.1)) +
+    `<div class="ins-acts"><button class="btn" data-act="clearfmt">Clear custom format</button></div>` +
+    `<div class="ins-note">Written to style.kg.md, rule <code>select="#${esc(n.id)}"</code>. Size applies to square, dot, star…</div>`;
 }
 function nodePanel(n) {
   const ext = n.kind === "external", node = n.kind === "node";
   let h = `<div class="ins-in" style="padding-top:10px"><span class="ins-kind">${esc(n.kind)}</span><span class="ins-id">${node ? "@" : ""}${esc(n.id)}</span>` +
-    row("Tiêu đề", `<input type="text" data-act="title" value="${esc(n.title || "")}"${ext ? " disabled" : ""}>`) +
-    `<div class="ins-acts">${!ext && n.line ? `<button class="btn" data-act="goto">Tới dòng ${n.line}</button>` : ""}` +
-    (node && !ST ? '<button class="btn danger" data-act="delnode">Xóa node</button>' : "") + "</div>" +
-    (n.auto_id ? '<div class="ins-note">Section chưa có @id: ID sinh từ tiêu đề nên đổi theo tiêu đề.</div>' : "") +
-    (ext ? `<div class="ins-note">Node import từ module <b>${esc(n.module)}</b>: chỉ xem.</div>` : "") + "</div>";
+    row("Title", `<input type="text" data-act="title" value="${esc(n.title || "")}"${ext ? " disabled" : ""}>`) +
+    `<div class="ins-acts">${!ext && n.line ? `<button class="btn" data-act="goto">Go to line ${n.line}</button>` : ""}` +
+    (node && !ST ? '<button class="btn danger" data-act="delnode">Delete node</button>' : "") + "</div>" +
+    (n.auto_id ? '<div class="ins-note">Section has no @id: its ID is derived from the title and changes with it.</div>' : "") +
+    (ext ? `<div class="ins-note">Node imported from module <b>${esc(n.module)}</b>: read-only.</div>` : "") + "</div>";
   if (node) {
     const meta = Object.entries(n.meta || {});
     h += sec("meta", "META",
       '<div class="ins-meta">' + meta.map(([k, v]) =>
         `<span class="k" style="color:${esc(keyColor(k))}" title="${esc(k)}">${esc(k)}</span>` +
-        `<input type="text" data-meta="${esc(k)}" value="${esc(fmtVal(v))}" list="dlv-${esc(k)}"><button class="x" data-delmeta="${esc(k)}" title="Xóa khóa">×</button>`
+        `<input type="text" data-meta="${esc(k)}" value="${esc(fmtVal(v))}" list="dlv-${esc(k)}"><button class="x" data-delmeta="${esc(k)}" title="Delete key">×</button>`
       ).join("") +
-      '<input type="text" id="insNewKey" placeholder="khóa mới" list="dlKeys"><input type="text" id="insNewVal" placeholder="giá trị">' +
-      '<button class="btn" data-act="addmeta" title="Thêm khóa">+</button></div>' +
+      '<input type="text" id="insNewKey" placeholder="new key" list="dlKeys"><input type="text" id="insNewVal" placeholder="value">' +
+      '<button class="btn" data-act="addmeta" title="Add key">+</button></div>' +
       meta.map(([k]) => valueList(n, k)).join("") +
-      '<div class="ins-note">Giá trị viết như trong file: true/false, số, chữ; <code>contain</code> là danh sách ID node con.</div>');
-    h += sec("text", "NỘI DUNG",
+      '<div class="ins-note">Values as written in the file: true/false, numbers, text; <code>contain</code> is a list of child node IDs.</div>');
+    h += sec("text", "CONTENT",
       row("content", "") + `<textarea data-field="content" rows="4">${esc(n.content || "")}</textarea>` +
-      row("ask", "") + `<textarea data-field="ask" rows="2" placeholder="lời dặn cho AI">${esc(n.ask || "")}</textarea>` +
-      `<label style="display:flex;gap:6px;align-items:center;margin-top:6px;color:var(--mute)"><input type="checkbox" data-act="show"${n.show === "none" ? " checked" : ""}> Ẩn khỏi sách (show: none)</label>`);
+      row("ask", "") + `<textarea data-field="ask" rows="2" placeholder="instructions for AI">${esc(n.ask || "")}</textarea>` +
+      `<label style="display:flex;gap:6px;align-items:center;margin-top:6px;color:var(--mute)"><input type="checkbox" data-act="show"${n.show === "none" ? " checked" : ""}> Hide from book (show: none)</label>`);
   }
   h += sec("links", "LINK", linkRows(n) + (ST || ext ? "" :
-    `<div class="ins-add"><input type="text" id="insLinkType" list="dlLinks" value="${esc(S.lastLinkType || $("#linkSel").value || "")}" placeholder="loại">` +
-    `<input type="text" id="insLinkTarget" list="dlNodes" placeholder="node đích"><button class="btn pri" data-act="addlink">Nối</button></div>` +
-    '<div class="ins-note">Hoặc dùng chế độ ⤳ Nối trên đồ thị: kéo từ node này sang node khác.</div>'));
+    `<div class="ins-add"><input type="text" id="insLinkType" list="dlLinks" value="${esc(S.lastLinkType || $("#linkSel").value || "")}" placeholder="type">` +
+    `<input type="text" id="insLinkTarget" list="dlNodes" placeholder="target node"><button class="btn pri" data-act="addlink">Connect</button></div>` +
+    '<div class="ins-note">Or use ⤳ Connect mode on the graph: drag from this node to another.</div>'));
   h += sec("format", "FORMAT", nodeFormat(n));
   return h;
 }
@@ -2122,23 +2129,23 @@ function linkPanel(l) {
   const spec = esc(JSON.stringify({source:l.source, target:l.target, type:l.type}));
   let h = `<div class="ins-in" style="padding-top:10px"><span class="ins-kind">link</span>` +
     `<span class="t" style="font:600 13px var(--mono);color:${esc(l.tree ? "#888" : linkText(l.type))}">${esc(l.type)}</span>` +
-    `<div class="ins-links" style="margin-top:6px"><div class="lk">từ <a data-sel="${esc(l.source)}">${esc(title(l.source))}</a></div>` +
-    `<div class="lk">tới <a data-sel="${esc(l.target)}">${esc(title(l.target))}</a></div></div>` +
-    `<div class="ins-acts">${l.line ? `<button class="btn" data-act="goto" data-line="${l.line}">Tới dòng ${l.line}</button>` : ""}` +
-    (!auto && !ST ? `<button class="btn danger" data-dellink="${spec}">Xóa link</button>` : "") + "</div>" +
-    (auto ? `<div class="ins-note">${l.tree ? "Cạnh chứa section → node: đổi bằng cách chuyển node sang section khác." :
-      l.type === "contain" ? "Sinh từ meta contain của node nguồn." : "Sinh từ @tham chiếu trong nội dung."}</div>` : "") + "</div>";
+    `<div class="ins-links" style="margin-top:6px"><div class="lk">from <a data-sel="${esc(l.source)}">${esc(title(l.source))}</a></div>` +
+    `<div class="lk">to <a data-sel="${esc(l.target)}">${esc(title(l.target))}</a></div></div>` +
+    `<div class="ins-acts">${l.line ? `<button class="btn" data-act="goto" data-line="${l.line}">Go to line ${l.line}</button>` : ""}` +
+    (!auto && !ST ? `<button class="btn danger" data-dellink="${spec}">Delete link</button>` : "") + "</div>" +
+    (auto ? `<div class="ins-note">${l.tree ? "Section → node containment edge: change it by moving the node to another section." :
+      l.type === "contain" ? "Generated from the source node's meta contain." : "Generated from an @reference in the content."}</div>` : "") + "</div>";
   if (!auto && !ST)
-    h += sec("retype", "ĐỔI LOẠI LINK", `<div class="ins-add" style="grid-template-columns:1fr auto"><input type="text" id="insRetype" list="dlLinks" value="${esc(l.type)}">` +
-      '<button class="btn" data-act="retype">Đổi</button></div>');
+    h += sec("retype", "CHANGE LINK TYPE", `<div class="ins-add" style="grid-template-columns:1fr auto"><input type="text" id="insRetype" list="dlLinks" value="${esc(l.type)}">` +
+      '<button class="btn" data-act="retype">Change</button></div>');
   h += sec("lformat", "FORMAT",
-    `<div class="ins-note" style="margin-top:0">Áp cho <b>mọi link loại ${esc(l.type)}</b>: luật <code>select="link=${esc(l.type)}"</code> trong style.kg.md.</div>` +
-    row("Màu", colorIn('data-lfmt="color"', s.color, colorHex(l.tree ? "#5a5a5a" : linkColor(l.type)) || "#9e9e9e")) +
-    row("Độ dày", numIn('data-lfmt="width"', s.width, 1, 12)) +
-    row("Nét", sel('data-lfmt="dash"', DASH, s.dash, "(mặc định)")) +
-    row("Mũi tên", sel('data-lfmt="arrows"', ARROWS, s.arrows, "(mặc định: ở đích)")) +
-    row("Độ đậm", numIn('data-lfmt="opacity"', s.opacity, 0, 1, 0.1)) +
-    '<div class="ins-acts"><button class="btn" data-act="clearlfmt">Xóa format loại này</button></div>');
+    `<div class="ins-note" style="margin-top:0">Applies to <b>all ${esc(l.type)} links</b>: rule <code>select="link=${esc(l.type)}"</code> in style.kg.md.</div>` +
+    row("Color", colorIn('data-lfmt="color"', s.color, colorHex(l.tree ? "#5a5a5a" : linkColor(l.type)) || "#9e9e9e")) +
+    row("Width", numIn('data-lfmt="width"', s.width, 1, 12)) +
+    row("Line style", sel('data-lfmt="dash"', DASH, s.dash, "(default)")) +
+    row("Arrows", sel('data-lfmt="arrows"', ARROWS, s.arrows, "(default: at target)")) +
+    row("Opacity", numIn('data-lfmt="opacity"', s.opacity, 0, 1, 0.1)) +
+    '<div class="ins-acts"><button class="btn" data-act="clearlfmt">Clear format for this type</button></div>');
   return h;
 }
 
@@ -2147,11 +2154,11 @@ function renderInspector(force) {
   if (!force && insFocused()) return;          // đang gõ trong Inspector: không vẽ đè
   const n = S.selected && S.byId[S.selected], l = !n && curLink();
   if (!S.graph || (!n && !l)) {
-    el.innerHTML = `<div class="ins-empty">Chọn một node hoặc link (trên đồ thị, Tree, Book, Outline, hoặc đặt con trỏ trong văn bản) để xem và sửa.<br><br>` +
-      (ST ? "" : "Tạo node: chế độ <b>＋ Node</b> trên đồ thị.<br>Nối node: chế độ <b>⤳ Nối</b>.") + "</div>";
+    el.innerHTML = `<div class="ins-empty">Select a node or link (on the graph, Tree, Book, Outline, or put the cursor in the text) to view and edit.<br><br>` +
+      (ST ? "" : "Create nodes: <b>＋ Node</b> mode on the graph.<br>Connect nodes: <b>⤳ Connect</b> mode.") + "</div>";
     return;
   }
-  el.innerHTML = (ST ? '<div class="ins-note" style="margin:8px 12px;color:#e2c08d">Bản tĩnh (file .html): chỉ xem, sửa ở đây không được lưu. Muốn sửa: chạy <code>king serve</code>.</div>' : "") +
+  el.innerHTML = (ST ? '<div class="ins-note" style="margin:8px 12px;color:#e2c08d">Static copy (.html file): read-only, edits here are not saved. To edit: run <code>king serve</code>.</div>' : "") +
     (n ? nodePanel(n) : linkPanel(l));
   wireInspector(el, n, l);
 }
@@ -2191,7 +2198,7 @@ function wireInspector(el, n, l) {
   if (n) {
     on('[data-act="title"]', "change", e => { const t = e.target.value.trim(); if (t && t !== n.title) insOp("rename", {id:n.id, title:t}); });
     on('[data-act="delnode"]', "click", async () => {
-      if (!confirm(`Xóa node ${n.id} khỏi ${S.name}?`)) return;
+      if (!confirm(`Delete node ${n.id} from ${S.name}?`)) return;
       S.selected = null; await insOp("delete_node", {ids:[n.id]});
     });
     const setMeta = meta => insOp("set_meta", {id:n.id, meta});
@@ -2205,7 +2212,7 @@ function wireInspector(el, n, l) {
     });
     const addMeta = () => {
       const k = $("#insNewKey").value.trim(), v = $("#insNewVal").value.trim();
-      if (!k) return status("Nhập tên khóa meta.", "err");
+      if (!k) return status("Enter a meta key name.", "err");
       setMeta({...n.meta, [k]:v || "true"});
     };
     on('[data-act="addmeta"]', "click", addMeta);
@@ -2221,7 +2228,7 @@ function wireInspector(el, n, l) {
     on('[data-act="show"]', "change", e => insOp("set_field", {id:n.id, key:"show", value:e.target.checked ? "none" : ""}));
     const addLink = async () => {
       const type = $("#insLinkType").value.trim(), target = resolveRef($("#insLinkTarget").value);
-      if (!type || !target) return status("Nhập loại link và node đích.", "err");
+      if (!type || !target) return status("Enter a link type and a target node.", "err");
       S.lastLinkType = type;
       await insOp("add_link", {source:n.id, target, type});
     };
@@ -2270,7 +2277,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenus()
 // Panel: text (khung văn bản) và 4 view. Mỗi panel chỉ có một bản, nằm ở một khung (left / right) hoặc đang đóng.
 // Mỗi khung có một tab đang mở; hai khung có thể mở hai view khác nhau cùng lúc (vd. Tree bên trái, Graph bên phải).
 const VIEWS = {graph:"Graph", tree:"Tree", book:"Book", module:"Module"};
-const PANELS = {text:"Văn bản (.kg.md)", ...VIEWS};
+const PANELS = {text:"Text (.kg.md)", ...VIEWS};
 const PANES = ["left", "right"];
 const PANE_KEY = "kgpanes";
 const tabOf = p => $(`.tab[data-panel="${p}"]`), bodyOf = p => $("#" + p + "View");
@@ -2347,7 +2354,7 @@ function openAddMenu(btn) {
   const id = btn.closest(".pane").id;
   addMenu.innerHTML = Object.entries(PANELS).map(([p, name]) => {
     const where = paneOf(p);
-    const note = where === id ? "đang ở đây" : where ? "chuyển từ khung " + (where === "left" ? "trái" : "phải") : "";
+    const note = where === id ? "already here" : where ? "move from " + (where === "left" ? "left" : "right") + " pane" : "";
     return `<button data-add="${p}" ${where === id ? "disabled" : ""}>${name}<small>${note}</small></button>`;
   }).join("");
   const r = btn.getBoundingClientRect();
@@ -2426,9 +2433,9 @@ setInterval(async () => {
   try {
     const m = await api("/api/mtime?name=" + encodeURIComponent(S.name));
     if (m.mtime > S.mtime + 1e-6) {
-      if (!S.dirty || confirm(S.name + " vừa được sửa ở nơi khác. Tải lại (bỏ thay đổi ở đây)?")) {
+      if (!S.dirty || confirm(S.name + " was changed elsewhere. Reload (discard changes here)?")) {
         const f = await api("/api/file?name=" + encodeURIComponent(S.name));
-        S.mtime = f.mtime; setText(f.text); S.dirty = false; await reparse(); status("Đã tải lại " + S.name);
+        S.mtime = f.mtime; setText(f.text); S.dirty = false; await reparse(); status("Reloaded " + S.name);
       } else S.mtime = m.mtime;
     }
     if (m.side !== S.side) { S.side = m.side; await reparse(); }
@@ -2445,7 +2452,7 @@ $("#showTree").onchange = () => { if (S.graph) { edgesDS.clear(); edgesDS.add(vi
 $("#showDefs").onchange = e => { S.showDefs = e.target.checked; if (S.graph) render(S.graph); };
 function toggleShowHidden() {            // tạm hiện lại node / link có - hide: …
   S.showHidden = !S.showHidden; $("#bShowHidden").classList.toggle("on", S.showHidden);
-  status(S.showHidden ? "Đang hiện cả node đã ẩn (hide). Ctrl+H để ẩn lại." : "Đã ẩn lại các node có hide.");
+  status(S.showHidden ? "Showing hidden nodes (hide). Ctrl+H to hide again." : "Nodes with hide are hidden again.");
   if (S.graph) render(S.graph);
 }
 $("#bShowHidden").onclick = toggleShowHidden;
@@ -2499,7 +2506,7 @@ $$("#bWrap, #bWrap2").forEach(b => b.addEventListener("click", () => setWrap(!S.
 // Alt+Z: ngắt dòng (macOS: Option+Z cho ký tự "Ω"). Mở trang trong VS Code thì VS Code giữ Alt+Z: dùng nút ↵ Wrap.
 document.addEventListener("keydown", e => {
   if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyZ" || /^[zΩ]$/i.test(e.key))) {
-    e.preventDefault(); setWrap(!S.wrap); status(S.wrap ? "Ngắt dòng: bật (Alt+Z để tắt)" : "Ngắt dòng: tắt");
+    e.preventDefault(); setWrap(!S.wrap); status(S.wrap ? "Word wrap: on (Alt+Z to turn off)" : "Word wrap: off");
   }
 }, true);
 { let w = ""; try { w = localStorage.getItem("kgwrap"); } catch (e) {} if (w) setWrap(true); }
@@ -2523,21 +2530,37 @@ function pickFromUrl() {           // ?node=id mở sẵn node đó (link chia s
   const id = BOOT_URL.get("node");
   if (id && S.byId[id]) { focusNode(id, true); if (S.byId[id].line) jumpTo(S.byId[id].line); }
 }
+// Fullscreen toggle (menubar button; Esc exits via the browser)
+{
+  const b = $("#bFullscreen"), d = document.documentElement;
+  const cur = () => document.fullscreenElement || document.webkitFullscreenElement;
+  const sync = () => { const on = !!cur(); b.innerHTML = on ? "&#x2715; Exit fullscreen" : "&#x26F6; Fullscreen"; b.setAttribute("aria-pressed", on); };
+  b.addEventListener("click", () => {
+    try {
+      if (cur()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else (d.requestFullscreen || d.webkitRequestFullscreen).call(d);
+    } catch (e) { status("Fullscreen not available: " + e.message, "err"); }
+  });
+  document.addEventListener("fullscreenchange", sync);
+  document.addEventListener("webkitfullscreenchange", sync);
+}
 (async () => {
   setMode("select");
   restorePanes(new URLSearchParams(location.search).get("view"));
   if (ST) {
     document.body.classList.add("static"); src.readOnly = true;
     S.name = ST.name; src.value = S.text = ST.text; $("#fname").textContent = ST.name;
-    $("#title").textContent = ST.name + " — bản tĩnh, chỉ xem"; $("#sbRoot").textContent = "Bản tĩnh";
+    $("#title").textContent = ST.name + " — static, read-only"; $("#sbRoot").textContent = "Static copy";
     $("#editLink").href = "http://127.0.0.1:8765/?file=" + encodeURIComponent(ST.name);
-    document.title = ST.name; render(ST.graph); renderExplorer(); pickFromUrl(); return;
+    document.title = ST.name; render(ST.graph); renderExplorer();
+    if (!BOOT_URL.get("view")) setView("book");   // static page opens in the Book view
+    pickFromUrl(); return;
   }
   try {
     const s = await refreshState(), want = new URLSearchParams(location.search).get("file");
     await openFile(s.files.includes(want) ? want : (s.files.find(f => !/^(schema|style)\./.test(f)) || s.files[0] || ""));
     pickFromUrl();
-  } catch (e) { status("Không kết nối được server (king serve): " + e.message, "err"); }
+  } catch (e) { status("Cannot connect to server (king serve): " + e.message, "err"); }
 })();
 </script>
 </body>

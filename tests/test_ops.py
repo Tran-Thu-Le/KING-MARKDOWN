@@ -1,4 +1,4 @@
-# Ops (sửa ngược file .kg.md) viết cho cú pháp v0.2 - ĐÓNG BĂNG ở 0.3 (dev/plan-v3/plan-v3.md).
+# Ops (sửa ngược file .kg.md) viết cho cú pháp v0.2 - ĐÓNG BĂNG ở 0.3.
 import os
 import shutil
 import sys

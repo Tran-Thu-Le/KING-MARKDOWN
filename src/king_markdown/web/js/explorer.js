@@ -6,7 +6,7 @@ async function listDirs(p) {
     $("#dpath").value = r.path;
     $("#dlist").innerHTML = (r.parent ? `<div data-p="${esc(r.parent)}">⬆ ..</div>` : "") +
       r.dirs.map(d => `<div data-p="${esc(d.path)}">📁 ${esc(d.name)}${d.kg ? ` <small>${d.kg} file .kg.md</small>` : ""}</div>`).join("") +
-      (r.files.length ? `<div style="cursor:default;color:var(--mute)">Trong thư mục: ${r.files.map(esc).join(", ")}</div>` : "");
+      (r.files.length ? `<div style="cursor:default;color:var(--mute)">In folder: ${r.files.map(esc).join(", ")}</div>` : "");
     $$("#dlist [data-p]").forEach(d => d.onclick = () => listDirs(d.dataset.p));
   } catch (e) { alert(e.message); }
 }
@@ -19,15 +19,15 @@ $("#dok").onclick = async () => {
     if (S.dirty) await save();
     await api("/api/open-folder", {path:$("#dpath").value}); $("#dlg").close();
     const s = await refreshState(); await openFile(s.files[0] || "");
-    if (!s.files.length) status("Thư mục chưa có file .kg.md: File → File mới…");
+    if (!s.files.length) status("Folder has no .kg.md files: File → New file…");
   } catch (e) { alert(e.message); }
 };
 $("#bNew").onclick = $("#exNew").onclick = async () => {
   closeMenus();
-  const n = (prompt("Tên file mới (không cần đuôi .kg.md):") || "").trim(); if (!n) return;
+  const n = (prompt("New file name (without .kg.md):") || "").trim(); if (!n) return;
   try { const r = await api("/api/new", {name:n}); await refreshState(); await openFile(r.name); } catch (e) { alert(e.message); }
 };
-$("#exRefresh").onclick = async () => { try { await refreshState(); status("Đã tải lại danh sách file."); } catch (e) { status(e.message, "err"); } };
+$("#exRefresh").onclick = async () => { try { await refreshState(); status("File list reloaded."); } catch (e) { status(e.message, "err"); } };
 
 // ---------- Explorer: file trong thư mục (schema / style mở và sửa trực tiếp) + outline ----------
 function fileRole(f) {
@@ -38,12 +38,12 @@ function fileRole(f) {
 }
 function renderExplorer() {
   const files = ST ? [ST.name] : (S.files || []);
-  $("#exRoot").textContent = ST ? "BẢN TĨNH" : (S.root.split(/[\\/]/).pop() || S.root);
+  $("#exRoot").textContent = ST ? "STATIC COPY" : (S.root.split(/[\\/]/).pop() || S.root);
   $("#exRoot").title = S.root;
   const role = f => { const r = fileRole(f); return r ? `<span class="role ${r}">${r}</span>` : ""; };
   $("#exFiles").innerHTML = files.length
     ? files.map(f => `<div class="fi${f === S.name ? " on" : ""}" data-f="${esc(f)}" title="${esc(f)}"><span class="ic">K</span><span class="nm">${esc(f)}</span>${role(f)}</div>`).join("")
-    : '<div class="fi" style="cursor:default;color:var(--mute)">(chưa có file .kg.md)</div>';
+    : '<div class="fi" style="cursor:default;color:var(--mute)">(no .kg.md files yet)</div>';
   $$("#exFiles [data-f]").forEach(el => el.onclick = () => { if (!ST && el.dataset.f !== S.name) openFile(el.dataset.f); });
   renderTree($("#exOutline"));
 }
@@ -79,7 +79,7 @@ function treeRow(n, depth, has, via, dim) {
 }
 function renderTree(el) {           // vẽ vào View Tree, hoặc vào Outline của Explorer
   el = el || $("#treeView");
-  if (!S.graph) { el.innerHTML = '<div class="tr"><span class="nm" style="color:var(--mute)">(chưa có dữ liệu)</span></div>'; return; }
+  if (!S.graph) { el.innerHTML = '<div class="tr"><span class="nm" style="color:var(--mute)">(no data yet)</span></div>'; return; }
   const {kids, roots} = treeChildren(), out = [];
   // - hide: tree / all: View Tree bỏ hẳn; Outline vẫn hiện (mờ) để còn tìm và sửa
   const hid = hiddenIn("tree"), isView = el.id === "treeView";

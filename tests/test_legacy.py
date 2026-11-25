@@ -96,7 +96,7 @@ class TestContain(unittest.TestCase):
 class TestStyle(unittest.TestCase):
     def test_example_style(self):
         from king_markdown.parser import Parser as Parser03       # ví dụ đã sang 0.3; style vẫn v0.2
-        path = os.path.join(ROOT, "examples", "python-course", "vidu.kg.md")
+        path = os.path.join(ROOT, "tests", "fixtures", "example-style", "vidu.kg.md")
         g = Parser03(read(path), path).build()
         n = {n["id"]: n for n in g["nodes"]}
         self.assertEqual(n["tich-phan"]["style"]["html"]["shape"], "circle")       # #id thắng

@@ -29,9 +29,9 @@ def static_html(name, text, graph):
 
 def report(data, path):
     for e in data["graph"]["errors"]:
-        print(f"LỖI   {e.get('file', path)}:{e['line']}: {e['msg']}", file=sys.stderr)
+        print(f"ERROR {e.get('file', path)}:{e['line']}: {e['msg']}", file=sys.stderr)
     for w in data["graph"]["warnings"]:
-        print(f"CHÚ Ý {w.get('file', path)}:{w['line']}: {w['msg']}", file=sys.stderr)
+        print(f"WARN  {w.get('file', path)}:{w['line']}: {w['msg']}", file=sys.stderr)
 
 
 def cmd_parse(a):
@@ -52,7 +52,7 @@ def cmd_html(a):
     with open(out, "w", encoding="utf-8") as f:
         f.write(static_html(os.path.basename(a.file), text, data))
     report(data, a.file)
-    print(f"Đã ghi {out}")
+    print(f"Wrote {out}")
     return 1 if a.strict and data["graph"]["errors"] else 0
 
 
@@ -68,23 +68,23 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="king", description="KING Markdown (.kg.md): Knowledge is KING.")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    p = sub.add_parser("serve", help="mở editor trên trình duyệt")
+    p = sub.add_parser("serve", help="open the editor in the browser")
     p.add_argument("folder", nargs="?", default=".")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-browser", action="store_true")
-    p.add_argument("--keep", action="store_true", help="không tự dừng khi đóng trang editor")
+    p.add_argument("--keep", action="store_true", help="do not stop when the editor page is closed")
     p.set_defaults(fn=cmd_serve)
 
-    p = sub.add_parser("parse", help=".kg.md → JSON (node-link, dùng được với networkx)")
+    p = sub.add_parser("parse", help=".kg.md → JSON (node-link, networkx-compatible)")
     p.add_argument("file")
-    p.add_argument("-o", "--out", help="file JSON đầu ra (bỏ trống: in ra màn hình)")
-    p.add_argument("--strict", action="store_true", help="thoát mã 1 nếu có lỗi")
+    p.add_argument("-o", "--out", help="output JSON file (omit: print to stdout)")
+    p.add_argument("--strict", action="store_true", help="exit with code 1 on errors")
     p.set_defaults(fn=cmd_parse)
 
-    p = sub.add_parser("html", help=".kg.md → HTML tĩnh, chỉ xem")
+    p = sub.add_parser("html", help=".kg.md → static read-only HTML")
     p.add_argument("file")
-    p.add_argument("out", nargs="?", help="file HTML (mặc định: cùng tên, đuôi .html)")
-    p.add_argument("--strict", action="store_true", help="thoát mã 1 nếu có lỗi")
+    p.add_argument("out", nargs="?", help="HTML file (default: same name, .html)")
+    p.add_argument("--strict", action="store_true", help="exit with code 1 on errors")
     p.set_defaults(fn=cmd_html)
 
     a = ap.parse_args(argv)

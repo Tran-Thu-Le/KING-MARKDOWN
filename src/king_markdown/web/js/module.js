@@ -113,7 +113,7 @@ function clipTo(b, tx, ty) {            // điểm trên mép hình của b, hư
 }
 function renderModule() {
   const el = $("#moduleView");
-  if (!S.graph) { el.innerHTML = '<p class="ins-empty">(chưa có dữ liệu)</p>'; return; }
+  if (!S.graph) { el.innerHTML = '<p class="ins-empty">(no data yet)</p>'; return; }
   if (S.modKey !== modKey()) loadMod();
   const {kids, roots} = modChildren();
   const main = roots.filter(r => r.n.kind !== "external" && modVisible(r.n)), ext = roots.filter(r => r.n.kind === "external");
@@ -153,7 +153,7 @@ function renderModule() {
       ` stroke="${esc(stroke)}" stroke-width="${num(s.border, 1.5)}"${s.dash === true ? ' stroke-dasharray="6,4"' : ""}/>` +
       (has ? `<text class="mtw" x="${b.ax + 14}" y="${b.ay + 21}">${b.closed ? "▸" : "▾"}</text>` : "") +
       (sec && (S.hideLab || {}).section ? "" : `<text class="mgt${sec ? " sec" : ""}" x="${b.ax + (has ? 30 : 14)}" y="${b.ay + 21}" style="fill:${esc(look.label)}">${esc(b.n.title || b.n.id)}</text>`) +
-      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}" style="fill:${esc(look.sub)}">+${b.count} con · nhấp đúp để mở</text>` : "") + "</g>";
+      (b.closed ? `<text class="mgc" x="${b.ax + 30}" y="${b.ay + 43}" style="fill:${esc(look.sub)}">+${b.count} children · double-click to open</text>` : "") + "</g>";
   }).join("");
   const lsvg = leaves.map(b => {
     // lá: chữ nằm trên nền node → dùng màu chữ chính (tự đổi trắng / đen theo nền nếu style không ghi)
@@ -167,14 +167,14 @@ function renderModule() {
   const types = [...new Set(S.graph.links.filter(l => !l.tree && !["part-of", "contain", "mention"].includes(l.type)).map(l => l.type))];
   const parents = groups.filter(b => b.count > 0 && b.n.id !== "__ext").map(b => b.n.id);
   el.innerHTML =
-    `<div class="mbar"><button class="btn" data-mall="open">Bung hết</button><button class="btn" data-mall="close">Thu hết</button>` +
-    `<button class="btn" data-mall="fit" title="Vừa khung">⤢</button>` +
-    `<span class="mlinks" title="Mặc định: con part-of cha, cha contain con, node trong section. Tick thêm loại link: nguồn nằm trong đích.">Lồng theo: ` +
+    `<div class="mbar"><button class="btn" data-mall="open">Expand all</button><button class="btn" data-mall="close">Collapse all</button>` +
+    `<button class="btn" data-mall="fit" title="Fit to view">⤢</button>` +
+    `<span class="mlinks" title="Default: child part-of parent, parent contain child, node in section. Tick more link types: source nested in target.">Nest by: ` +
     `<b style="color:${esc(linkText("part-of"))}">part-of</b>, <b style="color:${esc(linkText("contain"))}">contain</b>` +
     types.map(t => `<label><input type="checkbox" data-mlink="${esc(t)}"${modLinks.has(t) ? " checked" : ""}> <span style="color:${esc(linkText(t))}">${esc(t)}</span></label>`).join("") +
     `</span></div>` +
     `<svg id="msvg" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs><g id="mz">${gsvg}${edges}${lsvg}</g></svg>` +
-    `<div class="mhint">▾ / ▸ hoặc nhấp đúp nhóm: hiện / ẩn node con · kéo nền: di chuyển · cuộn: phóng to</div>`;
+    `<div class="mhint">▾ / ▸ or double-click a group: show / hide children · drag background: pan · scroll: zoom</div>`;
   const svg = el.querySelector("#msvg"), z = el.querySelector("#mz");
   const apply = () => z.setAttribute("transform", `translate(${MV.tx},${MV.ty}) scale(${MV.k})`);
   const fit = () => {

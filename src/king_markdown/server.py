@@ -13,7 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from .ops import OPS, Doc, seed, write
-from .parser import Parser, read, slug
+from .ops03 import OPS03, Doc03
+from .parser import Parser, kg_version, read, slug
 
 ROOT = [os.getcwd()]
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
@@ -26,7 +27,7 @@ ASSETS = {"/app.css": "text/css; charset=utf-8",
 def kg_path(name):
     base = os.path.basename(name or "")
     if base != name or not base.endswith(".kg.md"):
-        raise ValueError(f"tên file không hợp lệ: {name}")
+        raise ValueError(f"invalid file name: {name}")
     return os.path.join(ROOT[0], base)
 
 
@@ -44,7 +45,7 @@ def side_mtime(name):
 def list_dirs(path):
     path = os.path.abspath(path or ROOT[0])
     if not os.path.isdir(path):
-        raise ValueError(f"không phải thư mục: {path}")
+        raise ValueError(f"not a directory: {path}")
     dirs = []
     for e in sorted(os.scandir(path), key=lambda e: e.name.lower()):
         if e.is_dir() and not e.name.startswith((".", "__")):
@@ -57,15 +58,12 @@ def new_file(name):
     base = name.strip()
     base = base[:-6] if base.endswith(".kg.md") else base
     if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", base):
-        raise ValueError("tên file chỉ gồm chữ không dấu, số, - _ .")
+        raise ValueError("file name may only contain ASCII letters, digits, - _ .")
     path = os.path.join(ROOT[0], base + ".kg.md")
     if os.path.exists(path):
-        raise ValueError(f"đã có {base}.kg.md")
-    for role in ("schema", "style"):
-        f = os.path.join(ROOT[0], role + ".kg.md")
-        if not os.path.exists(f):
-            seed(f, role)
-    write(path, f"---\nkg: 0.2\nuse: schema, style\n---\n\n# {base} @{slug(base)}\n")
+        raise ValueError(f"{base}.kg.md already exists")
+    # file mới theo cú pháp hiện hành 0.3 (không còn sinh schema/style kiểu 0.2)
+    write(path, f"---\nkg: 0.3\n---\n\n# {base} @{slug(base)}\n")
     return {"name": base + ".kg.md"}
 
 
@@ -88,7 +86,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if not self.local():
-            return self.reply({"error": "chỉ nhận truy cập từ máy này"}, 403)
+            return self.reply({"error": "local access only"}, 403)
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
@@ -108,13 +106,13 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/mtime":
                 p = kg_path(q.get("name"))
                 return self.reply({"mtime": os.path.getmtime(p), "side": side_mtime(q["name"])})
-            self.reply({"error": "không có"}, 404)
+            self.reply({"error": "not found"}, 404)
         except Exception as e:                                   # noqa: BLE001
             self.reply({"error": str(e)}, 400)
 
     def do_POST(self):
         if not self.local() or not self.headers.get("Content-Type", "").startswith("application/json"):
-            return self.reply({"error": "yêu cầu không hợp lệ"}, 403)
+            return self.reply({"error": "invalid request"}, 403)
         try:
             b = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
             path = urlparse(self.path).path
@@ -125,7 +123,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/open-folder":
                 p = os.path.abspath(b["path"])
                 if not os.path.isdir(p):
-                    raise ValueError(f"không phải thư mục: {p}")
+                    raise ValueError(f"not a directory: {p}")
                 ROOT[0] = p
                 return self.reply({"root": p, "files": kg_files(p)})
             if path == "/api/new":
@@ -137,12 +135,17 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/parse":
                 return self.reply(Parser(b["text"].replace("\r\n", "\n"), kg_path(b["name"])).build())
             if path == "/api/op":
-                d = Doc(b["text"], kg_path(b["name"]))
-                text, extra = OPS[b["op"]](d, **(b.get("args") or {}))
+                src = b["text"].replace("\r\n", "\n")
+                ver = kg_version(src) or "0.3"
+                if ver.startswith(("0.1", "0.2")):                   # file cũ: thao tác theo cú pháp 0.2
+                    d, ops = Doc(src, kg_path(b["name"])), OPS
+                else:                                                # 0.3: ghi đúng cú pháp 0.3
+                    d, ops = Doc03(src, kg_path(b["name"])), OPS03
+                text, extra = ops[b["op"]](d, **(b.get("args") or {}))
                 return self.reply({"text": text, **extra})
-            self.reply({"error": "không có"}, 404)
+            self.reply({"error": "not found"}, 404)
         except KeyError as e:
-            self.reply({"error": f"thiếu hoặc sai: {e}"}, 400)
+            self.reply({"error": f"missing or invalid: {e}"}, 400)
         except Exception as e:                                   # noqa: BLE001
             self.reply({"error": str(e)}, 400)
 
@@ -190,7 +193,7 @@ def watch(srv):
     while True:
         time.sleep(0.5)
         if CLIENTS.all_closed():
-            print("Đã đóng trang editor: dừng server.", flush=True)
+            print("Editor page closed: stopping server.", flush=True)
             srv.shutdown()
             return
 
@@ -204,10 +207,10 @@ def serve(folder=".", port=8765, browser=True, keep=False):
         except OSError:
             continue
     else:
-        raise SystemExit("không mở được cổng nào")
+        raise SystemExit("could not open any port")
     url = f"http://127.0.0.1:{p}/"
-    tail = "Ctrl+C để dừng" if keep else "đóng trang hoặc Ctrl+C để dừng"
-    print(f"Editor: {url}  (thư mục {ROOT[0]})  {tail}", flush=True)
+    tail = "Ctrl+C to stop" if keep else "close the page or Ctrl+C to stop"
+    print(f"Editor: {url}  (folder {ROOT[0]})  {tail}", flush=True)
     if not keep:
         threading.Thread(target=watch, args=(srv,), daemon=True).start()
     if browser:

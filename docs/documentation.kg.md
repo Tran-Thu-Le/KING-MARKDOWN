@@ -177,7 +177,7 @@ A schema is a `.kg.md` file of declarations:
 - dag: true
 ```
 
-`- dag: true` forbids cycles for that link type. `templates/schema.kg.md` declares the node types `Concept`, `Group`, `Example` and `Warning`. Declarations can also be written inside a data file.
+`- dag: true` forbids cycles for that link type. `src/king_markdown/templates/schema.kg.md` declares the node types `Concept`, `Group`, `Example` and `Warning`. Declarations can also be written inside a data file.
 
 @node sections-text
 - label: Sections and generated edges
@@ -216,7 +216,7 @@ A schema is a `.kg.md` file of declarations:
 - label: Style
 - type: Concept
 
-Style files keep the 0.2 format in KING 0.3: a rule is `@rule: Title` with `- meta: select="…", html.*=…`. Selectors: `kind=section`, `type=Concept`, `role=Output`, `#name`, `link`, `link=needs`. See `templates/style.kg.md`.
+Style files keep the 0.2 format in KING 0.3: a rule is `@rule: Title` with `- meta: select="…", html.*=…`. Selectors: `kind=section`, `type=Concept`, `role=Output`, `#name`, `link`, `link=needs`. See `src/king_markdown/templates/style.kg.md`.
 
 Every node look has five colours, so all views draw a node the same way:
 

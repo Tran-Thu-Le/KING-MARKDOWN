@@ -20,7 +20,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenus()
 // Panel: text (khung văn bản) và 4 view. Mỗi panel chỉ có một bản, nằm ở một khung (left / right) hoặc đang đóng.
 // Mỗi khung có một tab đang mở; hai khung có thể mở hai view khác nhau cùng lúc (vd. Tree bên trái, Graph bên phải).
 const VIEWS = {graph:"Graph", tree:"Tree", book:"Book", module:"Module"};
-const PANELS = {text:"Văn bản (.kg.md)", ...VIEWS};
+const PANELS = {text:"Text (.kg.md)", ...VIEWS};
 const PANES = ["left", "right"];
 const PANE_KEY = "kgpanes";
 const tabOf = p => $(`.tab[data-panel="${p}"]`), bodyOf = p => $("#" + p + "View");
@@ -97,7 +97,7 @@ function openAddMenu(btn) {
   const id = btn.closest(".pane").id;
   addMenu.innerHTML = Object.entries(PANELS).map(([p, name]) => {
     const where = paneOf(p);
-    const note = where === id ? "đang ở đây" : where ? "chuyển từ khung " + (where === "left" ? "trái" : "phải") : "";
+    const note = where === id ? "already here" : where ? "move from " + (where === "left" ? "left" : "right") + " pane" : "";
     return `<button data-add="${p}" ${where === id ? "disabled" : ""}>${name}<small>${note}</small></button>`;
   }).join("");
   const r = btn.getBoundingClientRect();
@@ -176,9 +176,9 @@ setInterval(async () => {
   try {
     const m = await api("/api/mtime?name=" + encodeURIComponent(S.name));
     if (m.mtime > S.mtime + 1e-6) {
-      if (!S.dirty || confirm(S.name + " vừa được sửa ở nơi khác. Tải lại (bỏ thay đổi ở đây)?")) {
+      if (!S.dirty || confirm(S.name + " was changed elsewhere. Reload (discard changes here)?")) {
         const f = await api("/api/file?name=" + encodeURIComponent(S.name));
-        S.mtime = f.mtime; setText(f.text); S.dirty = false; await reparse(); status("Đã tải lại " + S.name);
+        S.mtime = f.mtime; setText(f.text); S.dirty = false; await reparse(); status("Reloaded " + S.name);
       } else S.mtime = m.mtime;
     }
     if (m.side !== S.side) { S.side = m.side; await reparse(); }
@@ -195,7 +195,7 @@ $("#showTree").onchange = () => { if (S.graph) { edgesDS.clear(); edgesDS.add(vi
 $("#showDefs").onchange = e => { S.showDefs = e.target.checked; if (S.graph) render(S.graph); };
 function toggleShowHidden() {            // tạm hiện lại node / link có - hide: …
   S.showHidden = !S.showHidden; $("#bShowHidden").classList.toggle("on", S.showHidden);
-  status(S.showHidden ? "Đang hiện cả node đã ẩn (hide). Ctrl+H để ẩn lại." : "Đã ẩn lại các node có hide.");
+  status(S.showHidden ? "Showing hidden nodes (hide). Ctrl+H to hide again." : "Nodes with hide are hidden again.");
   if (S.graph) render(S.graph);
 }
 $("#bShowHidden").onclick = toggleShowHidden;
@@ -249,7 +249,7 @@ $$("#bWrap, #bWrap2").forEach(b => b.addEventListener("click", () => setWrap(!S.
 // Alt+Z: ngắt dòng (macOS: Option+Z cho ký tự "Ω"). Mở trang trong VS Code thì VS Code giữ Alt+Z: dùng nút ↵ Wrap.
 document.addEventListener("keydown", e => {
   if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyZ" || /^[zΩ]$/i.test(e.key))) {
-    e.preventDefault(); setWrap(!S.wrap); status(S.wrap ? "Ngắt dòng: bật (Alt+Z để tắt)" : "Ngắt dòng: tắt");
+    e.preventDefault(); setWrap(!S.wrap); status(S.wrap ? "Word wrap: on (Alt+Z to turn off)" : "Word wrap: off");
   }
 }, true);
 { let w = ""; try { w = localStorage.getItem("kgwrap"); } catch (e) {} if (w) setWrap(true); }
@@ -273,19 +273,35 @@ function pickFromUrl() {           // ?node=id mở sẵn node đó (link chia s
   const id = BOOT_URL.get("node");
   if (id && S.byId[id]) { focusNode(id, true); if (S.byId[id].line) jumpTo(S.byId[id].line); }
 }
+// Fullscreen toggle (menubar button; Esc exits via the browser)
+{
+  const b = $("#bFullscreen"), d = document.documentElement;
+  const cur = () => document.fullscreenElement || document.webkitFullscreenElement;
+  const sync = () => { const on = !!cur(); b.innerHTML = on ? "&#x2715; Exit fullscreen" : "&#x26F6; Fullscreen"; b.setAttribute("aria-pressed", on); };
+  b.addEventListener("click", () => {
+    try {
+      if (cur()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else (d.requestFullscreen || d.webkitRequestFullscreen).call(d);
+    } catch (e) { status("Fullscreen not available: " + e.message, "err"); }
+  });
+  document.addEventListener("fullscreenchange", sync);
+  document.addEventListener("webkitfullscreenchange", sync);
+}
 (async () => {
   setMode("select");
   restorePanes(new URLSearchParams(location.search).get("view"));
   if (ST) {
     document.body.classList.add("static"); src.readOnly = true;
     S.name = ST.name; src.value = S.text = ST.text; $("#fname").textContent = ST.name;
-    $("#title").textContent = ST.name + " — bản tĩnh, chỉ xem"; $("#sbRoot").textContent = "Bản tĩnh";
+    $("#title").textContent = ST.name + " — static, read-only"; $("#sbRoot").textContent = "Static copy";
     $("#editLink").href = "http://127.0.0.1:8765/?file=" + encodeURIComponent(ST.name);
-    document.title = ST.name; render(ST.graph); renderExplorer(); pickFromUrl(); return;
+    document.title = ST.name; render(ST.graph); renderExplorer();
+    if (!BOOT_URL.get("view")) setView("book");   // static page opens in the Book view
+    pickFromUrl(); return;
   }
   try {
     const s = await refreshState(), want = new URLSearchParams(location.search).get("file");
     await openFile(s.files.includes(want) ? want : (s.files.find(f => !/^(schema|style)\./.test(f)) || s.files[0] || ""));
     pickFromUrl();
-  } catch (e) { status("Không kết nối được server (king serve): " + e.message, "err"); }
+  } catch (e) { status("Cannot connect to server (king serve): " + e.message, "err"); }
 })();

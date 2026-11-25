@@ -7,3 +7,8 @@ dist/
 venv/
 .pytest_cache/
 graph.json
+
+# ghi chú riêng của tác giả
+.infor/
+out.json
+examples/kir/*.json

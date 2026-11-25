@@ -298,7 +298,7 @@ function caretSync() {
 }
 let tmr;
 src.addEventListener("input", () => {
-  S.text = src.value; S.dirty = true; status("Đang sửa…"); updateGutter();
+  S.text = src.value; S.dirty = true; status("Editing…"); updateGutter();
   clearTimeout(tmr); tmr = setTimeout(async () => { await reparse(); await save(); }, 600);
 });
 src.addEventListener("scroll", syncScroll);
@@ -359,7 +359,7 @@ async function refreshState() {
   const need = ["set_meta", "set_field", "set_style", "add_link"], miss = need.filter(o => !(s.ops || []).includes(o));
   if (miss.length && !S.warnedOld) {
     S.warnedOld = true;
-    const msg = "Server đang chạy là bản cũ (thiếu " + miss.join(", ") + "): sửa trên Inspector sẽ không lưu. Tắt server (Ctrl+C) rồi chạy lại king serve.";
+    const msg = "The running server is outdated (missing " + miss.join(", ") + "): Inspector edits will not be saved. Stop the server (Ctrl+C) and run king serve again.";
     status(msg, "err"); alert(msg);
   }
   return s;
@@ -368,13 +368,13 @@ async function openFile(name) {
   if (S.dirty) await save();
   nodesDS.clear(); edgesDS.clear(); S.undo = []; S.graph = null; S.hl = 0; S.selected = null; S.selLink = null;
   S.name = name || ""; showFiles(S.files || []); renderInspector(true);
-  if (!name) { src.value = S.text = ""; $("#fname").textContent = "(chưa mở file)"; updateGutter(); $("#log").innerHTML = ""; renderViews(); return; }
+  if (!name) { src.value = S.text = ""; $("#fname").textContent = "(no file open)"; updateGutter(); $("#log").innerHTML = ""; renderViews(); return; }
   const f = await api("/api/file?name=" + encodeURIComponent(name));
   S.mtime = f.mtime; S.side = f.side; src.value = S.text = f.text; S.dirty = false;
   $("#fname").textContent = name; $("#title").textContent = name + " — " + S.root;
   document.title = name + " · KING Markdown";
   history.replaceState(null, "", "?file=" + encodeURIComponent(name) + (S.view !== "graph" ? "&view=" + S.view : ""));
-  await reparse(); status("Đã mở " + name);
+  await reparse(); status("Opened " + name);
 }
 let seq = 0;
 async function reparse() {
@@ -391,26 +391,26 @@ async function save(force) {
     S.mtime = r.mtime;
     if (S.text === text) S.dirty = false;            // gõ thêm trong lúc đang lưu: vẫn còn là "chưa lưu"
     $("#fname").classList.toggle("dirty", S.dirty);
-    status("Đã lưu " + S.name);
+    status("Saved " + S.name);
   }
-  catch (e) { status("Lưu lỗi: " + e.message, "err"); }
+  catch (e) { status("Save failed: " + e.message, "err"); }
 }
 async function saveNow() {                           // Ctrl+S: lưu ngay, không chờ hẹn giờ tự lưu
-  if (ST) { status("Trang tĩnh (chỉ xem): không lưu được. Mở bằng king serve để sửa."); return; }
-  if (!S.name) { status("Chưa mở file."); return; }
+  if (ST) { status("Static page (read-only): cannot save. Open with king serve to edit."); return; }
+  if (!S.name) { status("No file open."); return; }
   clearTimeout(tmr);
   await save(true); await reparse();
 }
 async function undo() {
-  if (!S.undo.length) return status("Không còn gì để hoàn tác.");
-  setText(S.undo.pop(), true); S.dirty = true; await reparse(); await save(); status("Đã hoàn tác.");
+  if (!S.undo.length) return status("Nothing to undo.");
+  setText(S.undo.pop(), true); S.dirty = true; await reparse(); await save(); status("Undone.");
 }
-// KING 0.3: Inspector và các thao tác sửa trên view tạm khóa (dev/plan-working/README.md mục 2).
+// KING 0.3: Inspector và các thao tác sửa trên view tạm khóa.
 // Mọi chỉnh sửa đi qua khung văn bản; op() không gửi gì.
 const FROZEN = true;
 async function op(name, args, before) {
   if (ST || !S.name) return;
-  if (FROZEN) { status("KING 0.3: sửa trên view / Inspector đang tạm khóa — hãy sửa trong khung văn bản.", "warn"); return; }
+  if (FROZEN) { status("KING 0.3: editing in views / Inspector is temporarily locked — edit in the text pane.", "warn"); return; }
   try {
     const r = await api("/api/op", {name:S.name, text:S.text, op:name, args});
     if (before) before(r);

@@ -6,7 +6,7 @@
 Ba bước: cắt block (cut_blocks) → ngữ nghĩa (Parser.build) → JSON.
 File có `kg: 0.2` (và file style) được đọc bằng parser cũ trong legacy.py.
 
-Cú pháp 0.3 (dev/plan-v2/plan-v2c.md):
+Cú pháp 0.3:
     # Tiêu đề [@tên]          section; các dòng "- " ngay dưới là thuộc tính của section
     @node tên                 node (tên viết thường, gạch nối; như tên biến trong file)
     @node Kieu                khai báo node type (viết hoa chữ đầu)
@@ -56,7 +56,7 @@ def parse_hide(v):
         elif x:
             bad.append(x)
     return (["all"] if "all" in out else out), bad
-NOT_YET = {"has": "node con (has) chưa hỗ trợ ở 0.3"}
+NOT_YET = {"has": "child nodes (has) not supported yet in 0.3"}
 BUILTIN_LINKS = ("contains", "mention")
 
 
@@ -68,6 +68,9 @@ def frontmatter_end(lines):
         if lines[i].strip() == "---":
             return i + 1
     return len(lines)
+
+
+SUPPORTED = ("0.1", "0.2", "0.3")     # 0.1/0.2 → legacy.py; phiên bản khác → lỗi
 
 
 def kg_version(text):
@@ -143,7 +146,7 @@ def cut_blocks(lines, start, errors):
             while stack and stack[-1][0] >= level:
                 stack.pop()
             if stack and level > stack[-1][0] + 1:
-                errors.append({"line": n, "msg": f"heading nhảy cấp (từ {stack[-1][0]} xuống {level})", "warn": True})
+                errors.append({"line": n, "msg": f"heading level skipped (from {stack[-1][0]} to {level})", "warn": True})
             b = {"kind": "section", "name": m.group(3), "title": m.group(2).strip(), "level": level,
                  "attrs": [], "froms": [], "body": [], "line": n,
                  "parent": stack[-1][1] if stack else None}
@@ -163,11 +166,11 @@ def cut_blocks(lines, start, errors):
                     rest = loose.group(2).strip()
                     name = re.split(r"[\s:]", rest, maxsplit=1)[0] if rest else ""
                     if not name:
-                        err(n, f"@{kw} cần một tên: @{kw} ten-{kw}")
+                        err(n, f"@{kw} needs a name: @{kw} my-{kw}")
                     elif ":" in rest:
-                        err(n, f"dòng mở không có ':' và nhãn; viết @{kw} {name} rồi - label: …")
+                        err(n, f"opening line takes no ':' and label; write @{kw} {name} then - label: …")
                     else:
-                        err(n, f"dòng mở chỉ gồm @{kw} và tên: {text}")
+                        err(n, f"opening line must be just @{kw} and a name: {text}")
                 b = {"kind": kw, "name": name, "attrs": [], "froms": [], "body": [], "line": n,
                      "parent": stack[-1][1] if stack else None}
                 if m is None and ":" in loose.group(2):          # cứu: @node x: Nhãn → label
@@ -176,7 +179,7 @@ def cut_blocks(lines, start, errors):
                 continue
             mo = RE_OLD_NODE.match(text)
             if mo:
-                err(n, f"cú pháp v0.2 (@{mo.group(1)}: …); 0.3 viết @node {mo.group(1)} và - label: …")
+                err(n, f"v0.2 syntax (@{mo.group(1)}: …); in 0.3 write @node {mo.group(1)} and - label: …")
                 continue
 
         if cur is None:
@@ -203,7 +206,7 @@ def cut_blocks(lines, start, errors):
                         pend = rec
                     continue
                 if cur["kind"] != "section":
-                    err(n, "thuộc tính phải có dạng - key: value (nội dung thì cách dãy thuộc tính một dòng trống)")
+                    err(n, "attribute must be - key: value (separate body text from attributes by a blank line)")
                     continue
             phase = "body"                                # section: văn bản ngay dưới heading là nội dung
         line = strip_comment(raw)
@@ -212,10 +215,10 @@ def cut_blocks(lines, start, errors):
         cur["body"].append(line)
 
     if pend:
-        err(pend[3], f"thuộc tính {pend[0]}: thiếu ngoặc đóng")
+        err(pend[3], f"attribute {pend[0]}: missing closing bracket")
         finish_pend()
     if fence:
-        err(len(lines), "khối code ``` chưa đóng")
+        err(len(lines), "unclosed ``` code block")
     if cur is not None:
         cur["end"] = len(lines)
     for b in blocks:                                      # bỏ dòng trống ở đầu và cuối nội dung
@@ -265,7 +268,7 @@ class Parser:
         if end == 0:
             return 0
         if end == len(self.lines) and self.lines[-1].strip() != "---":
-            self.err(1, "frontmatter không có dòng --- đóng")
+            self.err(1, "frontmatter has no closing --- line")
         uses, in_use = [], False
         for i in range(1, end - 1):
             raw, n = self.lines[i], i + 1
@@ -279,7 +282,7 @@ class Parser:
                 continue
             in_use = False
             if ":" not in line:
-                self.err(n, f"frontmatter không hiểu: {line.strip()}")
+                self.err(n, f"unrecognized frontmatter: {line.strip()}")
                 continue
             key, value = (s.strip() for s in line.split(":", 1))
             if key == "kg":
@@ -297,7 +300,7 @@ class Parser:
                     elif item:
                         self.fm["modules"].append(item)
             else:
-                self.warn(n, f"khóa frontmatter lạ: {key}")
+                self.warn(n, f"unknown frontmatter key: {key}")
         if not self.bare:
             for key, names, n in uses:
                 self.load_use(key, names, n)
@@ -311,8 +314,8 @@ class Parser:
         else:
             path = os.path.join(self.dir, use_name(fname))
         if not path or not os.path.exists(path):
-            self.err(n, f"use: không tìm thấy {use_name(fname)}"
-                     + (" trong schema / style của hệ thống" if fname.startswith(SYSTEM_PREFIX) else ""))
+            self.err(n, f"use: cannot find {use_name(fname)}"
+                     + (" among system schemas / styles" if fname.startswith(SYSTEM_PREFIX) else ""))
             return
         self.fm["use"].append(key)
         shown = (SYSTEM_PREFIX if fname.startswith(SYSTEM_PREFIX) else "") + os.path.basename(path)
@@ -343,7 +346,7 @@ class Parser:
             want = names if (names is not None and part == kind) else list(table)
             for t in want:
                 if t not in table:
-                    self.err(n, f"{tag} không có {'node type' if kind == 'node' else 'link type'} {t}")
+                    self.err(n, f"{tag} has no {'node type' if kind == 'node' else 'link type'} {t}")
                     continue
                 mine[t] = {**table[t], "file": tag}
 
@@ -355,11 +358,11 @@ class Parser:
             self.types[b["name"]] = {"title": as_text(attrs.pop("label", b["name"])), "line": b["line"],
                                      "attrs": attrs, "content": b["body"]}
             if b["froms"]:
-                self.err(b["froms"][0][2], "- from … to … chỉ dùng trong @link")
+                self.err(b["froms"][0][2], "- from … to … is only allowed in @link")
             return
         inv = attrs.pop("inverse", None)
         if inv is not None and not (isinstance(inv, str) and re.fullmatch(NAME, inv)):
-            self.err(b["line"], f"inverse cần một tên link viết thường: {as_text(inv)}")
+            self.err(b["line"], f"inverse needs a lowercase link name: {as_text(inv)}")
             inv = None
         dag = attrs.pop("dag", False)
         self.ltypes[b["name"]] = {"title": as_text(attrs.pop("label", b["name"])), "line": b["line"],
@@ -371,17 +374,17 @@ class Parser:
         for key, sub, raw, line in b["attrs"]:
             if key == "link":
                 if not allow_link:
-                    self.err(line, "- link …: chỉ dùng trong node")
+                    self.err(line, "- link …: is only allowed in a node")
                 elif links is not None:
                     links.append((sub, raw, line))
                 continue
             if key in out:
-                self.err(line, f"thuộc tính {key} viết hai lần")
+                self.err(line, f"attribute {key} written twice")
                 continue
             if key in NOT_YET:
                 self.warn(line, NOT_YET[key])
             if not re.fullmatch(NAME, key):
-                self.err(line, f"tên thuộc tính viết thường, gạch nối: {key}")
+                self.err(line, f"attribute names are lowercase, hyphenated: {key}")
             try:
                 v = raw if key == "label" and not raw.startswith('"') else parse_value(raw)
             except ValueError_ as e:
@@ -397,11 +400,14 @@ class Parser:
         if ver and (ver.startswith("0.2") or ver.startswith("0.1")):
             g = legacy.Parser(self.text, self.filename, bare=self.bare).build()
             if not self.bare and "select=" not in self.text:      # file style: định dạng v0.2 là đúng (đóng băng)
-                g["graph"]["warnings"].insert(0, {"line": 1, "msg": f"file kg: {ver} (cú pháp cũ); hãy chuyển sang 0.3"})
+                g["graph"]["warnings"].insert(0, {"line": 1, "msg": f"file kg: {ver} (old syntax); please migrate to 0.3"})
             self._legacy = g
             return g
         self._seen_keys = {}
         start = self.parse_frontmatter()
+        if ver and ver not in SUPPORTED:
+            self.err(1, f"kg: {ver} is not supported (supported: {', '.join(SUPPORTED)}); "
+                        "reading as 0.3, results may be wrong")
         cut_err = []
         blocks = cut_blocks(self.lines, start, cut_err)
         for e in cut_err:
@@ -411,14 +417,14 @@ class Parser:
         for b in blocks:
             if b["kind"] == "link" or (b["kind"] == "node" and re.fullmatch(TYPE, b["name"] or "")):
                 if b["kind"] == "link" and not re.fullmatch(NAME, b["name"]):
-                    self.err(b["line"], f"tên link viết thường, gạch nối: {b['name']}")
+                    self.err(b["line"], f"link names are lowercase, hyphenated: {b['name']}")
                     continue
                 if b["kind"] == "node" and b["name"] in DATA_TYPES:
-                    self.err(b["line"], f"{b['name']} là kiểu dữ liệu dựng sẵn, không khai báo lại")
+                    self.err(b["line"], f"{b['name']} is a built-in data type, do not redeclare it")
                     continue
                 table = self.ltypes if b["kind"] == "link" else self.types
                 if b["name"] in table and "file" not in table[b["name"]]:
-                    self.err(b["line"], f"khai báo trùng: {b['name']} (dòng {table[b['name']]['line']})")
+                    self.err(b["line"], f"duplicate declaration: {b['name']} (line {table[b['name']]['line']})")
                     continue
                 self.declare(b)
                 b["decl"] = True
@@ -444,7 +450,7 @@ class Parser:
                 if not name:
                     continue
                 if not re.fullmatch(NAME, name):
-                    self.err(b["line"], f"tên node viết thường, gạch nối (kiểu viết hoa chữ đầu): {name}")
+                    self.err(b["line"], f"node names are lowercase, hyphenated (types are Capitalized): {name}")
                     continue
                 links = []
                 attrs = self.read_attrs(b, links=links)
@@ -454,12 +460,12 @@ class Parser:
                     typ = as_text(typ)
                     if not re.fullmatch(TYPE, typ):
                         hint = typ[:1].upper() + typ[1:]
-                        self.err(b["line"], f"tên kiểu viết hoa chữ đầu: {typ} → {hint}")
+                        self.err(b["line"], f"type names are Capitalized: {typ} → {hint}")
                         typ = hint if hint in self.types else None
                     elif typ not in self.types:
-                        self.err(b["line"], f"node type chưa import / khai báo: {typ}")
+                        self.err(b["line"], f"node type not imported / declared: {typ}")
                 if b["froms"]:
-                    self.err(b["froms"][0][2], "- from … to … chỉ dùng trong @link")
+                    self.err(b["froms"][0][2], "- from … to … is only allowed in @link")
                 self.add_node(name, b, kind="node", label=as_text(label) if label is not None else "",
                               type=typ, attrs=attrs)
                 raw_links += [(name, sub, raw, line) for sub, raw, line in links]
@@ -477,7 +483,7 @@ class Parser:
 
     def add_node(self, name, b, kind, attrs, label="", type=None, title=None, level=None, auto_id=False):
         if name in self.nodes:
-            self.err(b["line"], f"tên trùng: {name} (đã khai báo ở dòng {self.nodes[name]['line']})")
+            self.err(b["line"], f"duplicate name: {name} (already declared at line {self.nodes[name]['line']})")
             return
         parent = b["parent"]["name"] if b.get("parent") else None
         node = {"id": name, "kind": kind, "type": type, "label": label,
@@ -493,7 +499,7 @@ class Parser:
         """- hide: … → danh sách view bị ẩn (None nếu không ẩn). Con cháu được view tự ẩn theo."""
         hide, bad = parse_hide(attrs.get("hide"))
         if bad:
-            self.warn(line, f"hide: không có view {', '.join(bad)} (dùng all, {', '.join(HIDE_VIEWS)})")
+            self.warn(line, f"hide: no view {', '.join(bad)} (use all, {', '.join(HIDE_VIEWS)})")
         return hide or None
 
     # ---------- link ----------
@@ -511,9 +517,9 @@ class Parser:
                                        "attrs": {}, "content": "", "ask": "", "show": None,
                                        "level": None, "auto_id": False, "type": None}
                 return ref
-            self.err(line, f"module chưa import: {mod} (trong {ref})")
+            self.err(line, f"module not imported: {mod} (in {ref})")
             return None
-        self.err(line, f"không tìm thấy node: {ref}")
+        self.err(line, f"node not found: {ref}")
         return None
 
     def add_link(self, src, typ, dst, line, declared_at, rev=False):
@@ -536,7 +542,7 @@ class Parser:
         inverse = {s["inverse"]: t for t, s in self.ltypes.items() if s.get("inverse")}
         for name, sub, raw, line in raw_links:
             if not sub or not re.fullmatch(NAME, sub):
-                self.err(line, f"tên link viết thường, gạch nối: - link {sub or '?'}: …")
+                self.err(line, f"link names are lowercase, hyphenated: - link {sub or '?'}: …")
                 continue
             try:
                 targets = _names(parse_value(raw))
@@ -544,16 +550,16 @@ class Parser:
                 self.err(line, f"link {sub}: {e}")
                 continue
             if not targets:
-                self.err(line, f"link {sub}: cần đích, ví dụ - link {sub}: (a, b)")
+                self.err(line, f"link {sub}: needs targets, e.g. - link {sub}: (a, b)")
             if sub in BUILTIN_LINKS:
-                self.err(line, f"loại link {sub} do parser tự sinh, không viết tay")
+                self.err(line, f"link type {sub} is generated by the parser, do not write it by hand")
                 continue
             if sub in self.ltypes:
                 typ, rev = sub, False
             elif sub in inverse:
                 typ, rev = inverse[sub], True
             else:
-                self.err(line, f"link type chưa import / khai báo: {sub}")
+                self.err(line, f"link type not imported / declared: {sub}")
                 continue
             for t in targets:
                 tgt = self.resolve(t, line)
@@ -594,7 +600,7 @@ class Parser:
             others = [o for o in keys if o != k and (len(keys[o]) > 1 or o in SPECIAL)]
             near = difflib.get_close_matches(k, others, n=1, cutoff=0.75)
             if near:
-                self.warn(lines[0], f"thuộc tính {k} chỉ dùng một lần; có phải {near[0]}?")
+                self.warn(lines[0], f"attribute {k} used only once; did you mean {near[0]}?")
 
     def dag_types(self):
         return [t for t, s in self.ltypes.items() if s.get("dag")]
@@ -613,7 +619,7 @@ class Parser:
                 for v in adj.get(u, []):
                     if color.get(v) == 1:
                         cyc = path[path.index(v):] + [v]
-                        self.err(self.nodes[u]["line"], f"vòng lặp {typ}: {' → '.join(cyc)}")
+                        self.err(self.nodes[u]["line"], f"cycle in {typ}: {' → '.join(cyc)}")
                     elif not color.get(v):
                         dfs(v)
                 path.pop()

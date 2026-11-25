@@ -12,9 +12,13 @@ dependencies = []
 
 [project.scripts]
 king = "king_markdown.cli:main"
+kir = "kir.cli:main"
+
+[project.optional-dependencies]
+networkx = ["networkx>=3.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-king_markdown = ["web/*.html", "web/*.css", "web/js/*.js"]
+king_markdown = ["web/*.html", "web/*.css", "web/js/*.js", "templates/*.kg.md"]

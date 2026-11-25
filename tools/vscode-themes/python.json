@@ -1,0 +1,208 @@
+{
+  "name": "python",
+  "description": "Kiểu code Python (dark): @node như def/class (đậm, gạch chân), link nổi bật, key như biến, value như literal Python (số, True/None, (ref), chuỗi); content giữ Markdown.",
+  "regexFlags": "gm",
+  "regexes": {
+    "^(@node)([ \\t]+)([a-z0-9][a-z0-9-]*)[ \\t]*$": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#569CD6",
+          "fontWeight": "bold"
+        },
+        {},
+        {
+          "color": "#DCDCAA",
+          "fontWeight": "bold",
+          "textDecoration": "underline"
+        }
+      ]
+    },
+    "^(@node)([ \\t]+)([A-Z][A-Za-z0-9-]*)[ \\t]*$": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#569CD6",
+          "fontWeight": "bold"
+        },
+        {},
+        {
+          "color": "#4EC9B0",
+          "fontWeight": "bold",
+          "textDecoration": "underline"
+        }
+      ]
+    },
+    "^(@link)([ \\t]+)(\\S+)[ \\t]*$": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#C586C0",
+          "fontWeight": "bold"
+        },
+        {},
+        {
+          "color": "#4FC1FF",
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    "^(- )(link)( +)([a-z0-9][a-z0-9-]*)(:)([^\\n]*?)(?=\\s//|$)": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#C586C0",
+          "fontWeight": "bold"
+        },
+        {},
+        {
+          "color": "#4FC1FF",
+          "fontWeight": "bold"
+        },
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#DCDCAA"
+        }
+      ]
+    },
+    "^(- )(from)( .*? )(to)( [^\\n]*?)(?=\\s//|$)": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#C586C0"
+        },
+        {
+          "color": "#DCDCAA"
+        },
+        {
+          "color": "#C586C0"
+        },
+        {
+          "color": "#DCDCAA"
+        }
+      ]
+    },
+    "^(- )(type)(:)( *[A-Z][A-Za-z0-9-]*)": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#9CDCFE"
+        },
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#4EC9B0"
+        }
+      ]
+    },
+    "^(- )(?!link |from |type:)([A-Za-z_][\\w-]*)(:)( *(?:-?\\d+(?:\\.\\d+)?))[ \\t]*(?:$|(?=\\s//))": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#9CDCFE"
+        },
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#B5CEA8"
+        }
+      ]
+    },
+    "^(- )(?!link |from |type:)([A-Za-z_][\\w-]*)(:)( *(?:true|false|True|False|None|null))[ \\t]*(?:$|(?=\\s//))": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#9CDCFE"
+        },
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#569CD6"
+        }
+      ]
+    },
+    "^(- )(?!link |from |type:)([A-Za-z_][\\w-]*)(:)( *\\([^\\n]*?\\))[ \\t]*(?:$|(?=\\s//))": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#9CDCFE"
+        },
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#DCDCAA"
+        }
+      ]
+    },
+    "^(- )(?!link |from |type:)([A-Za-z_][\\w-]*)(:)(?![ \\t]*(?:-?\\d+(?:\\.\\d+)?|true|false|True|False|None|null)[ \\t]*(?:$|(?=\\s//)))(?![ \\t]*\\()( *[^\\n]*?)(?=\\s//|$)": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#9CDCFE"
+        },
+        {
+          "color": "#808080"
+        },
+        {
+          "color": "#CE9178"
+        }
+      ]
+    },
+    "^(kg|use|import)(:)": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#9CDCFE"
+        },
+        {
+          "color": "#808080"
+        }
+      ]
+    },
+    "(?<=^|\\s)@(?!node\\b|link\\b)[a-z0-9][a-z0-9-]*": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#DCDCAA",
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    "(?:^|(?<=\\s))//[^\\n]*": {
+      "filterFileRegex": ".*\\.kg\\.md$",
+      "decorations": [
+        {
+          "color": "#6A9955",
+          "fontStyle": "italic"
+        }
+      ]
+    }
+  }
+}

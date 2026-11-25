@@ -55,10 +55,10 @@ function countBelow(id) {
   return seen.size;
 }
 function toggleFold(id) {
-  if (!S.kids[id]) return status("Node " + id + " không có node con (part-of / contain).");
+  if (!S.kids[id]) return status("Node " + id + " has no child nodes (part-of / contain).");
   if (S.folded.has(id)) S.folded.delete(id); else S.folded.add(id);
   saveFold(); render(S.graph);
-  status((S.folded.has(id) ? "Đã thu gọn " : "Đã bung ") + id);
+  status((S.folded.has(id) ? "Collapsed " : "Expanded ") + id);
 }
 function foldAll(on) {
   if (!S.graph) return;
@@ -177,7 +177,7 @@ function treeParent(g) {     // mỗi node một cha: part-of > contain > sectio
 }
 // Bố cục: tree = cây thụt lề (cha ngang hàng con đầu), tidy = cây cân (cha ở giữa các con, kiểu D3 tree),
 // radial = tỏa tròn từ gốc, force = physics. Ba bố cục cây đều làm tròn toạ độ về lưới.
-const LAYOUTS = {tree:"⊢ Thụt lề", tidy:"⊣ Cây cân", radial:"✳ Tỏa tròn", force:"✺ Lực"};
+const LAYOUTS = {tree:"⊢ Indented", tidy:"⊣ Tidy tree", radial:"✳ Radial", force:"✺ Force"};
 const LAYOUT_ORDER = ["tree", "tidy", "radial", "force"];
 function treeLayout(g, skip = new Set(), mode = "tree") {   // {id: {x, y}}; node trong skip (đang ẩn) không chiếm chỗ
   const par = treeParent(g), kids = {}, order = n => n.line || 0;
@@ -306,10 +306,10 @@ function fillLinkSel(g) {
   if (opts.includes(cur)) sel.value = cur;
 }
 function showLog(g) {
-  const L = [...g.graph.errors.map(e => ({...e, c:"err", t:"Lỗi"})), ...g.graph.warnings.map(e => ({...e, c:"warn", t:"Cảnh báo"}))];
+  const L = [...g.graph.errors.map(e => ({...e, c:"err", t:"Error"})), ...g.graph.warnings.map(e => ({...e, c:"warn", t:"Warning"}))];
   $("#log").innerHTML = L.length
-    ? L.map((e, i) => `<div class="${e.c}" data-i="${i}">${e.t} ${e.file ? esc(e.file) + ":" : "dòng "}${e.line}: ${esc(e.msg)}</div>`).join("")
-    : '<span style="color:var(--mute)">Không có lỗi.</span>';
+    ? L.map((e, i) => `<div class="${e.c}" data-i="${i}">${e.t} ${e.file ? esc(e.file) + ":" : "line "}${e.line}: ${esc(e.msg)}</div>`).join("")
+    : '<span style="color:var(--mute)">No errors.</span>';
   const ne = g.graph.errors.length, nw = g.graph.warnings.length;
   $("#nprob").textContent = ne + nw;
   $("#sbProb").textContent = `⊗ ${ne}  ⚠ ${nw}`;
@@ -319,16 +319,16 @@ function showLog(g) {
 // ---------- chế độ, sự kiện đồ thị ----------
 const AUTO_LINKS = ["mention", "contain"];   // parser sinh từ @id / meta contain: sửa trong văn bản
 const HINT = {
-  fold:"Bấm node cha (▾) để thu gọn các node con part-of / contain · bấm lại (▸) để bung",
-  select:"Kéo node để sắp xếp · bấm node: nhảy tới dòng · nhấp đúp: đổi tiêu đề · Delete: xóa node/link",
-  add:"Bấm nền: thêm node cuối file · bấm một section: thêm node vào section đó",
-  link:"Kéo từ node nguồn sang node đích để nối (loại link chọn ở menu)",
-  move:"Kéo node thả lên một section để chuyển node sang section đó"};
+  fold:"Click a parent node (▾) to collapse its part-of / contain children · click again (▸) to expand",
+  select:"Drag nodes to arrange · click a node: jump to its line · double-click: rename · Delete: delete node/link",
+  add:"Click background: add a node at end of file · click a section: add a node to that section",
+  link:"Drag from source node to target node to connect (link type chosen in the menu)",
+  move:"Drag a node onto a section to move it into that section"};
 function setMode(m) {
   S.mode = m;
   $$("[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
   net.disableEditMode(); if (m === "link") net.addEdgeMode();
-  $("#hint").textContent = ST && m !== "fold" ? "Bản tĩnh: chỉ xem. Sửa bằng: king serve" : HINT[m];
+  $("#hint").textContent = ST && m !== "fold" ? "Static copy: read-only. Edit with: king serve" : HINT[m];
 }
 net.on("click", async p => {
   const a = document.activeElement;              // bấm vào đồ thị: rời ô nhập để phím tắt dùng cho node
@@ -337,8 +337,8 @@ net.on("click", async p => {
   if (S.mode === "add" && !ST) {
     const id = p.nodes[0], n = id && S.byId[id];
     if (n && n.kind !== "section") return;
-    const t = (prompt(n ? `Node mới trong section "${n.title}" (có thể viết "id: Tiêu đề"):`
-                        : 'Node mới ở cuối file (có thể viết "id: Tiêu đề"):') || "").trim();
+    const t = (prompt(n ? `New node in section "${n.title}" (you may write "id: Title"):`
+                        : 'New node at end of file (you may write "id: Title"):') || "").trim();
     if (!t) return;
     const m = t.match(/^([a-z0-9][a-z0-9-]*)\s*:\s*(.+)$/);
     let pt = p.pointer.canvas;
@@ -353,7 +353,7 @@ net.on("click", async p => {
 net.on("doubleClick", async p => {
   if (ST || S.mode !== "select" || !p.nodes.length) return;
   const n = S.byId[p.nodes[0]]; if (!n || n.kind === "external") return;
-  const t = (prompt("Tiêu đề mới cho " + n.id + (n.auto_id ? " (section không có @id: ID sẽ đổi theo)" : "") + ":", n.title) || "").trim();
+  const t = (prompt("New title for " + n.id + (n.auto_id ? " (section has no @id: its ID will change too)" : "") + ":", n.title) || "").trim();
   if (t && t !== n.title) await op("rename", {id:n.id, title:t});
 });
 net.on("select", p => {
@@ -409,7 +409,7 @@ net.on("dragEnd", async p => {
 async function onAddEdge(d) {
   if (d.from === d.to) { net.addEdgeMode(); return; }
   const type = $("#linkSel").value;
-  if (!type) { alert("Chưa có loại link. Thêm bằng Schema → + Link."); return; }
+  if (!type) { alert("No link types yet. Add one via Schema → + Link."); return; }
   await op("add_link", {source:d.from, target:d.to, type});
   if (S.mode === "link") net.addEdgeMode();
 }
@@ -422,9 +422,9 @@ document.addEventListener("keydown", async e => {
   if (e.key !== "Delete" && e.key !== "Backspace") return;
   const ns = net.getSelectedNodes().filter(id => S.byId[id] && S.byId[id].kind === "node");
   const es = net.getSelectedEdges().map(i => S.edgeMap[i]).filter(l => l && !l.tree && !AUTO_LINKS.includes(l.type));
-  if (ns.length) { if (confirm("Xóa node " + ns.join(", ") + " khỏi " + S.name + "?")) await op("delete_node", {ids:ns}); }
+  if (ns.length) { if (confirm("Delete node " + ns.join(", ") + " from " + S.name + "?")) await op("delete_node", {ids:ns}); }
   else if (es.length) await op("delete_link", {links:es.map(l => ({source:l.source, target:l.target, type:l.type}))});
-  else if (net.getSelectedEdges().length) status("Cạnh chứa, meta contain và tham chiếu @ sửa trong văn bản.");
+  else if (net.getSelectedEdges().length) status("Containment edges, meta contain and @ references are edited in the text.");
 });
 
 // ---------- Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+/ trên node (đồ thị, Tree, Book) ----------
@@ -448,7 +448,7 @@ function copyNodes(e, cut) {
   if (!ids.length) return;
   e.preventDefault();
   e.clipboardData.setData("text/plain", ids.map(nodeText).join("\n\n") + "\n");
-  status((cut ? "Đã cắt " : "Đã sao chép ") + ids.join(", ") + " · Ctrl+V để dán thành node mới");
+  status((cut ? "Cut " : "Copied ") + ids.join(", ") + " · Ctrl+V to paste as new nodes");
   if (cut && !ST) op("delete_node", {ids});
 }
 document.addEventListener("copy", e => copyNodes(e, false));
@@ -492,9 +492,9 @@ function targets() {
 }
 async function applyFmt(p, v) {
   const t = targets();
-  if (!t) return status("Chọn node hoặc link trước khi format.", "err");
+  if (!t) return status("Select a node or link before formatting.", "err");
   let k = p;
-  if (t.link) { k = LINKMAP[p]; if (!k) return status("Thuộc tính này không áp cho link.", "err"); }
+  if (t.link) { k = LINKMAP[p]; if (!k) return status("This property does not apply to links.", "err"); }
   await op("set_style", {selectors:t.sel, props:{[k]:v}});
 }
 $$("#fmt [data-p]").forEach(el => el.addEventListener("change", () => {
@@ -503,23 +503,23 @@ $$("#fmt [data-p]").forEach(el => el.addEventListener("change", () => {
   if (el.dataset.p === "dash") v = v === "true";
   applyFmt(el.dataset.p, v);
 }));
-$("#bClear").onclick = async () => { const t = targets(); if (t) await op("set_style", {selectors:t.sel, props:null}); else status("Chọn node hoặc link trước.", "err"); };
+$("#bClear").onclick = async () => { const t = targets(); if (t) await op("set_style", {selectors:t.sel, props:null}); else status("Select a node or link first.", "err"); };
 
 // ---------- schema ----------
 $$("[data-schema]").forEach(b => b.onclick = async () => {
-  const kind = b.dataset.schema, L = {type:"kiểu node", key:"khóa meta", link:"loại link"}[kind];
-  const id = (prompt(`ID ${L} mới (a-z, 0-9, -):`) || "").trim(); if (!id) return;
-  const title = (prompt("Tên hiển thị (có thể bỏ trống):") || "").trim(), extra = {};
+  const kind = b.dataset.schema, L = {type:"node type", key:"meta key", link:"link type"}[kind];
+  const id = (prompt(`New ${L} ID (a-z, 0-9, -):`) || "").trim(); if (!id) return;
+  const title = (prompt("Display name (optional):") || "").trim(), extra = {};
   if (kind === "type") {
-    const a = (prompt("Các khóa meta kiểu này được dùng, ngăn bằng dấu phẩy (bỏ trống = mọi khóa):") || "").trim();
+    const a = (prompt("Meta keys this type may use, comma-separated (empty = any key):") || "").trim();
     if (a) extra.allow = a;
   } else if (kind === "key") {
-    const v = (prompt('Giá trị cho phép ngăn bằng | (ví dụ "Nạp | Xuất"), hoặc bool / int / number / text (bỏ trống = tự do):') || "").trim();
+    const v = (prompt('Allowed values separated by | (e.g. "Input | Output"), or bool / int / number / text (empty = free):') || "").trim();
     if (/^(bool|int|number|text)$/.test(v)) extra.value = v; else if (v) extra.values = v;
-    if (confirm("Bắt buộc với các kiểu node có khóa này trong allow?")) extra.required = true;
+    if (confirm("Required for node types that list this key in allow?")) extra.required = true;
   } else {
-    if (confirm("Cấm vòng lặp (dag)?")) extra.dag = true;
-    const to = (prompt("Đích phải có type nào? (bỏ trống = bất kỳ)") || "").trim(); if (to) extra.to = to;
+    if (confirm("Forbid cycles (dag)?")) extra.dag = true;
+    const to = (prompt("Required target type? (empty = any)") || "").trim(); if (to) extra.to = to;
   }
   await op("schema_add", {kind, id, title, extra});
 });
@@ -534,7 +534,7 @@ function poly(s, x, y, r) {
   return p.map(q => q.map(v => v.toFixed(1)).join(",")).join(" ");
 }
 function exportSVG() {
-  const ids = nodesDS.getIds({filter:n => !n.hidden}); if (!ids.length) return status("Đồ thị trống.", "err");
+  const ids = nodesDS.getIds({filter:n => !n.hidden}); if (!ids.length) return status("Graph is empty.", "err");
   const pos = net.getPositions(), G = {}, OUT = new Set(["dot", "star", "triangle", "diamond", "square", "hexagon"]);
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const id of ids) {
@@ -600,16 +600,16 @@ function exportSVG() {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([svg], {type:"image/svg+xml"}));
   a.download = (S.name || "graph").replace(/\.kg\.md$/, "") + ".svg"; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000); status("Đã xuất " + a.download);
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000); status("Exported " + a.download);
 }
 // Chọn bố cục ở ô sổ xuống, hoặc L: kiểu kế tiếp; Shift+L: xếp lại kiểu đang chọn (bỏ vị trí kéo tay)
 function applyLayout(mode) {
   const cur = LAYOUTS[getLayout()] ? getLayout() : "tree";
-  if (!S.graph || !confirm(`Xếp lại toàn bộ đồ thị theo bố cục ${LAYOUTS[mode]}? Vị trí kéo tay của file này sẽ mất.`)) {
+  if (!S.graph || !confirm(`Re-arrange the whole graph with layout ${LAYOUTS[mode]}? Manual positions for this file will be lost.`)) {
     $("#bLayout").value = cur; return;
   }
   setLayout(mode); relayout();
-  status("Bố cục: " + LAYOUTS[mode]);
+  status("Layout: " + LAYOUTS[mode]);
 }
 function toggleLayout(again) {
   const cur = LAYOUTS[getLayout()] ? getLayout() : "tree";
@@ -623,5 +623,5 @@ document.addEventListener("keydown", e => {
 // G: bật / tắt lưới (khi đang ở đồ thị, không gõ chữ)
 document.addEventListener("keydown", e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.key.toLowerCase() !== "g" || !onGraph() || !shown("graph")) return;
-  e.preventDefault(); setGrid(!S.grid); status(S.grid ? "Lưới: bật (node thả xuống hút về nút lưới)" : "Lưới: tắt");
+  e.preventDefault(); setGrid(!S.grid); status(S.grid ? "Grid: on (dropped nodes snap to grid)" : "Grid: off");
 });
